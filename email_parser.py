@@ -15,7 +15,6 @@ import xml.etree.ElementTree as ET
 import markdown
 import bs4
 import pystache
-import collections
 import inlinestyler.utils as inline_styler
 
 DEFAULE_LOG_LEVEL = 'WARNING'
@@ -40,8 +39,7 @@ class Email(object):
         self.content = content
 
     def content_to_text(self):
-        # HACK: this will reverse ordering which is what we want
-        result = collections.OrderedDict()
+        result = {}
         for content_key, content_value in self.content.items():
             content_html = markdown.markdown(content_value)
             content_text = bs4.BeautifulSoup(content_html).get_text()
@@ -49,8 +47,7 @@ class Email(object):
         return result
 
     def content_to_html(self, css):
-        # HACK: this will reverse ordering which is what we want
-        result = collections.OrderedDict()
+        result = {}
         for content_key, content_value in self.content.items():
             content_html = markdown.markdown(content_value)
             content_html_with_css = self._inline_css(content_html, css)
@@ -81,24 +78,23 @@ class Email(object):
         if css_names:
             css_names = css_names.split(',')
 
-        # Keep the same order so we can output it later as text. It is in reverse since OrderedDict is FILO
-        email = collections.OrderedDict((element.get('name'), element.text)
-                                        for element in tree.findall('./string'))
+        elements = list(tree.findall('./string'))
+        email = {element.get('name'): element.text for element in elements}
+        elements_order = [(element.get('name'), element.get('order', 0)) for element in elements]
+        elements_order.sort(key=lambda e: e[1])
 
         if 'subject' not in email:
             logging.error('Template at path %s has no <string name="subject"> element', email_path)
 
         email_subject = email['subject'] or ''
-        email_order = email.get('order', 0)
 
         # Subject and order are not markdown so we need to remove them from futher processing
         del email['subject']
-        if 'order' in email:
-            del email['order']
+        elements_order = list(filter(lambda e: e[0] != 'subject', elements_order))
 
         email_name, _ = os.path.splitext(email_filename)
         logging.debug('Creating email object for %s from %s', email_name, email_dir)
-        return Email(email_name, email_subject, email_order, template_name, css_names, email)
+        return Email(email_name, email_subject, elements_order, template_name, css_names, email)
 
 
 def list_locales(src_dir):
@@ -132,8 +128,9 @@ def save_email_content_as_text(dest_dir, email):
     email_path = os.path.join(dest_dir, email.name + TEXT_EXTENSION)
     logging.debug('Saving email as text to %s', email_path)
     with open(email_path, 'w') as email_file:
-        for content_key, content_value in email.content_to_text().items():
-            email_file.write(content_value)
+        content_text = email.content_to_text()
+        for content_key, _ in email.order:
+            email_file.write(content_text[content_key])
             # End with new paragraph start in case we have more to write
             email_file.write('\n\n')
 
