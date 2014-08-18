@@ -1,3 +1,13 @@
+"""
+    email_parser
+    ~~~~~~~~~~
+
+    Parses emails from a source directory and outputs text and html format.
+
+    :copyright: (c) 2014 by KeepSafe.
+    :license: Apache, see LICENSE for more details.
+"""
+
 import argparse
 import logging
 import os
@@ -6,7 +16,7 @@ import markdown
 import bs4
 import pystache
 
-
+DEFAULE_LOG_LEVEL = 'WARNING'
 DEFAULT_DESTINATION = 'target'
 DEAFULT_SOURCE = 'src'
 DEFAULT_TEMPLATES = 'templates_html'
@@ -59,15 +69,23 @@ class Email(object):
             del email['order']
 
         email_name, _ = os.path.splitext(email_filename)
+        logging.debug('Creating email object for %s from %s', email_name, email_dir)
         return Email(email_name, email_subject, email_order, template_name, email)
 
 
 def list_locales(src_dir):
+    """
+    Gets all directories in a given path. It assumes all directories are locale names.
+    """
     logging.debug('reading locales from %s', src_dir)
     return [locale for locale in os.listdir(src_dir) if os.path.isdir(os.path.join(src_dir, locale))]
 
 
 def list_emails(src_dir, locale):
+    """
+    Creates Emails from files in a given directory. It assumes all files ending with an EMAIL_EXTENSION are email
+    templates.
+    """
     emails_path = os.path.join(src_dir, locale)
     logging.debug('reading emails from %s', emails_path)
     emails = [email for email in os.listdir(emails_path) if os.path.isfile(
@@ -77,12 +95,14 @@ def list_emails(src_dir, locale):
 
 def save_email_subject(dest_dir, email):
     email_path = os.path.join(dest_dir, email.name + SUBJECT_EXTENSION)
+    logging.debug('Saving email subject to %s', email_path)
     with open(email_path, 'w') as email_file:
         email_file.write(email.subject)
 
 
 def save_email_content_as_text(dest_dir, email):
     email_path = os.path.join(dest_dir, email.name + TEXT_EXTENSION)
+    logging.debug('Saving email as text to %s', email_path)
     with open(email_path, 'w') as email_file:
         for content_key, content_value in email.content_to_text().items():
             email_file.write(content_value)
@@ -92,6 +112,7 @@ def save_email_content_as_html(dest_dir, templates_dir, email):
     email_path = os.path.join(dest_dir, email.name + HTML_EXTENSION)
     with open(email_path, 'w') as email_file:
         template_path = os.path.join(templates_dir, email.template)
+        logging.debug('Saving email as html to %s using template', email_path, template_path)
         with open(template_path, 'r') as template_file:
             template = template_file.read()
         email_html = email.to_html(template)
@@ -100,6 +121,7 @@ def save_email_content_as_html(dest_dir, templates_dir, email):
 
 def parse_emails(src_dir, dest_dir, templates_dir):
     locales = list_locales(src_dir)
+    logging.debug('Found locales:%s',  locales)
     for locale in locales:
         emails = list_emails(src_dir, locale)
         for email in emails:
@@ -113,18 +135,18 @@ def parse_emails(src_dir, dest_dir, templates_dir):
 def read_args():
     args_parser = argparse.ArgumentParser()
 
-    args_parser.add_argument('-l', '--loglevel', help='Specify log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)',
-                             default='WARNING')
+    args_parser.add_argument('-l', '--loglevel',
+                             help='Specify log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)',
+                             default=DEFAULE_LOG_LEVEL)
     args_parser.add_argument('-s', '--source',
-                             help='Parser source folder',
+                             help='Parser\'s source folder',
                              default=DEAFULT_SOURCE)
     args_parser.add_argument('-d', '--destination',
-                             help='Parser destination folder',
+                             help='Parser\'s destination folder',
                              default=DEFAULT_DESTINATION)
     args_parser.add_argument('-t', '--templates',
                              help='Templates folder',
                              default=DEFAULT_TEMPLATES)
-
     return args_parser.parse_args()
 
 
@@ -134,12 +156,13 @@ def init_log(loglevel):
 
 
 def main():
+    print('Parsing emails...')
     logging.debug('Starting script')
     args = read_args()
+    init_log(args.loglevel)
     logging.debug('Arguments from console: %s', args)
-    init_log(args['loglevel'])
-
-    parse_emails(args['source'], args['destination'], args['templates'])
+    parse_emails(args.source, args.destination, args.templates)
+    print('Done')
 
 if __name__ == '__main__':
     main()
