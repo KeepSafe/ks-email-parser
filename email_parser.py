@@ -8,11 +8,20 @@ DEAFULT_SOURCE = 'src'
 
 
 def list_locales(path):
+    logging.debug('reading locales from %s', path)
     return [locale for locale in os.listdir(path) if os.path.isdir(os.path.join(path, locale))]
+
+
+def list_emails(path, locale):
+    emails_path = os.path.join(path, locale)
+    logging.debug('reading emails from %s', emails_path)
+    return [email for email in os.listdir(emails_path) if os.path.isfile(os.path.join(emails_path, email))]
 
 
 def parse_emails(src_path, dest_path):
     locales = list_locales(src_path)
+    for locale in locales:
+        emails = list_emails(src_path, locale)
 
 
 def read_args():
