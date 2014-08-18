@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- After the user decided to downgrade from trial -->
+    <string name="subject">You KeepSafe trial period has ended</string>
+    <string name="content"><![CDATA[Hi,
+
+	It seems like KeepSafe Premium is not the right thing for you. We just want to let you know what happens next.
+
+	KeepSafe will still works as you expect it to work. The only difference you’ll find is that our Premium features are turned off. These include:
+
+	* Album Lock
+	* Fake PIN
+	* Custom Album Covers
+	* Secret Door
+	* Break-In Alerts
+	* PIN Timeout
+
+	We reduced the amount of images that we keep for you in our Private Cloud to a maximum of 200 in your account.
+
+	You can upgrade to KeepSafe Premium at any time, in case you decide later that you actually want to use some of these features.
+
+	All the best  
+	The KeepSafe Team]]></string>
+</resources>

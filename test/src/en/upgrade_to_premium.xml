@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- After a user purchased -->
+    <string name="subject">Thank you for upgrading to KeepSafe Premium</string>
+    <string name="content"><![CDATA[Hello, 
+
+	My name is Zouhair, I am the founder of KeepSafe.   
+	I'm writing to thank you for upgrading to KeepSafe Premium. I hope you enjoy all the features you now have access to, including:
+
+	* Fake PIN
+	* Secret Door
+	* Break-In Alerts
+	* Sync to multiple devices with up to 5000 items
+	* Video backup
+	* Password lock for albums
+	* Custom Album covers
+	* PIN timeout
+
+	We’re continuously working on improving KeepSafe and you will get all new features automatically.
+
+	In addition to all the new goodies in KeepSafe, we will prioritize you for support in case you need help at some point in time.
+
+	If you have any comments or questions, please reply to this email any time. I'm always happy to help.
+
+	Best Regards,  
+	Zouhair]]></string>
+</resources>

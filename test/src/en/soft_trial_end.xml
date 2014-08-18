@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- After the user dismisses the soft trial popup with the action: LATER -->
+    <string name="subject">We added an extra 30 days to your trial.</string>
+    <string name="content"><![CDATA[Hello,
+
+	We hope you are enjoying your KeepSafe Premium trial. We are extending your trial by 30 days to give you more time to check out all the Premium features, which are marked with a crown in your KeepSafe's settings.
+
+	Additionally, your trial includes up to 1,000 Private Cloud photos, letting you seamlessly switch between devices, or recover your photos if you lose your phone or tablet. You can also set individual album covers and passwords.
+
+	Upgrading to KeepSafe Premium gives you unlimited access to all of these features and 5,000 items in your Private Cloud. 
+
+	If you decide upgrading isn’t right for you, that's ok. You will still be able to use KeepSafe to hide your stuff, but will be limited to non-premium features and 200 Private Cloud photos. You can always upgrade later if you change your mind.
+
+	The KeepSafe Team]]></string>
+</resources>

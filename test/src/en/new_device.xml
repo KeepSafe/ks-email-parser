@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<resources template="basic_template.html">
+	<string name="subject">New device connected.</string>
+	<string name="content"><![CDATA[Hello,
+
+	We detected a new device accessed your KeepSafe account:
+
+	[device]
+
+	If this was you, then you can ignore this email and carry on.
+
+	If you did not login into your KeepSafe from another device, please email KeepSafe support at:  
+	[support@getkeepsafe.com]()
+
+	Thanks,  
+	The KeepSafe Team]]></string>
+</resources>

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<resources template="basic_template.html">
+	<string name="subject">Email change requested.</string>
+	<string name="content"><![CDATA[Hello,
+
+	We received a request to update your KeepSafe account email to:
+
+	##[email]  
+
+	If you requested this change, check your email at the new address to verify.
+
+	If you did not request this change, please email KeepSafe support at: [support@getkeepsafe.com]()
+
+	Thanks,  
+	The KeepSafe Team
+	]]></string>
+</resources>

@@ -20,10 +20,10 @@ setup(name='email-localization',
       author_email='support@getkeepsafe.com',
       url='https://github.com/KeepSafe/email-localization',
       license='Apache',
-      py_modules=['parser'],
+      py_modules=['email_parser'],
       namespace_packages=[],
       install_requires = [],
       entry_points={
-          'console_scripts': ['ks-email-parser = parser:main']
+          'console_scripts': ['ks-email-parser = email_parser:main']
       },
       include_package_data = False)
