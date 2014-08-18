@@ -70,7 +70,8 @@ class Email(object):
         content_html = self.content_to_html(css)
         # pystache escapes html by default, pass escape option to disable this
         renderer = pystache.Renderer(escape=lambda u: u)
-        return renderer.render(template, content_html)
+        # add subject for rendering as we can have it in html as title tag
+        return renderer.render(template, dict(content_html.items() | {'subject': self.subject}.items()))
 
     def from_xml(email_dir, email_filename):
         email_path = os.path.join(email_dir, email_filename)
