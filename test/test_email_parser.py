@@ -19,8 +19,8 @@ class TestParser(TestCase):
     def test_list_available_emails(self):
         emails = email_parser.list_emails(SRC_PATH, 'en')
 
-        self.assertEqual(len(emails), 1)
-        email = emails[0]
+        self.assertEqual(len(emails), 2)
+        email = next(filter(lambda e: e.name == 'dummy_email', emails))
         self.assertEqual('Dummy subject', email.subject)
         self.assertEqual('**strong** content', email.content['content'])
 
@@ -29,7 +29,14 @@ class TestParser(TestCase):
             email_parser.parse_emails(SRC_PATH, dest_dir, TEMPLATES_DIR)
             email_files = os.listdir(os.path.join(dest_dir, 'en'))
 
-        self.assertListEqual(['dummy_email.html', 'dummy_email.subject', 'dummy_email.text'], email_files)
+        expected = [
+            'dummy_email.html',
+            'dummy_email.subject',
+            'dummy_email.text',
+            'order_email.html',
+            'order_email.subject',
+            'order_email.text']
+        self.assertListEqual(expected, email_files)
 
 
 class TestEmail(TestCase):
@@ -50,3 +57,11 @@ class TestEmail(TestCase):
 
         self.assertTrue('content' in email_html)
         self.assertEqual('<p><strong>strong</strong> content</p>', email_html['content'])
+
+    def test_correct_content_order(self):
+        email = email_parser.Email.from_xml(os.path.join(SRC_PATH, 'en'), 'order_email.xml')
+        content_text = email.content_to_text()
+        content_keys = list(content_text.keys())
+
+        self.assertEqual(content_keys[0], 'content1')
+        self.assertEqual(content_keys[1], 'content2')

@@ -15,6 +15,7 @@ import xml.etree.ElementTree as ET
 import markdown
 import bs4
 import pystache
+import collections
 
 DEFAULE_LOG_LEVEL = 'WARNING'
 DEFAULT_DESTINATION = 'target'
@@ -37,11 +38,17 @@ class Email(object):
         self.content = content
 
     def content_to_text(self):
-        return {content_key: bs4.BeautifulSoup(content_html).get_text()
-                for content_key, content_html in self.content_to_html().items()}
+        # HACK: this will reverse ordering which is what we want
+        result = collections.OrderedDict()
+        for content_key, content_value in self.content.items():
+            content_html = markdown.markdown(content_value)
+            content_text = bs4.BeautifulSoup(content_html).get_text()
+            result[content_key] = content_text
+        return result
 
     def content_to_html(self):
-        result = {}
+        # HACK: this will reverse ordering which is what we want
+        result = collections.OrderedDict()
         for content_key, content_value in self.content.items():
             content_html = markdown.markdown(content_value)
             result[content_key] = content_html
@@ -57,7 +64,10 @@ class Email(object):
         email_path = os.path.join(email_dir, email_filename)
         tree = ET.parse(email_path)
         template_name = tree.getroot().get('template')
-        email = {element.get('name'): element.text for element in tree.findall('./string')}
+
+        # Keep the same order so we can output it later as text. It is in reverse since OrderedDict is FILO
+        email = collections.OrderedDict((element.get('name'), element.text)
+                                        for element in tree.findall('./string'))
 
         if 'subject' not in email:
             logging.error('Template at path %s has no <string name="subject"> element', email_path)
@@ -108,13 +118,15 @@ def save_email_content_as_text(dest_dir, email):
     with open(email_path, 'w') as email_file:
         for content_key, content_value in email.content_to_text().items():
             email_file.write(content_value)
+            # End with new paragraph start in case we have more to write
+            email_file.write('\n\n')
 
 
 def save_email_content_as_html(dest_dir, templates_dir, email):
     email_path = os.path.join(dest_dir, email.name + HTML_EXTENSION)
     with open(email_path, 'w') as email_file:
         template_path = os.path.join(templates_dir, email.template)
-        logging.debug('Saving email as html to %s using template', email_path, template_path)
+        logging.debug('Saving email as html to %s using template %s', email_path, template_path)
         with open(template_path, 'r') as template_file:
             template = template_file.read()
         email_html = email.to_html(template)

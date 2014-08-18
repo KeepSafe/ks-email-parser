@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<resources template="basic_template.html">
+    <string name="subject">Dummy subject</string>
+    <string name="content1"><![CDATA[**strong** content1]]></string>
+    <string name="content2"><![CDATA[content2]]></string>
+</resources>
