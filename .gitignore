@@ -1,6 +1,7 @@
 temp/
 dist/
 build/
+target/
 __pycache__/
 *.egg-info
 venv/

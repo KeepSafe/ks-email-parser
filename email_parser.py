@@ -16,6 +16,7 @@ import markdown
 import bs4
 import pystache
 import collections
+import inlinestyler.utils as inline_styler
 
 DEFAULE_LOG_LEVEL = 'WARNING'
 DEFAULT_DESTINATION = 'target'
@@ -29,12 +30,13 @@ HTML_EXTENSION = '.html'
 
 class Email(object):
 
-    def __init__(self, name, subject, order, template, content):
+    def __init__(self, name, subject, order, template, css, content):
         super().__init__()
         self.name = name
         self.subject = subject
         self.order = order
         self.template = template
+        self.css = css
         self.content = content
 
     def content_to_text(self):
@@ -46,16 +48,26 @@ class Email(object):
             result[content_key] = content_text
         return result
 
-    def content_to_html(self):
+    def content_to_html(self, css):
         # HACK: this will reverse ordering which is what we want
         result = collections.OrderedDict()
         for content_key, content_value in self.content.items():
             content_html = markdown.markdown(content_value)
-            result[content_key] = content_html
+            content_html_with_css = self._inline_css(content_html, css)
+            result[content_key] = content_html_with_css
         return result
 
-    def to_html(self, template):
-        content_html = self.content_to_html()
+    def _inline_css(self, html, css):
+        if css:
+            css_tags = ''.join(['<style>{}</style>'.format(style) for style in css])
+            html_with_css = inline_styler.inline_css(css_tags + html)
+            body = ET.fromstring(html_with_css).find('.//body')
+            return ''.join(ET.tostring(e, encoding='unicode') for e in body)
+        else:
+            return html
+
+    def to_html(self, template, css):
+        content_html = self.content_to_html(css)
         # pystache escapes html by default, pass escape option to disable this
         renderer = pystache.Renderer(escape=lambda u: u)
         return renderer.render(template, content_html)
@@ -64,6 +76,9 @@ class Email(object):
         email_path = os.path.join(email_dir, email_filename)
         tree = ET.parse(email_path)
         template_name = tree.getroot().get('template')
+        css_names = tree.getroot().get('style', [])
+        if css_names:
+            css_names = css_names.split(',')
 
         # Keep the same order so we can output it later as text. It is in reverse since OrderedDict is FILO
         email = collections.OrderedDict((element.get('name'), element.text)
@@ -82,7 +97,7 @@ class Email(object):
 
         email_name, _ = os.path.splitext(email_filename)
         logging.debug('Creating email object for %s from %s', email_name, email_dir)
-        return Email(email_name, email_subject, email_order, template_name, email)
+        return Email(email_name, email_subject, email_order, template_name, css_names, email)
 
 
 def list_locales(src_dir):
@@ -124,12 +139,19 @@ def save_email_content_as_text(dest_dir, email):
 
 def save_email_content_as_html(dest_dir, templates_dir, email):
     email_path = os.path.join(dest_dir, email.name + HTML_EXTENSION)
-    with open(email_path, 'w') as email_file:
-        template_path = os.path.join(templates_dir, email.template)
+    template_path = os.path.join(templates_dir, email.template)
+    with open(email_path, 'w') as email_file, open(template_path) as template_file:
         logging.debug('Saving email as html to %s using template %s', email_path, template_path)
-        with open(template_path, 'r') as template_file:
-            template = template_file.read()
-        email_html = email.to_html(template)
+        template = template_file.read()
+        if email.css:
+            css = []
+            for style in email.css:
+                style_path = os.path.join(templates_dir, style)
+                with open(style_path) as style_file:
+                    css.append(style_file.read())
+        else:
+            css = []
+        email_html = email.to_html(template, css)
         email_file.write(email_html)
 
 

@@ -22,7 +22,7 @@ class TestParser(TestCase):
         self.assertEqual(len(emails), 2)
         email = next(filter(lambda e: e.name == 'dummy_email', emails))
         self.assertEqual('Dummy subject', email.subject)
-        self.assertEqual('**strong** content', email.content['content'])
+        self.assertEqual('#head\n\n        **strong** content', email.content['content'])
 
     def test_parse_emails(self):
         with tempfile.TemporaryDirectory() as dest_dir:
@@ -50,13 +50,20 @@ class TestEmail(TestCase):
         email_text = self.email.content_to_text()
 
         self.assertTrue('content' in email_text)
-        self.assertEqual('strong content', email_text['content'])
+        self.assertEqual('head\n    **strong** content\n', email_text['content'])
 
     def test_render_html(self):
-        email_html = self.email.content_to_html()
+        email_html = self.email.content_to_html('')
 
         self.assertTrue('content' in email_html)
-        self.assertEqual('<p><strong>strong</strong> content</p>', email_html['content'])
+        self.assertEqual('<h1>head</h1>\n<pre><code>    **strong** content\n</code></pre>', email_html['content'])
+
+    def test_render_html_with_css(self):
+        email_html = self.email.content_to_html('h1 {font-size:12px;}')
+
+        self.assertTrue('content' in email_html)
+        expected = '<h1 style="font-size: 12px">head</h1>\n<pre><code>    **strong** content\n</code></pre>'
+        self.assertEqual(expected, email_html['content'])
 
     def test_correct_content_order(self):
         email = email_parser.Email.from_xml(os.path.join(SRC_PATH, 'en'), 'order_email.xml')
