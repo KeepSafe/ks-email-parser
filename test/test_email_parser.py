@@ -6,7 +6,7 @@ from unittest import TestCase
 
 
 SRC_PATH = os.path.join('test', 'src')
-TEMPLATES_PATH = os.path.join('test', 'templates_html')
+TEMPLATES_DIR = os.path.join('test', 'templates_html')
 
 
 class TestParser(TestCase):
@@ -26,10 +26,10 @@ class TestParser(TestCase):
 
     def test_parse_emails(self):
         with tempfile.TemporaryDirectory() as dest_dir:
-            email_parser.parse_emails(SRC_PATH, dest_dir)
+            email_parser.parse_emails(SRC_PATH, dest_dir, TEMPLATES_DIR)
             email_files = os.listdir(os.path.join(dest_dir, 'en'))
 
-        self.assertListEqual(['dummy_email.subject', 'dummy_email.text'], email_files)
+        self.assertListEqual(['dummy_email.html', 'dummy_email.subject', 'dummy_email.text'], email_files)
 
 
 class TestEmail(TestCase):
@@ -44,3 +44,9 @@ class TestEmail(TestCase):
 
         self.assertTrue('content' in email_text)
         self.assertEqual('strong content', email_text['content'])
+
+    def test_render_html(self):
+        email_html = self.email.content_to_html()
+
+        self.assertTrue('content' in email_html)
+        self.assertEqual('<p><strong>strong</strong> content</p>', email_html['content'])
