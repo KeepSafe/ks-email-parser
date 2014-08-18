@@ -1,0 +1,26 @@
+a {
+    color:#FFFFFF; 
+    font-family: Helvetica, 'Helvetica Neue', Arial, sans-serif; 
+    font-size:1em; 
+    font-weight:bold;
+}
+
+h1 {
+    font-size: 2.5em; 
+    line-height: 1.25em; 
+    margin:0; 
+    font-weight:200; 
+    color: #cccccc; 
+    background:none; 
+    border:none;
+}
+
+h2 {
+    margin:0; 
+    font-size: 1.5em; 
+    line-height: 1.25em; 
+    font-weight:200; 
+    color: #cccccc; 
+    background:none; 
+    border:none;
+}
