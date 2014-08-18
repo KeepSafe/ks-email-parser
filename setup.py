@@ -22,7 +22,7 @@ setup(name='email-localization',
       license='Apache',
       py_modules=['email_parser'],
       namespace_packages=[],
-      install_requires = [],
+      install_requires = ['Markdown==2.4.1', 'beautifulsoup4==4.3.2', 'nose==1.3.3', 'pystache==0.5.4'],
       entry_points={
           'console_scripts': ['ks-email-parser = email_parser:main']
       },
