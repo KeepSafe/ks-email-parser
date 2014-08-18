@@ -10,11 +10,11 @@ update:
 	$(PYTHON) ./setup.py install
 
 install:
+	python3 -m venv venv
 	$(PYTHON) ./setup.py install
 
 dev:
 	python3 -m venv venv
-	./venv/bin/activate
 	$(PIP) install flake8 nose coverage
 	$(PIP) install -r requirements.txt
 	$(PYTHON) ./setup.py develop
