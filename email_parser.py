@@ -49,7 +49,9 @@ class Email(object):
 
     def to_html(self, template):
         content_html = self.content_to_html()
-        return pystache.render(template, content_html)
+        # pystache escapes html by default, pass escape option to disable this
+        renderer = pystache.Renderer(escape=lambda u: u)
+        return renderer.render(template, content_html)
 
     def from_xml(email_dir, email_filename):
         email_path = os.path.join(email_dir, email_filename)
@@ -121,7 +123,7 @@ def save_email_content_as_html(dest_dir, templates_dir, email):
 
 def parse_emails(src_dir, dest_dir, templates_dir):
     locales = list_locales(src_dir)
-    logging.debug('Found locales:%s',  locales)
+    logging.debug('Found locales:%s', locales)
     for locale in locales:
         emails = list_emails(src_dir, locale)
         for email in emails:
