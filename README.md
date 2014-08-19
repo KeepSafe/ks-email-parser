@@ -6,6 +6,7 @@ A command line tool to render HTML and text emails of markdown content.
 ## Requirements
 
 1. Python 3.+
+2. libxml - on OSX install with `xcode-select --install`
 
 ## Installation
 
