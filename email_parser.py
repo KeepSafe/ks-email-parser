@@ -42,8 +42,14 @@ class Email(object):
         result = {}
         for content_key, content_value in self.content.items():
             content_html = markdown.markdown(content_value)
-            content_text = bs4.BeautifulSoup(content_html).get_text()
-            result[content_key] = content_text
+            soup = bs4.BeautifulSoup(content_html)
+
+            # replace all <a> with the text links in href as get_text() will take the value inside <a> instead
+            anchors = soup.find_all('a')
+            for anchor in anchors:
+                anchor.replace_with(anchor.get('href', anchor.string))
+
+            result[content_key] = soup.get_text()
         return result
 
     def content_to_html(self, css):
