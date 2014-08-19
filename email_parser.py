@@ -74,6 +74,10 @@ class Email(object):
         email_path = os.path.join(email_dir, email_filename)
         tree = ET.parse(email_path)
         template_name = tree.getroot().get('template')
+
+        if template_name is None:
+            logging.error('no HTML template name define for %s', email_path)
+
         css_names = tree.getroot().get('style', [])
         if css_names:
             css_names = css_names.split(',')
@@ -137,9 +141,6 @@ def save_email_content_as_text(dest_dir, email):
 
 def save_email_content_as_html(dest_dir, templates_dir, email):
     email_path = os.path.join(dest_dir, email.name + HTML_EXTENSION)
-    
-    if email.template is None:
-        logging.error('no HTML template name define for %s', email.name)
 
     template_path = os.path.join(templates_dir, email.template)
     with open(email_path, 'w') as email_file, open(template_path) as template_file:
