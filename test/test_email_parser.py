@@ -58,14 +58,14 @@ class TestEmail(TestCase):
         self.assertTrue('content' in email_html)
         self.assertEqual('<h1>head</h1>\n<p><strong>strong</strong> content</p>', email_html['content'])
 
-    def test_render_html_anchor_as_href(self):
+    def test_render_text_anchor_as_href(self):
         d = 'dummy'
         email = email_parser.Email(d, d, d, d, d, {'content': '<a href="http://test.me">test value</a>'})
         content = email.content_to_text()
 
         self.assertEqual('http://test.me', content['content'])
 
-    def test_render_html_anchor_as_value_if_href_missing(self):
+    def test_render_text_anchor_as_value_if_href_missing(self):
         d = 'dummy'
         email = email_parser.Email(d, d, d, d, d, {'content': '<a>test value</a>'})
         content = email.content_to_text()

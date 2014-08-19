@@ -181,16 +181,17 @@ def read_args():
     args_parser = argparse.ArgumentParser()
 
     args_parser.add_argument('-l', '--loglevel',
-                             help='Specify log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)',
+                             help='Specify log level (DEBUG, INFO, WARNING, ERROR, CRITICAL), default: %s'
+                             % DEFAULE_LOG_LEVEL,
                              default=DEFAULE_LOG_LEVEL)
     args_parser.add_argument('-s', '--source',
-                             help='Parser\'s source folder',
+                             help='Parser\'s source folder, default: %s' % DEAFULT_SOURCE,
                              default=DEAFULT_SOURCE)
     args_parser.add_argument('-d', '--destination',
-                             help='Parser\'s destination folder',
+                             help='Parser\'s destination folder, default: %s' % DEFAULT_DESTINATION,
                              default=DEFAULT_DESTINATION)
     args_parser.add_argument('-t', '--templates',
-                             help='Templates folder',
+                             help='Templates folder, default: %s' % DEFAULT_TEMPLATES,
                              default=DEFAULT_TEMPLATES)
     return args_parser.parse_args()
 
