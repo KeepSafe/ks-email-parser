@@ -137,6 +137,10 @@ def save_email_content_as_text(dest_dir, email):
 
 def save_email_content_as_html(dest_dir, templates_dir, email):
     email_path = os.path.join(dest_dir, email.name + HTML_EXTENSION)
+    
+    if email.template is None:
+        logging.error('no HTML template name define for %s', email.name)
+
     template_path = os.path.join(templates_dir, email.template)
     with open(email_path, 'w') as email_file, open(template_path) as template_file:
         logging.debug('Saving email as html to %s using template %s', email_path, template_path)
