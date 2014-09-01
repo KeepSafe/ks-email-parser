@@ -39,12 +39,47 @@ class TestParser(TestCase):
         self.assertListEqual(expected, email_files)
 
 
+class TestCustomerIOParser(TestCase):
+
+    def setUp(self):
+        email_dir = os.path.join(SRC_PATH, 'en')
+        self.email = email_parser.Email.from_xml(email_dir, 'dummy_email.xml')
+
+    def test_generate_email(self):
+        parser = email_parser.CustomerIOParser()
+        expected = """{% if customer.language = en %}
+head
+strong content
+{% endif %}
+"""
+
+        actual = parser._to_text({'en': self.email})
+
+        self.assertEqual(expected, actual)
+
+    def test_to_text_multiple(self):
+        parser = email_parser.CustomerIOParser()
+
+        actual = parser._to_text({'en': self.email, 'pl': self.email})
+
+        self.assertTrue('{% if customer.language = ' in actual)
+        self.assertTrue('{% elsif customer.language = ' in actual)
+        self.assertTrue('{% endif %}' in actual)
+
+    def test_to_html_single(self):
+        parser = email_parser.CustomerIOParser()
+        expected = {'content': '{% if customer.language = en %}\n<h1 style="font-size: 2.5em;line-height: 1.25em;margin: 0;font-weight: 200;color: #ccc;background: none;border: none">head</h1>\n<p><strong>strong</strong> content</p>\n{% endif %}\n'}
+
+        actual = parser._concat_html_content({'en': self.email}, TEMPLATES_DIR)
+
+        self.assertDictEqual(expected, actual)
+
+
 class TestEmail(TestCase):
 
     def setUp(self):
         email_dir = os.path.join(SRC_PATH, 'en')
         self.email = email_parser.Email.from_xml(email_dir, 'dummy_email.xml')
-        self.template_path = os.path.join(SRC_PATH, 'en', 'basic_template.html')
 
     def test_render_text(self):
         email_text = self.email.content_to_text()

@@ -27,8 +27,81 @@ TEXT_EXTENSION = '.text'
 HTML_EXTENSION = '.html'
 
 
-class Email(object):
+class CustomerIOParser(object):
+    """
+    Generates templates for translactional email client Customer.io
+    """
 
+    name = 'customerio'
+    _start_locale_selection = '{{% if customer.language = {} %}}'
+    _next_locale_selection = '{{% elsif customer.language = {} %}}'
+    _end_locale_selection = '{% endif %}'
+
+    def generate_template(self, source, destination, templates_dir, email_name):
+        locales = list_locales(source)
+        emails = {}
+        for locale in locales:
+            email_dir = os.path.join(source, locale)
+            email_filename = email_name + EMAIL_EXTENSION
+            emails[locale] = Email.from_xml(email_dir, email_filename)
+        email_text = self._to_text(emails)
+        email_html = self._to_html(emails, templates_dir)
+        self._save(destination, email_name + TEXT_EXTENSION, email_text)
+        self._save(destination, email_name + HTML_EXTENSION, email_html)
+
+    def _save(self, destination, email_filename, email_content):
+        filepath = os.path.join(destination, email_filename)
+        logging.info('saving data to %s', filepath)
+        with open(filepath, 'w') as email_file:
+            email_file.write(email_content)
+
+    def _to_text(self, emails):
+        text = None
+        for locale, email in emails.items():
+            if text is None:
+                text = self._start_locale_selection.format(locale)
+            else:
+                text = text + '\n' + self._next_locale_selection.format(locale)
+            contents = email.content_to_text()
+            for content_key, _ in email.order:
+                text = text + '\n' + contents[content_key]
+        text = text + '\n' + self._end_locale_selection + '\n'
+        return text
+
+    def _concat_html_content(self, emails, templates_dir):
+        content_html = {}
+        for locale, email in emails.items():
+            css = read_css(email, templates_dir)
+            email_content = email.content_to_html(css)
+            for content_key, content_value in email_content.items():
+                text = content_html.get(content_key)
+                if text is None:
+                    text = self._start_locale_selection.format(locale)
+                else:
+                    text = text + '\n' + self._next_locale_selection.format(locale)
+                text = text + '\n' + content_value
+                content_html[content_key] = text
+        for content_key, content_value in content_html.items():
+            content_html[content_key] = content_value + '\n' + self._end_locale_selection + '\n'
+        return content_html
+
+    def _to_html(self, emails, templates_dir):
+        content_html = self._concat_html_content(emails, templates_dir)
+        email = emails['en']
+        template_path = os.path.join(templates_dir, email.template)
+        with open(template_path) as template_file:
+            template = template_file.read()
+        renderer = pystache.Renderer(escape=lambda u: u)
+        email_html = renderer.render(template, dict(content_html.items() | {'subject': email.subject}.items()))
+        return email_html
+
+parsers = {CustomerIOParser.name: CustomerIOParser()}
+
+
+class Email(object):
+    """
+    Represents a single email
+    """
     def __init__(self, name, subject, order, template, css, content):
         super().__init__()
         self.name = name
@@ -76,6 +149,7 @@ class Email(object):
         # add subject for rendering as we can have it in html as title tag
         return renderer.render(template, dict(content_html.items() | {'subject': self.subject}.items()))
 
+    @staticmethod
     def from_xml(email_dir, email_filename):
         email_path = os.path.join(email_dir, email_filename)
         tree = ET.parse(email_path)
@@ -127,6 +201,16 @@ def list_emails(src_dir, locale):
     return [Email.from_xml(emails_path, email) for email in emails]
 
 
+def read_css(email, templates_dir):
+    css = []
+    if email.css:
+        for style in email.css:
+            style_path = os.path.join(templates_dir, style)
+            with open(style_path) as style_file:
+                css.append(style_file.read())
+    return css
+
+
 def save_email_subject(dest_dir, email):
     email_path = os.path.join(dest_dir, email.name + SUBJECT_EXTENSION)
     logging.debug('Saving email subject to %s', email_path)
@@ -147,19 +231,11 @@ def save_email_content_as_text(dest_dir, email):
 
 def save_email_content_as_html(dest_dir, templates_dir, email):
     email_path = os.path.join(dest_dir, email.name + HTML_EXTENSION)
-
     template_path = os.path.join(templates_dir, email.template)
     with open(email_path, 'w') as email_file, open(template_path) as template_file:
         logging.debug('Saving email as html to %s using template %s', email_path, template_path)
         template = template_file.read()
-        if email.css:
-            css = []
-            for style in email.css:
-                style_path = os.path.join(templates_dir, style)
-                with open(style_path) as style_file:
-                    css.append(style_file.read())
-        else:
-            css = []
+        css = read_css(email, templates_dir)
         email_html = email.to_html(template, css)
         email_file.write(email_html)
 
@@ -193,6 +269,13 @@ def read_args():
     args_parser.add_argument('-t', '--templates',
                              help='Templates folder, default: %s' % DEFAULT_TEMPLATES,
                              default=DEFAULT_TEMPLATES)
+
+    subparsers = args_parser.add_subparsers(help='Generate 3rd party template', dest='client')
+
+    template_parser = subparsers.add_parser(CustomerIOParser.name)
+    template_parser.add_argument('email_name',
+                                 help='Name of the email to generate the template for')
+
     return args_parser.parse_args()
 
 
@@ -207,7 +290,11 @@ def main():
     args = read_args()
     init_log(args.loglevel)
     logging.debug('Arguments from console: %s', args)
-    parse_emails(args.source, args.destination, args.templates)
+    if args.client is None:
+        parse_emails(args.source, args.destination, args.templates)
+    else:
+        client = parsers[args.client]
+        client.generate_template(args.source, args.destination, args.templates, args.email_name)
     print('Done')
 
 if __name__ == '__main__':
