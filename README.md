@@ -14,7 +14,9 @@ A command line tool to render HTML and text emails of markdown content.
 
 ## Usage
 
-`ks-email-parser`
+`ks-email-parser` to generate all email templates
+
+`ks-email-parser customerio [email_name]` to generate an email for customer.io service
 
 ### Options
 
