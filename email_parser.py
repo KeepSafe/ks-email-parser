@@ -46,8 +46,10 @@ class CustomerIOParser(object):
             emails[locale] = Email.from_xml(email_dir, email_filename)
         email_text = self._to_text(emails)
         email_html = self._to_html(emails, templates_dir)
+        email_subject = self._to_subject(emails)
         self._save(destination, email_name + TEXT_EXTENSION, email_text)
         self._save(destination, email_name + HTML_EXTENSION, email_html)
+        self._save(destination, email_name + SUBJECT_EXTENSION, email_subject)
 
     def _save(self, destination, email_filename, email_content):
         filepath = os.path.join(destination, email_filename)
@@ -85,6 +87,19 @@ class CustomerIOParser(object):
             content_html[content_key] = content_value + '\n' + self._end_locale_selection + '\n'
         return content_html
 
+    def _to_subject(self, emails):
+        subject = None
+        for locale, email in emails.items():
+            if subject is None:
+                subject = self._start_locale_selection.format(locale)
+            else:
+                subject = subject + self._next_locale_selection.format(locale)
+                
+            subject = subject + email.subject
+        
+        subject = subject + self._end_locale_selection
+        return subject
+        
     def _to_html(self, emails, templates_dir):
         content_html = self._concat_html_content(emails, templates_dir)
         email = emails['en']
