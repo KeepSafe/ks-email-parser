@@ -33,8 +33,8 @@ class CustomerIOParser(object):
     """
 
     name = 'customerio'
-    _start_locale_selection = '{{% if customer.language = {} %}}'
-    _next_locale_selection = '{{% elsif customer.language = {} %}}'
+    _start_locale_selection = '{{% if customer.language == "{}" %}}'
+    _next_locale_selection = '{{% elsif customer.language == "{}" %}}'
     _end_locale_selection = '{% endif %}'
 
     def generate_template(self, source, destination, templates_dir, email_name):
