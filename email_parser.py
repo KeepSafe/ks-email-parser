@@ -74,7 +74,7 @@ class CustomerIOParser(object):
         return text
 
     def _subject_to_text(self, email, text):
-        return text + email.subject
+        return text + '\n' + email.subject
 
     def _concat_html_content(self, emails, templates_dir):
         content_html = {}

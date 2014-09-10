@@ -76,7 +76,8 @@ strong content
 
     def test_to_subject_single(self):
         parser = email_parser.CustomerIOParser()
-        expected = """{% if customer.language == "en" %}Dummy subject
+        expected = """{% if customer.language == "en" %}
+Dummy subject
 {% endif %}
 """
 
