@@ -44,9 +44,9 @@ class CustomerIOParser(object):
             email_dir = os.path.join(source, locale)
             email_filename = email_name + EMAIL_EXTENSION
             emails[locale] = Email.from_xml(email_dir, email_filename)
-        email_text = self._to_text(emails)
+        email_subject = self._to_text(emails, self._subject_to_text)
+        email_text = self._to_text(emails, self._content_to_text)
         email_html = self._to_html(emails, templates_dir)
-        email_subject = self._to_subject(emails)
         self._save(destination, email_name + TEXT_EXTENSION, email_text)
         self._save(destination, email_name + HTML_EXTENSION, email_html)
         self._save(destination, email_name + SUBJECT_EXTENSION, email_subject)
@@ -57,18 +57,24 @@ class CustomerIOParser(object):
         with open(filepath, 'w') as email_file:
             email_file.write(email_content)
 
-    def _to_text(self, emails):
+    def _to_text(self, emails, concat_text_fn):
         text = None
         for locale, email in emails.items():
             if text is None:
                 text = self._start_locale_selection.format(locale)
             else:
                 text = text + '\n' + self._next_locale_selection.format(locale)
-            contents = email.content_to_text()
-            for content_key, _ in email.order:
-                text = text + '\n' + contents[content_key]
-        text = text + '\n' + self._end_locale_selection + '\n'
+            text = concat_text_fn(email, text)
+        return text + '\n' + self._end_locale_selection + '\n'
+
+    def _content_to_text(self, email, text):
+        contents = email.content_to_text()
+        for content_key, _ in email.order:
+            text = text + '\n' + contents[content_key]
         return text
+
+    def _subject_to_text(self, email, text):
+        return text + email.subject
 
     def _concat_html_content(self, emails, templates_dir):
         content_html = {}
@@ -94,12 +100,12 @@ class CustomerIOParser(object):
                 subject = self._start_locale_selection.format(locale)
             else:
                 subject = subject + self._next_locale_selection.format(locale)
-                
+
             subject = subject + email.subject
-        
+
         subject = subject + self._end_locale_selection
         return subject
-        
+
     def _to_html(self, emails, templates_dir):
         content_html = self._concat_html_content(emails, templates_dir)
         email = emails['en']
