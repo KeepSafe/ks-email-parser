@@ -17,7 +17,7 @@ class TestParser(TestCase):
         self.assertListEqual(['en'], locales)
 
     def test_list_available_emails(self):
-        emails = email_parser.list_emails(SRC_PATH, 'en')
+        emails = email_parser.list_emails(SRC_PATH, 'en', '')
 
         self.assertEqual(len(emails), 2)
         email = next(filter(lambda e: e.name == 'dummy_email', emails))
@@ -26,7 +26,7 @@ class TestParser(TestCase):
 
     def test_parse_emails(self):
         with tempfile.TemporaryDirectory() as dest_dir:
-            email_parser.parse_emails(SRC_PATH, dest_dir, TEMPLATES_DIR)
+            email_parser.parse_emails(SRC_PATH, dest_dir, TEMPLATES_DIR, '')
             email_files = os.listdir(os.path.join(dest_dir, 'en'))
 
         expected = [
@@ -43,7 +43,7 @@ class TestCustomerIOParser(TestCase):
 
     def setUp(self):
         email_dir = os.path.join(SRC_PATH, 'en')
-        self.email = email_parser.Email.from_xml(email_dir, 'dummy_email.xml')
+        self.email = email_parser.Email.from_xml(email_dir, 'dummy_email.xml', 'en', '')
 
     def test_to_text_single(self):
         parser = email_parser.CustomerIOParser()
@@ -89,7 +89,7 @@ class TestEmail(TestCase):
 
     def setUp(self):
         email_dir = os.path.join(SRC_PATH, 'en')
-        self.email = email_parser.Email.from_xml(email_dir, 'dummy_email.xml')
+        self.email = email_parser.Email.from_xml(email_dir, 'dummy_email.xml', 'en', '')
 
     def test_render_text(self):
         email_text = self.email.content_to_text()
@@ -105,14 +105,14 @@ class TestEmail(TestCase):
 
     def test_render_text_anchor_as_href(self):
         d = 'dummy'
-        email = email_parser.Email(d, d, d, d, d, {'content': '<a href="http://test.me">test value</a>'})
+        email = email_parser.Email(d, d, d, d, d, {'content': '<a href="http://test.me">test value</a>'}, d, d)
         content = email.content_to_text()
 
         self.assertEqual('http://test.me', content['content'])
 
     def test_render_text_anchor_as_value_if_href_missing(self):
         d = 'dummy'
-        email = email_parser.Email(d, d, d, d, d, {'content': '<a>test value</a>'})
+        email = email_parser.Email(d, d, d, d, d, {'content': '<a>test value</a>'}, d, d)
         content = email.content_to_text()
 
         self.assertEqual('test value', content['content'])
@@ -125,7 +125,16 @@ class TestEmail(TestCase):
         self.assertEqual(expected, email_html['content'])
 
     def test_correct_content_order(self):
-        email = email_parser.Email.from_xml(os.path.join(SRC_PATH, 'en'), 'order_email.xml')
+        email = email_parser.Email.from_xml(os.path.join(SRC_PATH, 'en'), 'order_email.xml', 'en', '')
 
         self.assertEqual(email.order[0][0], 'content1')
         self.assertEqual(email.order[1][0], 'content2')
+
+    def test_render_html_rtl(self):
+        email_dir = os.path.join(SRC_PATH, 'en')
+        email = email_parser.Email.from_xml(email_dir, 'dummy_email.xml', 'en', 'en')
+
+        email_html = email.content_to_html('')
+
+        self.assertTrue('content' in email_html)
+        self.assertEqual('<div dir=rtl>\n<h1>head</h1>\n<p><strong>strong</strong> content</p>\n</div>', email_html['content'])
