@@ -4,9 +4,9 @@ import os
 import tempfile
 from unittest import TestCase
 
-
-SRC_PATH = os.path.join('test', 'src')
-TEMPLATES_DIR = os.path.join('test', 'templates_html')
+_ROOT_DIR = os.path.join(os.path.dirname(__file__))
+SRC_PATH = os.path.join(_ROOT_DIR, 'src')
+TEMPLATES_DIR = os.path.join(_ROOT_DIR, 'templates_html')
 
 
 class TestParser(TestCase):

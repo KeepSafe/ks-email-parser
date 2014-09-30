@@ -1,5 +1,5 @@
 import os
-from setuptools import setup
+from setuptools import setup, find_packages
 
 version = '0.0.1'
 
@@ -20,7 +20,7 @@ setup(name='email-localization',
       author_email='support@getkeepsafe.com',
       url='https://github.com/KeepSafe/email-localization',
       license='Apache',
-      py_modules=['email_parser'],
+      packages=find_packages('src', exclude='test'),
       namespace_packages=[],
       install_requires = ['Markdown==2.4.1', 'beautifulsoup4==4.3.2', 'pystache==0.5.4', 'inlinestyler==0.2.0'],
       entry_points={

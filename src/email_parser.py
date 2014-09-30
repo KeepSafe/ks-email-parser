@@ -217,18 +217,11 @@ def render_html(template, htmls, subject):
 
 
 def list_locales(src_dir):
-    """
-    Gets all directories in a given path. It assumes all directories are locale names.
-    """
     logging.debug('reading locales from %s', src_dir)
     return [locale for locale in os.listdir(src_dir) if os.path.isdir(os.path.join(src_dir, locale))]
 
 
 def list_emails(src_dir, locale, rtl_codes):
-    """
-    Creates Emails from files in a given directory. It assumes all files ending with an EMAIL_EXTENSION are email
-    templates.
-    """
     emails_path = os.path.join(src_dir, locale)
     logging.debug('reading emails from %s', emails_path)
     emails = [email for email in os.listdir(emails_path) if os.path.isfile(
@@ -289,7 +282,7 @@ def parse_emails(src_dir, dest_dir, templates_dir, rtl_codes):
 
 
 def read_args():
-    args_parser = argparse.ArgumentParser()
+    args_parser = argparse.ArgumentParser(epilog='Brought to you by KeepSafe - www.getkeepsafe.com')
 
     args_parser.add_argument('-l', '--loglevel',
                              help='Specify log level (DEBUG, INFO, WARNING, ERROR, CRITICAL), default: %s'
