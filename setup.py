@@ -21,6 +21,8 @@ setup(name='email-localization',
       url='https://github.com/KeepSafe/email-localization',
       license='Apache',
       packages=find_packages('src', exclude='test'),
+      py_modules=['email_parser'],
+      package_dir = {'': 'src'},
       namespace_packages=[],
       install_requires = ['Markdown==2.4.1', 'beautifulsoup4==4.3.2', 'pystache==0.5.4', 'inlinestyler==0.2.0'],
       entry_points={
