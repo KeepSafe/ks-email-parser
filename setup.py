@@ -1,5 +1,6 @@
 import os
 from setuptools import setup, find_packages
+from pip.req import parse_requirements
 
 version = '0.0.1'
 
@@ -7,6 +8,8 @@ version = '0.0.1'
 def read(f):
     return open(os.path.join(os.path.dirname(__file__), f)).read().strip()
 
+install_reqs = parse_requirements('requirements.txt')
+reqs = [str(ir.req) for ir in install_reqs]
 
 setup(name='email-localization',
       version=version,
@@ -24,7 +27,7 @@ setup(name='email-localization',
       py_modules=['email_parser'],
       package_dir = {'': 'src'},
       namespace_packages=[],
-      install_requires = ['Markdown==2.4.1', 'beautifulsoup4==4.3.2', 'pystache==0.5.4', 'inlinestyler==0.2.0'],
+      install_requires = reqs,
       entry_points={
           'console_scripts': ['ks-email-parser = email_parser:main']
       },
