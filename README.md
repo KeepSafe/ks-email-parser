@@ -108,7 +108,7 @@ templates_html/
 Some 3rd party services have custom formates to represent emails in multiple languages. This is a list of supported providers.
 
 ### Customer.io
-Customer.io defines their own multi language email format. More: [http://customer.io/docs/localization-i18n.html]()
+Customer.io defines their own multi language email format. More: [http://customer.io/docs/localization-i18n.html](http://customer.io/docs/localization-i18n.html)
 
 #### Usage
 `ks-email-parser customerio [email_name]`  
