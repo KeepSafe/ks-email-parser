@@ -1,8 +1,8 @@
-# email-localization
+# ks-email-parser
 
 A command line tool name `ks-email-parser` to render HTML and text emails of markdown content.
 
-## Goal of ks-email-parser
+## Goal
 The goal is to store emails in a unified format that is easy to translate and to generate HTML and text emails off. It should be easy for translators to maintain content formatting accords different languages.  
 
 ## Requirements
