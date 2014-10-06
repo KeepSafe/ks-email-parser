@@ -107,7 +107,7 @@ templates_html/
 ## 3rd party support
 Some 3rd party services have custom formates to represent emails in multiple languages. This is a list of supported providers.
 
-### Custmomer.io
+### Customer.io
 Customer.io defines their own multi language email format. More: [http://customer.io/docs/localization-i18n.html]()
 
 #### Usage
