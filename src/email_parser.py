@@ -317,9 +317,9 @@ def init_log(loglevel):
 
 def main():
     print('Parsing emails...')
-    logging.debug('Starting script')
     args = read_args()
     init_log(args.loglevel)
+    logging.debug('Starting script')
     logging.debug('Arguments from console: %s', args)
     if args.client is None:
         parse_emails(args.source, args.destination, args.templates, args.right_to_left)
