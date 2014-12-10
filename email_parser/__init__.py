@@ -316,7 +316,7 @@ def init_log(loglevel):
 
 
 def main():
-    print('Parsing emails...')
+    logging.info('Parsing emails...')
     args = read_args()
     init_log(args.loglevel)
     logging.debug('Starting script')
@@ -326,7 +326,7 @@ def main():
     else:
         client = parsers[args.client]
         client.generate_template(args.source, args.destination, args.templates, args.email_name)
-    print('Done')
+    logging.info('Done')
 
 if __name__ == '__main__':
     main()
