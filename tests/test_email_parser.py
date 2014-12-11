@@ -155,6 +155,14 @@ class TestEmail(TestCase):
         self.assertTrue('link' in email_html)
         self.assertEqual('http://www.google.com', email_html['link'])
 
+    def test_include_urls_with_csscorrectly(self):
+        email_dir = os.path.join(SRC_PATH, 'en')
+        email = email_parser.Email.from_xml(email_dir, 'inline_text.xml', 'en', '')
+        email_html = email.content_to_html('a {}')
+
+        self.assertTrue('link' in email_html)
+        self.assertEqual('http://www.google.com', email_html['link'])
+
     def test_prefix_images_with_base_url(self):
         email_dir = os.path.join(SRC_PATH, 'en')
         email = email_parser.Email.from_xml(email_dir, 'image.xml', 'en', '')

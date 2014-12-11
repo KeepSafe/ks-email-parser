@@ -34,7 +34,6 @@ class BaseUrlImagePattern(Pattern):
         pattern = re.compile("^(.*?)%s(.*?)$" % self.image_pattern.pattern, re.DOTALL | re.UNICODE)
         match = re.match(pattern, ' ' + image + ' ')
         return self.image_pattern.handleMatch(match)
-        # return image
 
 
 class InlineTextExtension(Extension):

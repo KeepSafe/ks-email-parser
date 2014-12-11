@@ -22,7 +22,7 @@ DEFAULE_LOG_LEVEL = 'WARNING'
 DEFAULT_DESTINATION = 'target'
 DEAFULT_SOURCE = 'src'
 DEFAULT_TEMPLATES = 'templates_html'
-DEFAULT_IMAGES_DIR = 'templates_html'
+DEFAULT_IMAGES_DIR = 'http://www.getkeepsafe.com/emails/images'
 RTL_CODES = 'ar,he'
 EMAIL_EXTENSION = '.xml'
 SUBJECT_EXTENSION = '.subject'
@@ -172,8 +172,15 @@ class Email(object):
         if css:
             css_tags = ''.join(['<style>{}</style>'.format(style) for style in css])
             html_with_css = inline_styler.inline_css(css_tags + html)
-            body = ET.fromstring(html_with_css).find('.//body')
-            return ''.join(ET.tostring(e, encoding='unicode') for e in body)
+            print(html)
+            print(html_with_css)
+            if html.startswith('<'):
+                body = ET.fromstring(html_with_css).find('.//body')
+                body = ''.join(ET.tostring(e, encoding='unicode') for e in body)
+            else:
+                body = ET.fromstring(html_with_css).find('.//body/p')
+                body = body.text
+            return body
         else:
             return html
 
