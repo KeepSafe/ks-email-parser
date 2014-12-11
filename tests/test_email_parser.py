@@ -19,7 +19,7 @@ class TestParser(TestCase):
     def test_list_available_emails(self):
         emails = email_parser.list_emails(SRC_PATH, 'en', '')
 
-        self.assertEqual(len(emails), 2)
+        self.assertEqual(len(emails), 3)
         email = next(filter(lambda e: e.name == 'dummy_email', emails))
         self.assertEqual('Dummy subject', email.subject)
         self.assertEqual('#head\n\n**strong** content', email.content['content'])
@@ -33,6 +33,9 @@ class TestParser(TestCase):
             'dummy_email.html',
             'dummy_email.subject',
             'dummy_email.text',
+            'inline_text.html',
+            'inline_text.subject',
+            'inline_text.text',
             'order_email.html',
             'order_email.subject',
             'order_email.text']
@@ -68,7 +71,8 @@ strong content
 
     def test_to_html_single(self):
         parser = email_parser.CustomerIOParser()
-        expected = {'content': '{% if customer.language == "en" %}\n<h1 style="font-size: 2.5em;line-height: 1.25em;margin: 0;font-weight: 200;color: #ccc;background: none;border: none">head</h1>\n<p><strong>strong</strong> content</p>\n{% endif %}\n'}
+        expected = {
+            'content': '{% if customer.language == "en" %}\n<h1 style="font-size: 2.5em;line-height: 1.25em;margin: 0;font-weight: 200;color: #ccc;background: none;border: none">head</h1>\n<p><strong>strong</strong> content</p>\n{% endif %}\n'}
 
         actual = parser._concat_html_content({'en': self.email}, TEMPLATES_DIR)
 
@@ -137,4 +141,14 @@ class TestEmail(TestCase):
         email_html = email.content_to_html('')
 
         self.assertTrue('content' in email_html)
-        self.assertEqual('<div dir=rtl>\n<h1>head</h1>\n<p><strong>strong</strong> content</p>\n</div>', email_html['content'])
+        self.assertEqual(
+            '<div dir=rtl>\n<h1>head</h1>\n<p><strong>strong</strong> content</p>\n</div>', email_html['content'])
+
+    def test_include_urls_correctly(self):
+        email_dir = os.path.join(SRC_PATH, 'en')
+        email = email_parser.Email.from_xml(email_dir, 'inline_text.xml', 'en', '')
+        email_html = email.content_to_html('')
+
+        self.assertTrue('link' in email_html)
+        expected = 'http://www.google.com'
+        self.assertEqual(expected, email_html['link'])

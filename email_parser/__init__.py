@@ -16,6 +16,7 @@ import markdown
 import bs4
 import pystache
 import inlinestyler.utils as inline_styler
+from . import markdown_ext
 
 DEFAULE_LOG_LEVEL = 'WARNING'
 DEFAULT_DESTINATION = 'target'
@@ -136,10 +137,13 @@ class Email(object):
         self.locale = locale
         self.rtl_codes = rtl_codes
 
+    def _text_to_html(self, text):
+        return markdown.markdown(text, extensions=[markdown_ext.inline_text()])
+
     def content_to_text(self):
         result = {}
         for content_key, content_value in self.content.items():
-            content_html = markdown.markdown(content_value)
+            content_html = self._text_to_html(content_value)
             soup = bs4.BeautifulSoup(content_html)
 
             # replace all <a> with the text links in href as get_text() will take the value inside <a> instead
@@ -153,7 +157,7 @@ class Email(object):
     def content_to_html(self, css):
         result = {}
         for content_key, content_value in self.content.items():
-            content_html = markdown.markdown(content_value)
+            content_html = self._text_to_html(content_value)
             if self.locale in self.rtl_codes.split(','):
                 content_html = wrap_with_text_direction(content_html)
             content_html_with_css = self._inline_css(content_html, css)
@@ -316,7 +320,7 @@ def init_log(loglevel):
 
 
 def main():
-    logging.info('Parsing emails...')
+    print('Parsing emails...')
     args = read_args()
     init_log(args.loglevel)
     logging.debug('Starting script')
@@ -326,7 +330,7 @@ def main():
     else:
         client = parsers[args.client]
         client.generate_template(args.source, args.destination, args.templates, args.email_name)
-    logging.info('Done')
+    print('Done')
 
 if __name__ == '__main__':
     main()

@@ -35,10 +35,19 @@ The content of each email is stored in a XML file that contains all content, the
 <resources template="html_template_name" style="css_style_name">
     <string
         name="template_placeholder_name"
-        order="oder_for text conversion"
+        order="order_for text conversion"
         >text_string</string>
 </resources>
 ```
+
+#### Inline text
+
+By default any text simple text you put in a `<string>` tag will be wrapped in a `<p>` tag, so `simple text` would become `<p>simple text</p>`.
+This is standard markdown behaviour. In case you want to get raw text output, for example if you want to use it in a link tag,
+wrap the entire block in `[[text]]`, for example `<string name="link">[[www.google.pl]]</string>` would become `www.google.pl`.
+This is true only for entire blocks of text (paragraphs separated by blanck lines), `<string name="link">[[www.google.pl]] hello</string>`
+would be rendered as `[[www.google.pl]] hello`
+
 ### Elements
 
 #### `resource`
@@ -99,7 +108,7 @@ templates_html/
 ## Rendering
 *ks-email-parser* renders email content into HTML in 2 steps.
 
-1. Render markdown files into simple HTML 
+1. Render markdown files into simple HTML
 2. Inserting CSS style definitions from `html_template.css` inline into the HTML. The goal is to support email clients that don't support none inline CSS formatting.
 
 
