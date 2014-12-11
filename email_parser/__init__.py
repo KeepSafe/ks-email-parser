@@ -172,8 +172,6 @@ class Email(object):
         if css:
             css_tags = ''.join(['<style>{}</style>'.format(style) for style in css])
             html_with_css = inline_styler.inline_css(css_tags + html)
-            print(html)
-            print(html_with_css)
             if html.startswith('<'):
                 body = ET.fromstring(html_with_css).find('.//body')
                 body = ''.join(ET.tostring(e, encoding='unicode') for e in body)
