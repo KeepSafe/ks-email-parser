@@ -171,3 +171,4 @@ class TestEmail(TestCase):
         self.assertTrue('image' in email_html and 'image_title' in email_html)
         self.assertEqual('<p><img alt="Alt text" src="base_url/path/to/img.jpg" /></p>', email_html['image'])
         self.assertEqual('<p><img alt="Alt text" src="base_url/path/to/img.jpg" title="Optional title" /></p>', email_html['image_title'])
+        self.assertEqual('<p><img alt="Alt text" src="http://path/to/img.jpg" /></p>', email_html['image_absolute'])

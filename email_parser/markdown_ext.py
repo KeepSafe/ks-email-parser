@@ -30,7 +30,10 @@ class BaseUrlImagePattern(Pattern):
         self.image_pattern = ImagePattern(*args)
 
     def handleMatch(self, m):
-        image = IMAGE_PATTERN.format(m.group(2), self.images_dir, m.group(10).strip('/'))
+        if not m.group(10).strip('/').startswith('http'):
+            image = IMAGE_PATTERN.format(m.group(2), self.images_dir, m.group(10).strip('/'))
+        else:
+            image = m.string
         pattern = re.compile("^(.*?)%s(.*?)$" % self.image_pattern.pattern, re.DOTALL | re.UNICODE)
         match = re.match(pattern, ' ' + image + ' ')
         return self.image_pattern.handleMatch(match)
