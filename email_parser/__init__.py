@@ -22,6 +22,7 @@ DEFAULE_LOG_LEVEL = 'WARNING'
 DEFAULT_DESTINATION = 'target'
 DEAFULT_SOURCE = 'src'
 DEFAULT_TEMPLATES = 'templates_html'
+DEFAULT_IMAGES_DIR = 'templates_html'
 RTL_CODES = 'ar,he'
 EMAIL_EXTENSION = '.xml'
 SUBJECT_EXTENSION = '.subject'
@@ -48,7 +49,7 @@ class CustomerIOParser(object):
             email_filename = email_name + EMAIL_EXTENSION
             emails[locale] = Email.from_xml(email_dir, email_filename)
         email_subject = self._to_text(emails, self._subject_to_text)
-        email_text = self._to_text(emails, self._content_to_text)
+        email_text = self._to_text(emails, self._content_to_text, images_dir)
         email_html = self._to_html(emails, templates_dir)
         self._save(destination, email_name + TEXT_EXTENSION, email_text)
         self._save(destination, email_name + HTML_EXTENSION, email_html)
@@ -60,14 +61,17 @@ class CustomerIOParser(object):
         with open(filepath, 'w') as email_file:
             email_file.write(email_content)
 
-    def _to_text(self, emails, concat_text_fn):
+    def _to_text(self, emails, concat_text_fn, images_dir=None):
         text = None
         for locale, email in emails.items():
             if text is None:
                 text = self._start_locale_selection.format(locale)
             else:
                 text = text + '\n' + self._next_locale_selection.format(locale)
-            text = concat_text_fn(email, text)
+            if images_dir:
+                text = concat_text_fn(email, text, images_dir)
+            else:
+                text = concat_text_fn(email, text)
         return text + '\n' + self._end_locale_selection + '\n'
 
     def _content_to_text(self, email, text):
@@ -137,13 +141,13 @@ class Email(object):
         self.locale = locale
         self.rtl_codes = rtl_codes
 
-    def _text_to_html(self, text):
-        return markdown.markdown(text, extensions=[markdown_ext.inline_text()])
+    def _text_to_html(self, text, images_dir):
+        return markdown.markdown(text, extensions=[markdown_ext.inline_text(), markdown_ext.base_url(images_dir)])
 
-    def content_to_text(self):
+    def content_to_text(self, images_dir=None):
         result = {}
         for content_key, content_value in self.content.items():
-            content_html = self._text_to_html(content_value)
+            content_html = self._text_to_html(content_value, images_dir)
             soup = bs4.BeautifulSoup(content_html)
 
             # replace all <a> with the text links in href as get_text() will take the value inside <a> instead
@@ -154,10 +158,10 @@ class Email(object):
             result[content_key] = soup.get_text()
         return result
 
-    def content_to_html(self, css):
+    def content_to_html(self, css, images_dir=None):
         result = {}
         for content_key, content_value in self.content.items():
-            content_html = self._text_to_html(content_value)
+            content_html = self._text_to_html(content_value, images_dir)
             if self.locale in self.rtl_codes.split(','):
                 content_html = wrap_with_text_direction(content_html)
             content_html_with_css = self._inline_css(content_html, css)
@@ -173,9 +177,9 @@ class Email(object):
         else:
             return html
 
-    def to_html(self, template, css):
-        content_html = self.content_to_html(css)
-        return render_html(template, content_html, self.subject)
+    def to_html(self, template, css, images_dir):
+        content_html = self.content_to_html(css, images_dir)
+        return render_html(template, content_html, self.subject, images_dir)
 
     @staticmethod
     def from_xml(email_dir, email_filename, locale, rtl_codes):
@@ -213,11 +217,11 @@ def wrap_with_text_direction(html):
     return '<div dir=rtl>\n' + html + '\n</div>'
 
 
-def render_html(template, htmls, subject):
+def render_html(template, htmls, subject, images_dir):
     # pystache escapes html by default, pass escape option to disable this
     renderer = pystache.Renderer(escape=lambda u: u)
     # add subject for rendering as we have it in html
-    return renderer.render(template, dict(htmls.items() | {'subject': subject}.items()))
+    return renderer.render(template, dict(htmls.items() | {'subject': subject}.items() | {'base_url': images_dir}.items()))
 
 
 def list_locales(src_dir):
@@ -250,29 +254,29 @@ def save_email_subject(dest_dir, email):
         email_file.write(email.subject)
 
 
-def save_email_content_as_text(dest_dir, email):
+def save_email_content_as_text(dest_dir, email, images_dir):
     email_path = os.path.join(dest_dir, email.name + TEXT_EXTENSION)
     logging.debug('Saving email as text to %s', email_path)
     with open(email_path, 'w') as email_file:
-        content_text = email.content_to_text()
+        content_text = email.content_to_text(images_dir)
         for content_key, _ in email.order:
             email_file.write(content_text[content_key])
             # End with new paragraph start in case we have more to write
             email_file.write('\n\n')
 
 
-def save_email_content_as_html(dest_dir, templates_dir, email):
+def save_email_content_as_html(dest_dir, templates_dir, email, images_dir):
     email_path = os.path.join(dest_dir, email.name + HTML_EXTENSION)
     template_path = os.path.join(templates_dir, email.template)
     with open(email_path, 'w') as email_file, open(template_path) as template_file:
         logging.debug('Saving email as html to %s using template %s', email_path, template_path)
         template = template_file.read()
         css = read_css(email, templates_dir)
-        email_html = email.to_html(template, css)
+        email_html = email.to_html(template, css, images_dir)
         email_file.write(email_html)
 
 
-def parse_emails(src_dir, dest_dir, templates_dir, rtl_codes):
+def parse_emails(src_dir, dest_dir, templates_dir, rtl_codes, images_dir):
     locales = list_locales(src_dir)
     logging.debug('Found locales:%s', locales)
     for locale in locales:
@@ -281,8 +285,8 @@ def parse_emails(src_dir, dest_dir, templates_dir, rtl_codes):
             dest_path_with_locale = os.path.join(dest_dir, locale)
             os.makedirs(dest_path_with_locale, exist_ok=True)
             save_email_subject(dest_path_with_locale, email)
-            save_email_content_as_text(dest_path_with_locale, email)
-            save_email_content_as_html(dest_path_with_locale, templates_dir, email)
+            save_email_content_as_text(dest_path_with_locale, email, images_dir)
+            save_email_content_as_html(dest_path_with_locale, templates_dir, email, images_dir)
 
 
 def read_args():
@@ -304,6 +308,9 @@ def read_args():
     args_parser.add_argument('-rtl', '--right-to-left',
                              help='Comma separated list of RTL language codes, default: %s' % RTL_CODES,
                              default=RTL_CODES)
+    args_parser.add_argument('-i', '--images',
+                             help='Images base directory, default: %s' % DEFAULT_IMAGES_DIR,
+                             default=DEFAULT_IMAGES_DIR)
 
     subparsers = args_parser.add_subparsers(help='Generate 3rd party template', dest='client')
 
@@ -326,7 +333,7 @@ def main():
     logging.debug('Starting script')
     logging.debug('Arguments from console: %s', args)
     if args.client is None:
-        parse_emails(args.source, args.destination, args.templates, args.right_to_left)
+        parse_emails(args.source, args.destination, args.templates, args.right_to_left, args.images)
     else:
         client = parsers[args.client]
         client.generate_template(args.source, args.destination, args.templates, args.email_name)

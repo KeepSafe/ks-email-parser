@@ -48,6 +48,11 @@ wrap the entire block in `[[text]]`, for example `<string name="link">[[www.goog
 This is true only for entire blocks of text (paragraphs separated by blanck lines), `<string name="link">[[www.google.pl]] hello</string>`
 would be rendered as `[[www.google.pl]] hello`
 
+#### Base url for images
+
+The parser will automatically add base_url to any image tag in markdown, so `![Alt text](/path/to/img.jpg)` and base url `base_url`
+will produce ``
+
 ### Elements
 
 #### `resource`

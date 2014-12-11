@@ -19,20 +19,23 @@ class TestParser(TestCase):
     def test_list_available_emails(self):
         emails = email_parser.list_emails(SRC_PATH, 'en', '')
 
-        self.assertEqual(len(emails), 3)
+        self.assertEqual(len(emails), 4)
         email = next(filter(lambda e: e.name == 'dummy_email', emails))
         self.assertEqual('Dummy subject', email.subject)
         self.assertEqual('#head\n\n**strong** content', email.content['content'])
 
     def test_parse_emails(self):
         with tempfile.TemporaryDirectory() as dest_dir:
-            email_parser.parse_emails(SRC_PATH, dest_dir, TEMPLATES_DIR, '')
+            email_parser.parse_emails(SRC_PATH, dest_dir, TEMPLATES_DIR, '', '')
             email_files = os.listdir(os.path.join(dest_dir, 'en'))
 
         expected = [
             'dummy_email.html',
             'dummy_email.subject',
             'dummy_email.text',
+            'image.html',
+            'image.subject',
+            'image.text',
             'inline_text.html',
             'inline_text.subject',
             'inline_text.text',
@@ -150,5 +153,13 @@ class TestEmail(TestCase):
         email_html = email.content_to_html('')
 
         self.assertTrue('link' in email_html)
-        expected = 'http://www.google.com'
-        self.assertEqual(expected, email_html['link'])
+        self.assertEqual('http://www.google.com', email_html['link'])
+
+    def test_prefix_images_with_base_url(self):
+        email_dir = os.path.join(SRC_PATH, 'en')
+        email = email_parser.Email.from_xml(email_dir, 'image.xml', 'en', '')
+        email_html = email.content_to_html('', 'base_url')
+
+        self.assertTrue('image' in email_html and 'image_title' in email_html)
+        self.assertEqual('<p><img alt="Alt text" src="base_url/path/to/img.jpg" /></p>', email_html['image'])
+        self.assertEqual('<p><img alt="Alt text" src="base_url/path/to/img.jpg" title="Optional title" /></p>', email_html['image_title'])
