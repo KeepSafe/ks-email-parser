@@ -184,4 +184,4 @@ class TestEmail(TestCase):
         email_dir = os.path.join(SRC_PATH, 'en')
         email = email_parser.Email.from_xml(email_dir, 'inline_text.xml', 'en', '')
         with self.assertRaises(email_parser.MissingPlaceholderError):
-            email.to_html(template, '', '')
+            email.to_html(template, '', '', 'strict')
