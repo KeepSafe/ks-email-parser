@@ -30,6 +30,10 @@ TEXT_EXTENSION = '.text'
 HTML_EXTENSION = '.html'
 
 
+class MissingPlaceholderError(Exception):
+    pass
+
+
 class CustomerIOParser(object):
 
     """
@@ -119,7 +123,10 @@ class CustomerIOParser(object):
         template_path = os.path.join(templates_dir, email.template)
         with open(template_path) as template_file:
             template = template_file.read()
-        return render_html(template, content_html, email.subject)
+        try:
+            return render_html(template, content_html, email.subject)
+        except pystache.context.KeyNotFoundError as e:
+            raise MissingPlaceholderError('email {} for locale {} is missing a placeholder:\n{}'.format(self.name, self.locale, str(e)))
 
 parsers = {CustomerIOParser.name: CustomerIOParser()}
 
@@ -184,7 +191,10 @@ class Email(object):
 
     def to_html(self, template, css, images_dir):
         content_html = self.content_to_html(css, images_dir)
-        return render_html(template, content_html, self.subject, images_dir)
+        try:
+            return render_html(template, content_html, self.subject, images_dir)
+        except pystache.context.KeyNotFoundError as e:
+            raise MissingPlaceholderError('email {} for locale {} is missing a placeholder:\n{}'.format(self.name, self.locale, str(e)))
 
     @staticmethod
     def from_xml(email_dir, email_filename, locale, rtl_codes):
@@ -224,7 +234,7 @@ def wrap_with_text_direction(html):
 
 def render_html(template, htmls, subject, images_dir):
     # pystache escapes html by default, pass escape option to disable this
-    renderer = pystache.Renderer(escape=lambda u: u)
+    renderer = pystache.Renderer(escape=lambda u: u, missing_tags='strict')
     # add subject for rendering as we have it in html
     return renderer.render(template, dict(htmls.items() | {'subject': subject}.items() | {'base_url': images_dir}.items()))
 

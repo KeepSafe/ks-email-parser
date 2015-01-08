@@ -4,4 +4,6 @@
 	<string name="content"><![CDATA[#head
 
 **strong** content]]></string>
+	<string name="image">test image</string>
+	<string name="link">test link</string>
 </resources>

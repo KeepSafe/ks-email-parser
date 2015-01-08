@@ -3,5 +3,5 @@
   <string name="subject">Dummy subject</string>
   <string name="image_title">![Alt text](/path/to/img.jpg "Optional title")</string>
   <string name="image">![Alt text](/path/to/img.jpg)</string>
-  <string name="image_absolute">![Alt text](http://path/to/img.jpg)</string>
+  <string name="image_absolute">![Alt text](http://path.com/to/img.jpg)</string>
 </resources>
