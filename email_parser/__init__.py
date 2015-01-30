@@ -23,11 +23,15 @@ DEFAULT_DESTINATION = 'target'
 DEAFULT_SOURCE = 'src'
 DEFAULT_TEMPLATES = 'templates_html'
 DEFAULT_IMAGES_DIR = 'http://www.getkeepsafe.com/emails/img'
+DEFAULT_STRICT_MODE = 'ignore'
 RTL_CODES = 'ar,he'
 EMAIL_EXTENSION = '.xml'
 SUBJECT_EXTENSION = '.subject'
 TEXT_EXTENSION = '.text'
 HTML_EXTENSION = '.html'
+
+class MissingPlaceholderError(Exception):
+    pass
 
 
 class CustomerIOParser(object):
@@ -41,7 +45,7 @@ class CustomerIOParser(object):
     _next_locale_selection = '{{% elsif customer.language == "{}" %}}'
     _end_locale_selection = '{% endif %}'
 
-    def generate_template(self, source, destination, templates_dir, email_name):
+    def generate_template(self, source, destination, templates_dir, email_name, strict):
         locales = list_locales(source)
         emails = {}
         for locale in locales:
@@ -50,7 +54,7 @@ class CustomerIOParser(object):
             emails[locale] = Email.from_xml(email_dir, email_filename)
         email_subject = self._to_text(emails, self._subject_to_text)
         email_text = self._to_text(emails, self._content_to_text, images_dir)
-        email_html = self._to_html(emails, templates_dir)
+        email_html = self._to_html(emails, templates_dir, strict)
         self._save(destination, email_name + TEXT_EXTENSION, email_text)
         self._save(destination, email_name + HTML_EXTENSION, email_html)
         self._save(destination, email_name + SUBJECT_EXTENSION, email_subject)
@@ -113,13 +117,16 @@ class CustomerIOParser(object):
         subject = subject + self._end_locale_selection
         return subject
 
-    def _to_html(self, emails, templates_dir):
+    def _to_html(self, emails, templates_dir, strict):
         content_html = self._concat_html_content(emails, templates_dir)
         email = emails['en']
         template_path = os.path.join(templates_dir, email.template)
         with open(template_path) as template_file:
             template = template_file.read()
-        return render_html(template, content_html, email.subject)
+        try:
+            return render_html(template, content_html, email.subject, strict)
+        except pystache.context.KeyNotFoundError as e:
+            raise MissingPlaceholderError('email {} for locale {} is missing a placeholder:\n{}'.format(self.name, self.locale, str(e)))
 
 parsers = {CustomerIOParser.name: CustomerIOParser()}
 
@@ -182,9 +189,12 @@ class Email(object):
         else:
             return html
 
-    def to_html(self, template, css, images_dir):
+    def to_html(self, template, css, images_dir, strict):
         content_html = self.content_to_html(css, images_dir)
-        return render_html(template, content_html, self.subject, images_dir)
+        try:
+            return render_html(template, content_html, self.subject, images_dir, strict)
+        except pystache.context.KeyNotFoundError as e:
+            raise MissingPlaceholderError('email {} for locale {} is missing a placeholder:\n{}'.format(self.name, self.locale, str(e)))
 
     @staticmethod
     def from_xml(email_dir, email_filename, locale, rtl_codes):
@@ -222,9 +232,9 @@ def wrap_with_text_direction(html):
     return '<div dir=rtl>\n' + html + '\n</div>'
 
 
-def render_html(template, htmls, subject, images_dir):
+def render_html(template, htmls, subject, images_dir, strict):
     # pystache escapes html by default, pass escape option to disable this
-    renderer = pystache.Renderer(escape=lambda u: u)
+    renderer = pystache.Renderer(escape=lambda u: u, missing_tags=strict)
     # add subject for rendering as we have it in html
     return renderer.render(template, dict(htmls.items() | {'subject': subject}.items() | {'base_url': images_dir}.items()))
 
@@ -270,18 +280,18 @@ def save_email_content_as_text(dest_dir, email, images_dir):
             email_file.write('\n\n')
 
 
-def save_email_content_as_html(dest_dir, templates_dir, email, images_dir):
+def save_email_content_as_html(dest_dir, templates_dir, email, images_dir, strict):
     email_path = os.path.join(dest_dir, email.name + HTML_EXTENSION)
     template_path = os.path.join(templates_dir, email.template)
     with open(email_path, 'w') as email_file, open(template_path) as template_file:
         logging.debug('Saving email as html to %s using template %s', email_path, template_path)
         template = template_file.read()
         css = read_css(email, templates_dir)
-        email_html = email.to_html(template, css, images_dir)
+        email_html = email.to_html(template, css, images_dir, strict)
         email_file.write(email_html)
 
 
-def parse_emails(src_dir, dest_dir, templates_dir, rtl_codes, images_dir):
+def parse_emails(src_dir, dest_dir, templates_dir, rtl_codes, images_dir, strict):
     locales = list_locales(src_dir)
     logging.debug('Found locales:%s', locales)
     for locale in locales:
@@ -291,7 +301,7 @@ def parse_emails(src_dir, dest_dir, templates_dir, rtl_codes, images_dir):
             os.makedirs(dest_path_with_locale, exist_ok=True)
             save_email_subject(dest_path_with_locale, email)
             save_email_content_as_text(dest_path_with_locale, email, images_dir)
-            save_email_content_as_html(dest_path_with_locale, templates_dir, email, images_dir)
+            save_email_content_as_html(dest_path_with_locale, templates_dir, email, images_dir, strict)
 
 
 def read_args():
@@ -316,6 +326,9 @@ def read_args():
     args_parser.add_argument('-i', '--images',
                              help='Images base directory, default: %s' % DEFAULT_IMAGES_DIR,
                              default=DEFAULT_IMAGES_DIR)
+    args_parser.add_argument('-st', '--strict',
+                             help='Template parsing mode (ignore or strict), default: %s' % DEFAULT_STRICT_MODE,
+                             default=DEFAULT_STRICT_MODE)
 
     subparsers = args_parser.add_subparsers(help='Generate 3rd party template', dest='client')
 
@@ -338,10 +351,10 @@ def main():
     logging.debug('Starting script')
     logging.debug('Arguments from console: %s', args)
     if args.client is None:
-        parse_emails(args.source, args.destination, args.templates, args.right_to_left, args.images)
+        parse_emails(args.source, args.destination, args.templates, args.right_to_left, args.images, args.strict)
     else:
         client = parsers[args.client]
-        client.generate_template(args.source, args.destination, args.templates, args.email_name)
+        client.generate_template(args.source, args.destination, args.templates, args.email_name, args.strict)
     print('Done')
 
 if __name__ == '__main__':
