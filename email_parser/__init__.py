@@ -245,24 +245,5 @@ def parse_emails(src_dir, dest_dir, templates_dir, rtl_codes, images_dir, strict
             fs.save_email_content_as_text(dest_path_with_locale, email, images_dir)
             fs.save_email_content_as_html(dest_path_with_locale, templates_dir, email, images_dir, strict)
 
-
-def init_log(loglevel):
-    num_level = getattr(logging, loglevel.upper(), 'WARNING')
-    logging.basicConfig(level=num_level)
-
-
-def main():
-    print('Parsing emails...')
-    args = cmd.read_args()
-    init_log(args.loglevel)
-    logging.debug('Starting script')
-    logging.debug('Arguments from console: %s', args)
-    if args.client is None:
-        parse_emails(args.source, args.destination, args.templates, args.right_to_left, args.images, args.strict)
-    else:
-        client = parsers[args.client]
-        client.generate_template(args.source, args.destination, args.templates, args.email_name, args.strict)
-    print('Done')
-
 if __name__ == '__main__':
-    main()
+    cmd.run()
