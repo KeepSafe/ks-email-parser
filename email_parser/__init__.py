@@ -8,16 +8,15 @@
     :license: Apache, see LICENSE for more details.
 """
 
-import argparse
-import logging
 import os
+import logging
 import xml.etree.ElementTree as ET
 import markdown
 import bs4
 import pystache
 import inlinestyler.utils as inline_styler
 
-from . import markdown_ext, cmd
+from . import markdown_ext, cmd, fs
 
 RTL_CODES = 'ar,he'
 EMAIL_EXTENSION = '.xml'
@@ -41,7 +40,7 @@ class CustomerIOParser(object):
     _end_locale_selection = '{% endif %}'
 
     def generate_template(self, source, destination, templates_dir, email_name, strict):
-        locales = list_locales(source)
+        locales = fs.list_locales(source)
         emails = {}
         for locale in locales:
             email_dir = os.path.join(source, locale)
@@ -85,7 +84,7 @@ class CustomerIOParser(object):
     def _concat_html_content(self, emails, templates_dir):
         content_html = {}
         for locale, email in emails.items():
-            css = read_css(email, templates_dir)
+            css = fs.read_css(email, templates_dir)
             email_content = email.content_to_html(css)
             for content_key, content_value in email_content.items():
                 text = content_html.get(content_key)
@@ -234,69 +233,17 @@ def render_html(template, htmls, subject, images_dir, strict):
     return renderer.render(template, dict(htmls.items() | {'subject': subject}.items() | {'base_url': images_dir}.items()))
 
 
-def list_locales(src_dir):
-    logging.debug('reading locales from %s', src_dir)
-    return [locale for locale in os.listdir(src_dir) if os.path.isdir(os.path.join(src_dir, locale))]
-
-
-def list_emails(src_dir, locale, rtl_codes):
-    emails_path = os.path.join(src_dir, locale)
-    logging.debug('reading emails from %s', emails_path)
-    emails = [email for email in os.listdir(emails_path) if os.path.isfile(
-        os.path.join(emails_path, email)) and email.endswith(EMAIL_EXTENSION)]
-    return [Email.from_xml(emails_path, email, locale, rtl_codes) for email in emails]
-
-
-def read_css(email, templates_dir):
-    css = []
-    if email.css:
-        for style in email.css:
-            style_path = os.path.join(templates_dir, style)
-            with open(style_path) as style_file:
-                css.append(style_file.read())
-    return css
-
-
-def save_email_subject(dest_dir, email):
-    email_path = os.path.join(dest_dir, email.name + SUBJECT_EXTENSION)
-    logging.debug('Saving email subject to %s', email_path)
-    with open(email_path, 'w') as email_file:
-        email_file.write(email.subject)
-
-
-def save_email_content_as_text(dest_dir, email, images_dir):
-    email_path = os.path.join(dest_dir, email.name + TEXT_EXTENSION)
-    logging.debug('Saving email as text to %s', email_path)
-    with open(email_path, 'w') as email_file:
-        content_text = email.content_to_text(images_dir)
-        for content_key, _ in email.order:
-            email_file.write(content_text[content_key])
-            # End with new paragraph start in case we have more to write
-            email_file.write('\n\n')
-
-
-def save_email_content_as_html(dest_dir, templates_dir, email, images_dir, strict):
-    email_path = os.path.join(dest_dir, email.name + HTML_EXTENSION)
-    template_path = os.path.join(templates_dir, email.template)
-    with open(email_path, 'w') as email_file, open(template_path) as template_file:
-        logging.debug('Saving email as html to %s using template %s', email_path, template_path)
-        template = template_file.read()
-        css = read_css(email, templates_dir)
-        email_html = email.to_html(template, css, images_dir, strict)
-        email_file.write(email_html)
-
-
 def parse_emails(src_dir, dest_dir, templates_dir, rtl_codes, images_dir, strict):
-    locales = list_locales(src_dir)
+    locales = fs.list_locales(src_dir)
     logging.debug('Found locales:%s', locales)
     for locale in locales:
-        emails = list_emails(src_dir, locale, rtl_codes)
+        emails = fs.list_emails(src_dir, locale, rtl_codes)
         for email in emails:
             dest_path_with_locale = os.path.join(dest_dir, locale)
             os.makedirs(dest_path_with_locale, exist_ok=True)
-            save_email_subject(dest_path_with_locale, email)
-            save_email_content_as_text(dest_path_with_locale, email, images_dir)
-            save_email_content_as_html(dest_path_with_locale, templates_dir, email, images_dir, strict)
+            fs.save_email_subject(dest_path_with_locale, email)
+            fs.save_email_content_as_text(dest_path_with_locale, email, images_dir)
+            fs.save_email_content_as_html(dest_path_with_locale, templates_dir, email, images_dir, strict)
 
 
 def init_log(loglevel):

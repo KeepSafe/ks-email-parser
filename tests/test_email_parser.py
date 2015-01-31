@@ -1,4 +1,5 @@
 import email_parser
+import email_parser.fs
 
 import os
 import tempfile
@@ -12,12 +13,12 @@ TEMPLATES_DIR = os.path.join(_ROOT_DIR, 'templates_html')
 class TestParser(TestCase):
 
     def test_list_available_locales(self):
-        locales = email_parser.list_locales(SRC_PATH)
+        locales = email_parser.fs.list_locales(SRC_PATH)
 
         self.assertListEqual(['en'], locales)
 
     def test_list_available_emails(self):
-        emails = email_parser.list_emails(SRC_PATH, 'en', '')
+        emails = email_parser.fs.list_emails(SRC_PATH, 'en', '')
 
         self.assertEqual(len(emails), 4)
         email = next(filter(lambda e: e.name == 'dummy_email', emails))
