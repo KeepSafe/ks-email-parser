@@ -16,14 +16,9 @@ import markdown
 import bs4
 import pystache
 import inlinestyler.utils as inline_styler
-from . import markdown_ext
 
-DEFAULE_LOG_LEVEL = 'WARNING'
-DEFAULT_DESTINATION = 'target'
-DEAFULT_SOURCE = 'src'
-DEFAULT_TEMPLATES = 'templates_html'
-DEFAULT_IMAGES_DIR = 'http://www.getkeepsafe.com/emails/img'
-DEFAULT_STRICT_MODE = 'ignore'
+from . import markdown_ext, cmd
+
 RTL_CODES = 'ar,he'
 EMAIL_EXTENSION = '.xml'
 SUBJECT_EXTENSION = '.subject'
@@ -304,41 +299,6 @@ def parse_emails(src_dir, dest_dir, templates_dir, rtl_codes, images_dir, strict
             save_email_content_as_html(dest_path_with_locale, templates_dir, email, images_dir, strict)
 
 
-def read_args():
-    args_parser = argparse.ArgumentParser(epilog='Brought to you by KeepSafe - www.getkeepsafe.com')
-
-    args_parser.add_argument('-l', '--loglevel',
-                             help='Specify log level (DEBUG, INFO, WARNING, ERROR, CRITICAL), default: %s'
-                             % DEFAULE_LOG_LEVEL,
-                             default=DEFAULE_LOG_LEVEL)
-    args_parser.add_argument('-s', '--source',
-                             help='Parser\'s source folder, default: %s' % DEAFULT_SOURCE,
-                             default=DEAFULT_SOURCE)
-    args_parser.add_argument('-d', '--destination',
-                             help='Parser\'s destination folder, default: %s' % DEFAULT_DESTINATION,
-                             default=DEFAULT_DESTINATION)
-    args_parser.add_argument('-t', '--templates',
-                             help='Templates folder, default: %s' % DEFAULT_TEMPLATES,
-                             default=DEFAULT_TEMPLATES)
-    args_parser.add_argument('-rtl', '--right-to-left',
-                             help='Comma separated list of RTL language codes, default: %s' % RTL_CODES,
-                             default=RTL_CODES)
-    args_parser.add_argument('-i', '--images',
-                             help='Images base directory, default: %s' % DEFAULT_IMAGES_DIR,
-                             default=DEFAULT_IMAGES_DIR)
-    args_parser.add_argument('-st', '--strict',
-                             help='Template parsing mode (ignore or strict), default: %s' % DEFAULT_STRICT_MODE,
-                             default=DEFAULT_STRICT_MODE)
-
-    subparsers = args_parser.add_subparsers(help='Generate 3rd party template', dest='client')
-
-    template_parser = subparsers.add_parser(CustomerIOParser.name)
-    template_parser.add_argument('email_name',
-                                 help='Name of the email to generate the template for')
-
-    return args_parser.parse_args()
-
-
 def init_log(loglevel):
     num_level = getattr(logging, loglevel.upper(), 'WARNING')
     logging.basicConfig(level=num_level)
@@ -346,7 +306,7 @@ def init_log(loglevel):
 
 def main():
     print('Parsing emails...')
-    args = read_args()
+    args = cmd.read_args()
     init_log(args.loglevel)
     logging.debug('Starting script')
     logging.debug('Arguments from console: %s', args)
