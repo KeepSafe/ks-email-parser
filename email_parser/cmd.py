@@ -42,22 +42,3 @@ def read_args(argsargs=argparse.ArgumentParser):
                                help='Name of the email to generate the template for')
 
     return args.parse_args()
-
-
-def init_log(loglevel):
-    num_level = getattr(logging, loglevel.upper(), 'WARNING')
-    logging.basicConfig(level=num_level)
-
-
-def run():
-    print('Parsing emails...')
-    args = cmd.read_args()
-    init_log(args.loglevel)
-    logging.debug('Starting script')
-    logging.debug('Arguments from console: %s', args)
-    if args.client is None:
-        parse_emails(args.source, args.destination, args.templates, args.right_to_left, args.images, args.strict)
-    else:
-        client = parsers[args.client]
-        client.generate_template(args.source, args.destination, args.templates, args.email_name, args.strict)
-    print('Done')

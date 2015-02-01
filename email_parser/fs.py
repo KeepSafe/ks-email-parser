@@ -1,7 +1,42 @@
 import logging
 import os
+import parse
+from pathlib import Path
+from string import Formatter
+from collections import namedtuple
+from . import errors
 
 EMAIL_EXTENSION = '.xml'
+
+
+Email = namedtuple('Email', ['name', 'locale', 'path', 'full_path'])
+
+
+def _parse_params(pattern):
+    params = [p for p in map(lambda e: e[1], Formatter().parse(pattern)) if p]
+    if 'name' not in params:
+        raise errors.MissingPatternParamError(
+            '{{name}} is a required parameter in the pattern but it is not present in {}'.format(pattern))
+    if 'locale' not in params:
+        raise errors.MissingPatternParamError(
+            '{{name}} is a required parameter in the pattern but it is not present in {}'.format(pattern))
+    return params
+
+
+def emails(src_dir, pattern):
+    params = _parse_params(pattern)
+
+    wildcard_params = {k: '*' for k in params}
+    wildcard_pattern = pattern.format(**wildcard_params)
+    parser = parse.compile(pattern)
+
+    for path in Path(src_dir).glob(wildcard_pattern):
+        if not path.is_dir():
+            str_path = str(path)
+            result = parser.parse(str_path)
+            result.named['path'] = str_path
+            result.named['full_path'] = path.resolve()
+            yield Email(**result.named)
 
 
 def list_locales(src_dir):

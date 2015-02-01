@@ -16,7 +16,7 @@ import bs4
 import pystache
 import inlinestyler.utils as inline_styler
 
-from . import markdown_ext, cmd, fs
+from . import markdown_ext, cmd, fs, reader, renderer
 
 RTL_CODES = 'ar,he'
 EMAIL_EXTENSION = '.xml'
@@ -233,17 +233,31 @@ def render_html(template, htmls, subject, images_dir, strict):
     return renderer.render(template, dict(htmls.items() | {'subject': subject}.items() | {'base_url': images_dir}.items()))
 
 
-def parse_emails(src_dir, dest_dir, templates_dir, rtl_codes, images_dir, strict):
-    locales = fs.list_locales(src_dir)
-    logging.debug('Found locales:%s', locales)
-    for locale in locales:
-        emails = fs.list_emails(src_dir, locale, rtl_codes)
-        for email in emails:
-            dest_path_with_locale = os.path.join(dest_dir, locale)
-            os.makedirs(dest_path_with_locale, exist_ok=True)
-            fs.save_email_subject(dest_path_with_locale, email)
-            fs.save_email_content_as_text(dest_path_with_locale, email, images_dir)
-            fs.save_email_content_as_html(dest_path_with_locale, templates_dir, email, images_dir, strict)
+def parse_emails(options):
+    emails = fs.emails(options.src_dir, options.pattern)
+    for email in emails:
+        template, placeholders = reader.read(email.full_path)
+        subject, text, html = renderer.render(template, placeholders)
+        fs.save(email, subject, text, html)
+
+def init_log(loglevel):
+    num_level = getattr(logging, loglevel.upper(), 'WARNING')
+    logging.basicConfig(level=num_level)
+
+
+def main():
+    print('Parsing emails...')
+    args = cmd.read_args()
+    init_log(args.loglevel)
+    logging.debug('Starting script')
+    logging.debug('Arguments from console: %s', args)
+    if args.client is None:
+        parse_emails(args.source, args.destination, args.templates, args.right_to_left, args.images, args.strict)
+    else:
+        client = parsers[args.client]
+        client.generate_template(args.source, args.destination, args.templates, args.email_name, args.strict)
+    print('Done')
+
 
 if __name__ == '__main__':
-    cmd.run()
+    main()

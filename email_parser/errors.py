@@ -1,0 +1,2 @@
+class MissingPatternParamError(Exception):
+    pass
