@@ -37,6 +37,26 @@ def emails(src_dir, pattern):
             yield Email(**result.named)
 
 
+def email(src_dir, pattern, email_name):
+    single_email_pattern = pattern.replace('{name}', email_name)
+
+    #TODO refactor with emails
+    params = _parse_params(pattern)
+
+    wildcard_params = {k: '*' for k in params}
+    wildcard_pattern = single_email_pattern.format(**wildcard_params)
+    parser = parse.compile(single_email_pattern)
+
+    for path in Path(src_dir).glob(wildcard_pattern):
+        if not path.is_dir():
+            str_path = str(path.relative_to(src_dir))
+            result = parser.parse(str_path)
+            result.named['name'] = email_name
+            result.named['path'] = str_path
+            result.named['full_path'] = str(path.resolve())
+            yield Email(**result.named)
+
+
 def read_file(*path_parts):
     path = os.path.join(*path_parts)
     with open(path) as fp:

@@ -1,0 +1,5 @@
+{% if customer.language == "en" %}
+Dummy subject
+{% elsif customer.language == "fr" %}
+Dummy subject fr
+{% endif %}

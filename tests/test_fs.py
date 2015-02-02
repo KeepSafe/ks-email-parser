@@ -15,6 +15,9 @@ class MockPath(object):
     def resolve(self):
         return self.path
 
+    def relative_to(self, base):
+        return self.path
+
     def __str__(self):
         return self.path
 

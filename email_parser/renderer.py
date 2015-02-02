@@ -69,18 +69,14 @@ class HtmlRenderer(object):
     def _wrap_with_text_direction(self, html):
         return '<div dir="rtl">' + html + '</div>'
 
-    def _parse_placeholder(self, placeholder, css):
+    def _render_placeholder(self, placeholder, css):
         html = _md_to_html(placeholder, self.options[consts.OPT_IMAGES])
         if self.locale in self.options[consts.OPT_RIGHT_TO_LEFT]:
             html = self._wrap_with_text_direction(html)
         return self._inline_css(html, css)
 
-    def render(self, placeholders):
-        subject, contents = _split_subject(placeholders)
+    def _concat_parts(self, subject, parts):
         html = self._read_template()
-        css = self._read_css()
-        parts = {k: self._parse_placeholder(v, css) for k, v in contents.items()}
-
         strict = 'strict' if self.options[consts.OPT_STRICT] else 'ignore'
         # pystache escapes html by default, pass escape option to disable this
         renderer = pystache.Renderer(escape=lambda u: u, missing_tags=strict)
@@ -89,6 +85,14 @@ class HtmlRenderer(object):
             return renderer.render(html, dict(parts.items() | {'subject': subject}.items() | {'base_url': self.options[consts.OPT_IMAGES]}.items()))
         except pystache.context.KeyNotFoundError as e:
             raise errors.MissingTemplatePlaceholderError('template has missing placeholders') from e
+
+
+    def render(self, placeholders):
+        subject, contents = _split_subject(placeholders)
+        css = self._read_css()
+        parts = {k: self._render_placeholder(v, css) for k, v in contents.items()}
+        return self._concat_parts(subject, parts)
+
 
 
 class TextRenderer(object):

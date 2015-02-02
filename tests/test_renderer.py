@@ -73,7 +73,7 @@ class TestHtmlRenderer(TestCase):
     def test_happy_path(self, mock_read):
         html = '<body>{{content1}}</body>'
         placeholders = {'content1':'text1'}
-        mock_read.side_effect = iter([html, 'body {}'])
+        mock_read.side_effect = iter(['body {}', html])
 
         actual = self.renderer.render(placeholders)
 
@@ -83,7 +83,7 @@ class TestHtmlRenderer(TestCase):
     def test_empty_style(self, mock_read):
         html = '<body>{{content}}</body>'
         placeholders = {'content':'dummy_content'}
-        mock_read.side_effect = iter([html, ''])
+        mock_read.side_effect = iter(['', html])
 
         actual = self.renderer.render(placeholders)
 
@@ -93,7 +93,7 @@ class TestHtmlRenderer(TestCase):
     def test_include_raw_subject(self, mock_read):
         html = '<body>{{subject}}</body>'
         placeholders = {'subject':'dummy_subject'}
-        mock_read.side_effect = iter([html, ''])
+        mock_read.side_effect = iter(['', html])
 
         actual = self.renderer.render(placeholders)
 
@@ -103,7 +103,7 @@ class TestHtmlRenderer(TestCase):
     def test_include_base_url(self, mock_read):
         html = '<body>{{base_url}}</body>'
         placeholders = {}
-        mock_read.side_effect = iter([html, ''])
+        mock_read.side_effect = iter(['', html])
 
         actual = self.renderer.render(placeholders)
 
@@ -113,7 +113,7 @@ class TestHtmlRenderer(TestCase):
     def test_ignore_missing_placeholders(self, mock_read):
         html = '<body>{{content}}{{missing}}</body>'
         placeholders = {'content': 'dummy_content'}
-        mock_read.side_effect = iter([html, ''])
+        mock_read.side_effect = iter(['', html])
 
         actual = self.renderer.render(placeholders)
 
@@ -124,7 +124,7 @@ class TestHtmlRenderer(TestCase):
     def test_fail_on_missing_placeholders(self, mock_read):
         html = '<body>{{content}}{{missing}}</body>'
         placeholders = {'content': 'dummy_content'}
-        mock_read.side_effect = iter([html, ''])
+        mock_read.side_effect = iter(['', html])
         self.options[consts.OPT_STRICT] = True
         r = renderer.HtmlRenderer(self.template, self.options, 'locale')
 
@@ -135,7 +135,7 @@ class TestHtmlRenderer(TestCase):
     def test_rtl_locale(self, mock_read):
         html = '<body>{{content}}</body>'
         placeholders = {'content': 'dummy_content'}
-        mock_read.side_effect = iter([html, ''])
+        mock_read.side_effect = iter(['', html])
         r = renderer.HtmlRenderer(self.template, self.options, 'ar')
 
         actual = r.render(placeholders)
@@ -146,7 +146,7 @@ class TestHtmlRenderer(TestCase):
     def test_inline_styles(self, mock_read):
         html = '<body>{{content}}</body>'
         placeholders = {'content': 'dummy_content'}
-        mock_read.side_effect = iter([html, 'p {color:red;}'])
+        mock_read.side_effect = iter(['p {color:red;}', html])
 
         actual = self.renderer.render(placeholders)
 

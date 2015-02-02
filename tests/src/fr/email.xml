@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<resources template="basic_template.html" style="basic_template.css">
+    <string name="subject">Dummy subject fr</string>
+    <string name="content">Dummy content fr</string>
+    <string name="inline">[[Dummy inline fr]]</string>
+    <string name="image">![Alt text](/path/to/img-fr.jpg)</string>
+    <string name="image_absolute">![Alt text](http://path.com/to/img-fr.jpg)</string>
+</resources>

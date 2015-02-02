@@ -6,9 +6,9 @@ DEFAULE_LOG_LEVEL = 'INFO'
 DEFAULT_DESTINATION = 'target'
 DEAFULT_SOURCE = 'src'
 DEFAULT_TEMPLATES = 'templates_html'
-DEFAULT_IMAGES_DIR = 'http://www.getkeepsafe.com/emails/images'
+DEFAULT_IMAGES_DIR = 'http://www.getkeepsafe.com/emails/img'
 DEFAULT_RTL_CODES = 'ar,he'
-DEFAULT_PATTERN = 'src/{locale}/{name}.xml'
+DEFAULT_PATTERN = '{locale}/{name}.xml'
 
 
 def read_args(argsargs=argparse.ArgumentParser):
@@ -40,10 +40,10 @@ def read_args(argsargs=argparse.ArgumentParser):
                       help='Email file search pattern, default: %s' % DEFAULT_PATTERN,
                       default=DEFAULT_PATTERN)
 
-    subargss = args.add_subargss(help='Generate 3rd party template', dest='client')
+    subparsers = args.add_subparsers(help='Generate 3rd party template', dest='client')
 
-    template_args = subargss.add_args(CustomerIO.name)
-    template_args.add_argument('email_name',
+    template_parser = subparsers.add_parser('customerio')
+    template_parser.add_argument('email_name',
                                help='Name of the email to generate the template for')
 
     return vars(args.parse_args())
