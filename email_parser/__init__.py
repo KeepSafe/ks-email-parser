@@ -233,11 +233,11 @@ def render_html(template, htmls, subject, images_dir, strict):
 
 
 def parse_emails(options):
-    emails = fs.emails(options.src_dir, options.pattern)
+    emails = fs.emails(options[consts.OPT_SOURCE], options[consts.OPT_PATTERN])
     for email in emails:
         template, placeholders = reader.read(email.full_path)
         subject, text, html = renderer.render(email, template, placeholders, options)
-        fs.save(email, subject, text, html)
+        fs.save(email, subject, text, html, options[consts.OPT_DESTINATION])
 
 def init_log(loglevel):
     num_level = getattr(logging, loglevel.upper(), 'WARNING')
@@ -245,17 +245,14 @@ def init_log(loglevel):
 
 
 def main():
-    print('Parsing emails...')
-    args = cmd.read_args()
+    options = cmd.read_args()
     init_log(args.loglevel)
-    logging.debug('Starting script')
-    logging.debug('Arguments from console: %s', args)
-    if args.client is None:
-        parse_emails(args.source, args.destination, args.templates, args.right_to_left, args.images, args.strict)
-    else:
-        client = parsers[args.client]
-        client.generate_template(args.source, args.destination, args.templates, args.email_name, args.strict)
-    print('Done')
+    parse_emails(options)
+    # if args.client is None:
+    #     parse_emails(args.source, args.destination, args.templates, args.right_to_left, args.images, args.strict)
+    # else:
+    #     client = parsers[args.client]
+    #     client.generate_template(args.source, args.destination, args.templates, args.email_name, args.strict)
 
 
 if __name__ == '__main__':

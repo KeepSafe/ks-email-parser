@@ -10,14 +10,14 @@ class TestTextRenderer(TestCase):
     def setUp(self):
         self.renderer = renderer.TextRenderer()
 
-    def test_render_happy_path(self):
+    def test_happy_path(self):
         placeholders = {'content': 'dummy content'}
 
         actual = self.renderer.render(placeholders)
 
         self.assertEqual('dummy content', actual)
 
-    def test_render_concat_multiple_placeholders(self):
+    def test_concat_multiple_placeholders(self):
         placeholders = {'content1': 'dummy content', 'content2': 'dummy content'}
         expected = consts.TEXT_EMAIL_PLACEHOLDER_SEPARATOR.join(placeholders.values())
 
@@ -25,8 +25,15 @@ class TestTextRenderer(TestCase):
 
         self.assertEqual(expected, actual)
 
-    def test_render_ignore_subject(self):
+    def test_ignore_subject(self):
         placeholders = {'content': 'dummy content', 'subject': 'dummy subject'}
+
+        actual = self.renderer.render(placeholders)
+
+        self.assertEqual('dummy content', actual)
+
+    def test_ignore_empty_placeholders(self):
+        placeholders = {'content': 'dummy content', 'empty': ''}
 
         actual = self.renderer.render(placeholders)
 
@@ -37,7 +44,7 @@ class TestSubjectRenderer(TestCase):
     def setUp(self):
         self.renderer = renderer.SubjectRenderer()
 
-    def test_render_happy_path(self):
+    def test_happy_path(self):
         placeholders = {'content': 'dummy content', 'subject': 'dummy subject'}
 
         actual = self.renderer.render(placeholders)

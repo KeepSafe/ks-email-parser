@@ -8,6 +8,7 @@ DEAFULT_SOURCE = 'src'
 DEFAULT_TEMPLATES = 'templates_html'
 DEFAULT_IMAGES_DIR = 'http://www.getkeepsafe.com/emails/images'
 DEFAULT_RTL_CODES = 'ar,he'
+DEFAULT_PATTERN = 'src/{locale}/{name}.xml'
 
 
 def read_args(argsargs=argparse.ArgumentParser):
@@ -35,6 +36,9 @@ def read_args(argsargs=argparse.ArgumentParser):
     args.add_argument('-st', '--strict',
                              help='Parse templates in strict mode, failing for missing or extra placeholders',
                              action='store_true')
+    args.add_argument('-p', '--pattern',
+                      help='Email file search pattern, default: %s' % DEFAULT_PATTERN,
+                      default=DEFAULT_PATTERN)
 
     subargss = args.add_subargss(help='Generate 3rd party template', dest='client')
 

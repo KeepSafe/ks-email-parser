@@ -4,10 +4,8 @@ import parse
 from pathlib import Path
 from string import Formatter
 from collections import namedtuple
-from . import errors
 
-EMAIL_EXTENSION = '.xml'
-
+from . import errors, consts
 
 Email = namedtuple('Email', ['name', 'locale', 'path', 'full_path'])
 
@@ -32,10 +30,10 @@ def emails(src_dir, pattern):
 
     for path in Path(src_dir).glob(wildcard_pattern):
         if not path.is_dir():
-            str_path = str(path)
+            str_path = str(path.relative_to(src_dir))
             result = parser.parse(str_path)
             result.named['path'] = str_path
-            result.named['full_path'] = path.resolve()
+            result.named['full_path'] = str(path.resolve())
             yield Email(**result.named)
 
 
@@ -43,6 +41,18 @@ def read_file(*path_parts):
     path = os.path.join(*path_parts)
     with open(path) as fp:
         return fp.read()
+
+def save_file(content, *path_parts):
+    path = os.path.join(*path_parts)
+    with open(path, 'w') as fp:
+        return fp.write(content)
+
+
+def save(email, subject, text, html, dest_dir):
+    os.makedirs(os.path.join(dest_dir, email.locale), exist_ok=True)
+    save_file(subject, dest_dir, email.locale, email.name + consts.SUBJECT_EXTENSION)
+    save_file(text, dest_dir, email.locale, email.name + consts.TEXT_EXTENSION)
+    save_file(html, dest_dir, email.locale, email.name + consts.HTML_EXTENSION)
 
 
 def list_locales(src_dir):

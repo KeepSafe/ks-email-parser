@@ -1,77 +1,12 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>{{subject}}</title>
-    <style type="text/css">
-
-        /* Based on The MailChimp Reset INLINE: Yes. */
-        /* Client-specific Styles */
-        #outlook a {padding:0;} /* Force Outlook to provide a "view in browser" menu link. */
-        /* Prevent Webkit and Windows Mobile platforms from changing default font sizes.*/
-        .ExternalClass {width:100%;} /* Force Hotmail to display emails at full width */
-        .ExternalClass, .ExternalClass p, .ExternalClass span, .ExternalClass font, .ExternalClass td, .ExternalClass div {line-height: 100%;}
-        /* End reset */
-
-        /* Outlook 07, 10 Padding issue fix
-        Bring inline: No.*/
-        table td {border-collapse: collapse; mso-table-lspace:0pt; mso-table-rspace:0pt;}
-
-        .emailButton:hover{background-color: #2080c0;}
-        a.link, a.link:visited{color:#2e7baf!important; text-decoration: none!important;}
-        a.link:hover, a.link:active{color:#2080c0!important;}
-
-        @media only screen and (max-device-width: 480px) {
-            #outer-wrapper-cell{
-                padding:10px!important;
-            }
-            #inner-wrapper-cell{
-                padding:20px!important;
-            }
-            #main-table{
-                width:100% !important;
-            }
-            h1{
-                font-size:1.75em!important;
-            }
-            .emailButton{
-                max-width:480px !important;
-                width:100% !important;
-                margin-left:auto !important;
-                margin-right:auto !important;
-            }
-            .emailButton a{
-                display:block !important;
-                font-size:1em !important;
-                margin-left:auto !important;
-                margin-right:auto !important;
-            }
-        }
-    </style>
 </head>
-
-<body style="width:100% !important; height:100% !important; -webkit-text-size-adjust:100%; -ms-text-size-adjust:100%; margin:0; padding:0; background: #f9fbfb;">
-    <table cellpadding="0" cellspacing="0" border="0" style="margin:0; padding:0; width:100% !important; background: #f9fbfb;">
-        <tr>
-            <td id="outer-wrapper-cell" style="padding:20px;">
-                <table cellpadding="0" cellspacing="0" border="0" align="center" style="background:#ffffff; border: 1px solid #ccd6dc; border-top: 6px solid #2e7baf;">
-                    <tr>
-                        <td id="inner-wrapper-cell" style="padding:0 2em">
-                            <table cellpadding="0" cellspacing="0" border="0" align="center" id="main-table" style="width:550px; color:#666666; font-family: Helvetica, 'Helvetica Neue', Arial, sans-serif; font-size:1em; line-height:1.25em; border-collapse:collapse; mso-table-lspace:0pt; mso-table-rspace:0pt;">
-                                <tr>
-                                    <td style="padding-top:2em; padding-bottom:1em;">
-                  										{{content}}
-                                      {{image}}
-                                      <a>{{link}}</a>
-                                    <td>
-                                </tr>
-                            </table>
-                        </td>
-                    </tr>
-                </table>
-            </td>
-        </tr>
-    </table>
+<body>
+    {{content}}
+    {{inline}}
+    {{image}}
+    {{image_absolute}}
 </body>
 </html>

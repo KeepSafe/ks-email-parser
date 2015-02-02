@@ -3,6 +3,7 @@ import bs4
 import pystache
 import inlinestyler.utils as inline_styler
 import xml.etree.ElementTree as ET
+from collections import OrderedDict
 
 from . import markdown_ext, consts, errors, fs
 
@@ -31,7 +32,7 @@ def _md_to_text(text, base_url=None):
 
 
 def _split_subject(placeholders):
-    return placeholders.get('subject'), {k: v for k, v in placeholders.items() if k != 'subject'}
+    return placeholders.get('subject'), OrderedDict((k, v) for k, v in placeholders.items() if k != 'subject')
 
 
 class HtmlRenderer(object):
@@ -94,7 +95,8 @@ class TextRenderer(object):
 
     def render(self, placeholders):
         _, contents = _split_subject(placeholders)
-        return consts.TEXT_EMAIL_PLACEHOLDER_SEPARATOR.join(_md_to_text(v) for v in contents.values())
+        parts = [_md_to_text(v) for v in contents.values()]
+        return consts.TEXT_EMAIL_PLACEHOLDER_SEPARATOR.join(_md_to_text(v) for v in filter(bool, parts))
 
 
 class SubjectRenderer(object):

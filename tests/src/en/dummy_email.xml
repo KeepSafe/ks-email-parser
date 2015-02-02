@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<resources template="basic_template.html" style="basic_template.css">
-	<string name="subject">Dummy subject</string>
-	<string name="content"><![CDATA[#head
-
-**strong** content]]></string>
-	<string name="image">test image</string>
-	<string name="link">test link</string>
-</resources>

@@ -7,3 +7,8 @@ OPT_TEMPLATES = 'templates'
 OPT_IMAGES = 'images'
 OPT_RIGHT_TO_LEFT = 'right_to_left'
 OPT_STRICT = 'strict'
+OPT_PATTERN = 'pattern'
+
+SUBJECT_EXTENSION = '.subject'
+TEXT_EXTENSION = '.text'
+HTML_EXTENSION = '.html'

@@ -1,5 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<resources template="basic_template.html" style="basic_template.css">
-  <string name="subject">Dummy subject</string>
-  <string name="link">[[http://www.google.com]]</string>
-</resources>
