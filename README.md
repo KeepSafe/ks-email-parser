@@ -51,7 +51,7 @@ would be rendered as `[[www.google.pl]] hello`
 #### Base url for images
 
 The parser will automatically add base_url to any image tag in markdown, so `![Alt text](/path/to/img.jpg)` and base url `base_url`
-will produce ``
+will produce `<img alt="Alt text" src="base_url/path/to/img.jpg" />`
 
 ### Elements
 
@@ -110,16 +110,20 @@ templates_html/
 - `target/` - Output folder generated. Contains the same local subfolders as `src/`. Each email generates 3 files with the self explained file extensions `.txt`, `.html` and `.subject`
 - `templates_html/` - all HTML templates and CSS styles. A HTML template can have a corresponding CSS file with the same name.
 
+This structure is configurable. By changing `source`, `destination`, `templates` and `pattern` you can use a structure you like. The `pattern` parameter is especially useful as it controls directory layout and email names. the default is `{locale}/{name}.xml` but you can use `{name}.{locale}.xml` if you don't want to have nested directories. Keep in mind both `name` and `locale` are required in the pattern.
+
 ## Rendering
 *ks-email-parser* renders email content into HTML in 2 steps.
 
 1. Render markdown files into simple HTML
-2. Inserting CSS style definitions from `html_template.css` inline into the HTML. The goal is to support email clients that don't support none inline CSS formatting.
+2. Inserting CSS style definitions from `html_template.css` inline into the HTML. The goal is to support email clients that don't support inline CSS formatting.
 
+### Strict mode
 
+You can use `--strict` option to make sure all placeholders are filled. If there are leftover placeholders the parsing will fail with an error.
 
 ## 3rd party support
-Some 3rd party services have custom formates to represent emails in multiple languages. This is a list of supported providers.
+Some 3rd party services have custom formats to represent emails in multiple languages. This is a list of supported providers.
 
 ### Customer.io
 Customer.io defines their own multi language email format. More: [http://customer.io/docs/localization-i18n.html](http://customer.io/docs/localization-i18n.html)
