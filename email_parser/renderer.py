@@ -1,20 +1,119 @@
+import markdown
+import bs4
+import pystache
+import inlinestyler.utils as inline_styler
+import xml.etree.ElementTree as ET
+
+from . import markdown_ext, consts, errors, fs
+
+
+def _md_to_html(text, base_url=None):
+    extensions = [markdown_ext.inline_text()]
+    if base_url:
+        extensions.append(markdown_ext.base_url(base_url))
+    return markdown.markdown(text, extensions=extensions)
+
+
+def _html_to_text(html):
+    soup = bs4.BeautifulSoup(html)
+
+    # replace the value in <a> with the href because soup.get_text() takes the value inside <a> instead or href
+    anchors = soup.find_all('a')
+    for anchor in anchors:
+        anchor.replace_with(anchor.get('href', anchor.string))
+
+    return soup.get_text()
+
+
+def _md_to_text(text, base_url=None):
+    html = _md_to_html(text, base_url)
+    return _html_to_text(html)
+
+
+def _split_subject(placeholders):
+    return placeholders.get('subject'), {k: v for k, v in placeholders.items() if k != 'subject'}
+
+
 class HtmlRenderer(object):
-    def __init__(self, template):
+
+    def __init__(self, template, options, locale):
         self.template = template
+        self.options = options
+        self.locale = locale
+
+    def _read_template(self):
+        return fs.read_file(self.options[consts.OPT_TEMPLATES], self.template.name)
+
+    def _read_css(self):
+        css = [fs.read_file(self.options[consts.OPT_TEMPLATES], f) or ' ' for f in self.template.styles]
+        return ''.join(['<style>{}</style>'.format(c) for c in css])
+
+    def _inline_css(self, html, css):
+        if not self.template.styles:
+            return html
+
+        # an empty style will cause an error in inline_styler so we use a space instead
+        html_with_css = inline_styler.inline_css(css + html)
+
+        # inline_styler will return a complete html filling missing html and body tags which we don't want
+        if html.startswith('<'):
+            body = ET.fromstring(html_with_css).find('.//body')
+            body = ''.join(ET.tostring(e, encoding='unicode') for e in body)
+        else:
+            body = ET.fromstring(html_with_css).find('.//body/p')
+            body = body.text
+
+        return body.strip()
+
+    def _wrap_with_text_direction(self, html):
+        return '<div dir="rtl">' + html + '</div>'
+
+    def _parse_placeholder(self, placeholder, css):
+        html = _md_to_html(placeholder, self.options[consts.OPT_IMAGES])
+        if self.locale in self.options[consts.OPT_RIGHT_TO_LEFT]:
+            html = self._wrap_with_text_direction(html)
+        return self._inline_css(html, css)
 
     def render(self, placeholders):
-        pass
+        subject, contents = _split_subject(placeholders)
+        html = self._read_template()
+        css = self._read_css()
+        parts = {k: self._parse_placeholder(v, css) for k, v in contents.items()}
+
+        strict = 'strict' if self.options[consts.OPT_STRICT] else 'ignore'
+        # pystache escapes html by default, pass escape option to disable this
+        renderer = pystache.Renderer(escape=lambda u: u, missing_tags=strict)
+        try:
+            # add subject for rendering as we have it in html
+            return renderer.render(html, dict(parts.items() | {'subject': subject}.items() | {'base_url': self.options[consts.OPT_IMAGES]}.items()))
+        except pystache.context.KeyNotFoundError as e:
+            raise errors.MissingTemplatePlaceholderError('template has missing placeholders') from e
 
 
 class TextRenderer(object):
+
     def render(self, placeholders):
-        pass
+        _, contents = _split_subject(placeholders)
+        return consts.TEXT_EMAIL_PLACEHOLDER_SEPARATOR.join(_md_to_text(v) for v in contents.values())
 
 
 class SubjectRenderer(object):
+
     def render(self, placeholders):
-        pass
+        subject, _ = _split_subject(placeholders)
+        if subject is None:
+            raise errors.MissingSubjectError('Subject is required for every email')
+        return subject
 
 
-def render(template, placeholders):
-    html_renderer = Html
+def render(email, template, placeholders, options):
+    subject_renderer = SubjectRenderer()
+    subject = subject_renderer.render(placeholders)
+
+    text_renderer = TextRenderer()
+    text = text_renderer.render(placeholders)
+
+    html_renderer = HtmlRenderer(template, options, email.locale)
+    html = html_renderer.render(placeholders)
+
+    return subject, text, html

@@ -18,7 +18,6 @@ import inlinestyler.utils as inline_styler
 
 from . import markdown_ext, cmd, fs, reader, renderer
 
-RTL_CODES = 'ar,he'
 EMAIL_EXTENSION = '.xml'
 SUBJECT_EXTENSION = '.subject'
 TEXT_EXTENSION = '.text'
@@ -237,7 +236,7 @@ def parse_emails(options):
     emails = fs.emails(options.src_dir, options.pattern)
     for email in emails:
         template, placeholders = reader.read(email.full_path)
-        subject, text, html = renderer.render(template, placeholders)
+        subject, text, html = renderer.render(email, template, placeholders, options)
         fs.save(email, subject, text, html)
 
 def init_log(loglevel):

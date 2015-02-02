@@ -68,5 +68,5 @@ class BaseUrlExtension(Extension):
 def inline_text():
     return InlineTextExtension()
 
-def base_url(images_dir):
-    return BaseUrlExtension(images_dir)
+def base_url(base_url):
+    return BaseUrlExtension(base_url)

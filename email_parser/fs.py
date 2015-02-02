@@ -39,6 +39,12 @@ def emails(src_dir, pattern):
             yield Email(**result.named)
 
 
+def read_file(*path_parts):
+    path = os.path.join(*path_parts)
+    with open(path) as fp:
+        return fp.read()
+
+
 def list_locales(src_dir):
     logging.debug('reading locales from %s', src_dir)
     return [locale for locale in os.listdir(src_dir) if os.path.isdir(os.path.join(src_dir, locale))]
