@@ -1,3 +1,7 @@
+"""
+Extracts email information from an email file.
+"""
+
 from collections import namedtuple, OrderedDict
 from xml.etree import ElementTree
 
@@ -23,6 +27,12 @@ def _template(tree):
 
 
 def read(email_path):
+    """
+    Reads an email from the path.
+
+    :param email_path: full path to an email
+    :returns: tuple of email template and a collection of placeholders
+    """
     tree = ElementTree.parse(email_path)
 
     template = _template(tree)

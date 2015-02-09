@@ -7,6 +7,9 @@ INLINE_TEXT_PATTERN = r'\[{2}(.+)\]{2}'
 IMAGE_PATTERN = '![{}]({}/{})'
 
 class InlineBlockProcessor(BlockProcessor):
+    """
+    Inlines the content instead of parsing it as markdown.
+    """
     RE = re.compile(INLINE_TEXT_PATTERN)
 
     def test(self, parent, block):
@@ -21,6 +24,10 @@ class InlineBlockProcessor(BlockProcessor):
 
 
 class BaseUrlImagePattern(Pattern):
+    """
+    Adds base url to images which have relative path.
+    """
+
     url_pattern = re.compile(
         r'^(?:http|ftp)s?://' # http:// or https://
         r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+(?:[A-Z]{2,6}\.?|[A-Z0-9-]{2,}\.?)|' #domain...

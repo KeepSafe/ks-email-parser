@@ -26,7 +26,7 @@ class TestParser(TestCase):
             consts.OPT_EMAIL_NAME: 'email',
             consts.OPT_CLIENT: 'customerio'
         }
-        self.client = clients.CustomIoClient()
+        self.client = clients.CustomerIoClient()
 
     def tearDown(self):
         shutil.rmtree(self.dest)

@@ -1,3 +1,7 @@
+"""
+Handles command line and calls the email parser with corrent options.
+"""
+
 import argparse
 from collections import namedtuple
 
@@ -44,6 +48,6 @@ def read_args(argsargs=argparse.ArgumentParser):
 
     template_parser = subparsers.add_parser('customerio')
     template_parser.add_argument('email_name',
-                               help='Name of the email to generate the template for')
+                                 help='Name of the email to generate the template for')
 
     return vars(args.parse_args())

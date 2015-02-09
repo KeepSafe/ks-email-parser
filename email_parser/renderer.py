@@ -1,3 +1,7 @@
+"""
+Different ways of rendering emails.
+"""
+
 import markdown
 import bs4
 import pystache
@@ -36,6 +40,9 @@ def _split_subject(placeholders):
 
 
 class HtmlRenderer(object):
+    """
+    Renders email' body as html.
+    """
 
     def __init__(self, template, options, locale):
         self.template = template
@@ -96,6 +103,9 @@ class HtmlRenderer(object):
 
 
 class TextRenderer(object):
+    """
+    Renders email' body as text.
+    """
 
     def render(self, placeholders):
         _, contents = _split_subject(placeholders)
@@ -104,6 +114,9 @@ class TextRenderer(object):
 
 
 class SubjectRenderer(object):
+    """
+    Renders email's subject as text.
+    """
 
     def render(self, placeholders):
         subject, _ = _split_subject(placeholders)

@@ -1,6 +1,14 @@
+"""
+Each email service has it's own client. The client is responsible for generating email for the service to process.
+"""
+
 from . import fs, reader, renderer, consts
 
-class CustomIoClient(object):
+class CustomerIoClient(object):
+    """
+    Generates file for customer.io
+    Custmer.io has a custom formatting for emails http://customer.io/docs/localization-i18n.html
+    """
     _start_locale_selection = '{{% if customer.language == "{}" %}}'
     _next_locale_selection = '{{% elsif customer.language == "{}" %}}'
     _end_locale_selection = '{% endif %}'
@@ -29,8 +37,8 @@ class CustomIoClient(object):
 
 
 _clients = {
-    'customerio': CustomIoClient()
+    'customerio': CustomerIoClient()
 }
 
 def client(client_name):
-    return _clients['customerio']
+    return _clients[client_name]
