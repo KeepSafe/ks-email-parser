@@ -122,6 +122,14 @@ This structure is configurable. By changing `source`, `destination`, `templates`
 
 You can use `--strict` option to make sure all placeholders are filled. If there are leftover placeholders the parsing will fail with an error.
 
+### isText
+
+In case you want to put some non-text values in emails, like colors, you can use placeholders which will be ignored in text emails:
+
+`<string name="color" isText="false">[[#C0D9D9]]</string>`
+
+The only valid false value for isText is `false`, everything else counts as true including omitting the attribute.
+
 ## 3rd party support
 Some 3rd party services have custom formats to represent emails in multiple languages. This is a list of supported providers.
 

@@ -8,6 +8,10 @@ from xml.etree import ElementTree
 Template = namedtuple('Template', ['name', 'styles'])
 
 
+def _ignored_placeholder_names(tree):
+    return [element.get('name') for element in tree.findall('./string') if element.get('isText') == 'false']
+
+
 def _placeholders(tree):
     return OrderedDict((element.get('name'), element.text) for element in tree.findall('./string'))
 
@@ -37,5 +41,6 @@ def read(email_path):
 
     template = _template(tree)
     placeholders = _placeholders(tree)
+    ignored_plceholder_names = _ignored_placeholder_names(tree)
 
-    return template, placeholders
+    return template, placeholders, ignored_plceholder_names

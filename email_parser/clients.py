@@ -24,8 +24,8 @@ class CustomerIoClient(object):
         emails = fs.email(options[consts.OPT_SOURCE], options[consts.OPT_PATTERN], email_name)
         subject, text, html = '', '', ''
         for email in emails:
-            template, placeholders = reader.read(email.full_path)
-            email_subject, email_text, email_html = renderer.render(email, template, placeholders, options)
+            template, placeholders, ignored_plceholder_names = reader.read(email.full_path)
+            email_subject, email_text, email_html = renderer.render(email, template, placeholders, ignored_plceholder_names, options)
             subject = self._append_content(email.locale, subject, email_subject)
             text = self._append_content(email.locale, text, email_text)
             html = self._append_content(email.locale, html, email_html)

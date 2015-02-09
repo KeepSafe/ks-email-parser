@@ -15,8 +15,8 @@ from . import cmd, fs, reader, renderer
 def parse_emails(options):
     emails = fs.emails(options[consts.OPT_SOURCE], options[consts.OPT_PATTERN])
     for email in emails:
-        template, placeholders = reader.read(email.full_path)
-        subject, text, html = renderer.render(email, template, placeholders, options)
+        template, placeholders, ignored_plceholder_names = reader.read(email.full_path)
+        subject, text, html = renderer.render(email, template, placeholders, ignored_plceholder_names, options)
         fs.save(email, subject, text, html, options[consts.OPT_DESTINATION])
 
 

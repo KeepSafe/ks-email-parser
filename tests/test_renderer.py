@@ -8,7 +8,7 @@ from email_parser.reader import Template
 class TestTextRenderer(TestCase):
 
     def setUp(self):
-        self.renderer = renderer.TextRenderer()
+        self.renderer = renderer.TextRenderer([])
 
     def test_happy_path(self):
         placeholders = {'content': 'dummy content'}
@@ -36,6 +36,15 @@ class TestTextRenderer(TestCase):
         placeholders = {'content': 'dummy content', 'empty': ''}
 
         actual = self.renderer.render(placeholders)
+
+        self.assertEqual('dummy content', actual)
+
+    def test_ignored_placeholders(self):
+        placeholders = {'content': 'dummy content', 'ignore': 'test'}
+
+        r = renderer.TextRenderer(['ignore'])
+
+        actual = r.render(placeholders)
 
         self.assertEqual('dummy content', actual)
 

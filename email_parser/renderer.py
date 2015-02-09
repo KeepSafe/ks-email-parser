@@ -107,9 +107,12 @@ class TextRenderer(object):
     Renders email' body as text.
     """
 
+    def __init__(self, ignored_plceholder_names):
+        self.ignored_plceholder_names = ignored_plceholder_names
+
     def render(self, placeholders):
         _, contents = _split_subject(placeholders)
-        parts = [_md_to_text(v) for v in contents.values()]
+        parts = [_md_to_text(v) for k, v in contents.items() if k not in self.ignored_plceholder_names]
         return consts.TEXT_EMAIL_PLACEHOLDER_SEPARATOR.join(_md_to_text(v) for v in filter(bool, parts))
 
 
@@ -125,11 +128,11 @@ class SubjectRenderer(object):
         return subject
 
 
-def render(email, template, placeholders, options):
+def render(email, template, placeholders, ignored_plceholder_names, options):
     subject_renderer = SubjectRenderer()
     subject = subject_renderer.render(placeholders)
 
-    text_renderer = TextRenderer()
+    text_renderer = TextRenderer(ignored_plceholder_names)
     text = text_renderer.render(placeholders)
 
     html_renderer = HtmlRenderer(template, options, email.locale)
