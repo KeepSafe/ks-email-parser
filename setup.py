@@ -11,7 +11,7 @@ def read(f):
 install_reqs = parse_requirements('requirements.txt')
 reqs = [str(ir.req) for ir in install_reqs]
 
-setup(name='email-localization',
+setup(name='ks-email-parser',
       version=version,
       description=('A command line tool to render HTML and text emails of markdown content.'),
       long_description='\n\n'.join((read('README.md'), read('CHANGELOG'))),
@@ -21,7 +21,7 @@ setup(name='email-localization',
           'Programming Language :: Python'],
       author='Keepsafe',
       author_email='support@getkeepsafe.com',
-      url='https://github.com/KeepSafe/email-localization',
+      url='https://github.com/KeepSafe/ks-email-parser',
       license='Apache',
       packages=find_packages(),
       install_requires = reqs,
