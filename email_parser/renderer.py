@@ -25,7 +25,9 @@ def _html_to_text(html):
     # replace the value in <a> with the href because soup.get_text() takes the value inside <a> instead or href
     anchors = soup.find_all('a')
     for anchor in anchors:
-        anchor.replace_with(anchor.get('href', anchor.string))
+        href = anchor.get('href')
+        if href:
+            anchor.replace_with('{} {}'.format(anchor.string, href))
 
     return soup.get_text()
 

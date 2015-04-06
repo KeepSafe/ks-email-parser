@@ -4,6 +4,11 @@ CHANGES
 0.1.0 (2015-04-06)
 ------------------
 
+- Use text instead of href for links in text files.
+
+0.1.0 (2015-04-06)
+------------------
+
 - Refactorings.
 
 

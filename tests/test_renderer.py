@@ -48,6 +48,13 @@ class TestTextRenderer(TestCase):
 
         self.assertEqual('dummy content', actual)
 
+    def test_use_text_and_url_for_links(self):
+        placeholders = {'content': 'dummy [link_text](http://link_url) content'}
+
+        actual = self.renderer.render(placeholders)
+
+        self.assertEqual('dummy link_text http://link_url content', actual)
+
 
 class TestSubjectRenderer(TestCase):
     def setUp(self):
@@ -149,7 +156,7 @@ class TestHtmlRenderer(TestCase):
 
         actual = r.render(placeholders)
 
-        self.assertEqual('<body><div dir="rtl">\n      <p>dummy_content</p>\n    </div></body>', actual)
+        self.assertEqual('<body><div dir="rtl">\n<p>dummy_content</p>\n</div></body>', actual)
 
     @patch('email_parser.fs.read_file')
     def test_inline_styles(self, mock_read):
