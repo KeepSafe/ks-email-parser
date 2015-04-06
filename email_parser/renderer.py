@@ -74,7 +74,7 @@ class HtmlRenderer(object):
         return body.strip()
 
     def _wrap_with_text_direction(self, html):
-        return '<div dir="rtl">' + html + '</div>'
+        return '<div dir="rtl">\n' + html + '\n</div>'
 
     def _render_placeholder(self, placeholder, css):
         html = _md_to_html(placeholder, self.options[consts.OPT_IMAGES])
