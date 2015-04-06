@@ -1,10 +1,15 @@
 CHANGES
 =======
 
-0.1.0 (2015-04-06)
+0.1.2 (2015-04-06)
 ------------------
 
-- Use text instead of href for links in text files.
+- Use text and href for links in text files.
+
+0.1.1 (2015-04-06)
+------------------
+
+- Use text and href for links in text files.
 
 0.1.0 (2015-04-06)
 ------------------
