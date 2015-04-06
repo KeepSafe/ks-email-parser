@@ -5,6 +5,8 @@ Handles command line and calls the email parser with corrent options.
 import argparse
 from collections import namedtuple
 
+from . import consts
+
 
 DEFAULE_LOG_LEVEL = 'INFO'
 DEFAULT_DESTINATION = 'target'
@@ -13,6 +15,19 @@ DEFAULT_TEMPLATES = 'templates_html'
 DEFAULT_IMAGES_DIR = 'http://www.getkeepsafe.com/emails/img'
 DEFAULT_RTL_CODES = 'ar,he'
 DEFAULT_PATTERN = '{locale}/{name}.xml'
+
+
+def default_args():
+    return {
+        consts.OPT_LOG_LEVEL: DEFAULE_LOG_LEVEL,
+        consts.OPT_SOURCE: DEAFULT_SOURCE,
+        consts.OPT_DESTINATION: DEFAULT_DESTINATION,
+        consts.OPT_TEMPLATES: DEFAULT_TEMPLATES,
+        consts.OPT_IMAGES: DEFAULT_IMAGES_DIR,
+        consts.OPT_RIGHT_TO_LEFT: DEFAULT_RTL_CODES,
+        consts.OPT_STRICT: True,
+        consts.OPT_PATTERN: DEFAULT_PATTERN
+    }
 
 
 def read_args(argsargs=argparse.ArgumentParser):
