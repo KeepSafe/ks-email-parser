@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 from pip.req import parse_requirements
 from pip.download import PipSession
 
-version = '0.1.5'
+version = '0.1.6'
 
 
 def read(f):

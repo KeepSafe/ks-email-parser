@@ -17,7 +17,7 @@ DEFAULT_RTL_CODES = 'ar,he'
 DEFAULT_PATTERN = '{locale}/{name}.xml'
 
 
-def default_args():
+def default_options():
     return {
         consts.OPT_LOG_LEVEL: DEFAULE_LOG_LEVEL,
         consts.OPT_SOURCE: DEAFULT_SOURCE,
