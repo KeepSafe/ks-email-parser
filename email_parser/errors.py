@@ -8,3 +8,6 @@ class MissingSubjectError(Exception):
 
 class MissingTemplatePlaceholderError(Exception):
     pass
+
+class RenderingError(Exception):
+    pass

@@ -143,7 +143,6 @@ def render(email, template, placeholders, ignored_plceholder_names, options):
     try:
         html = html_renderer.render(placeholders)
     except errors.MissingTemplatePlaceholderError as e:
-        html = ''
-        logging.error('failed to generate html content for %s with message: %s', email.full_path, e)
+        raise errors.RenderingError('failed to generate html content for {} with message: {}'.format(email.full_path, e)) from e
 
     return subject, text, html
