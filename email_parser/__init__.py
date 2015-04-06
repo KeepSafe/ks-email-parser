@@ -13,7 +13,7 @@ import sys
 from . import cmd, fs, reader, renderer
 
 
-def parse_emails(options):
+def parse_emails(options=None):
     options = options or cmd.default_options()
     emails = fs.emails(options[consts.OPT_SOURCE], options[consts.OPT_PATTERN])
     for email in emails:
