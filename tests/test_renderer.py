@@ -55,6 +55,20 @@ class TestTextRenderer(TestCase):
 
         self.assertEqual('dummy link_text http://link_url content', actual)
 
+    def test_use_text_if_href_is_empty(self):
+        placeholders = {'content': 'dummy [http://link_url]() content'}
+
+        actual = self.renderer.render(placeholders)
+
+        self.assertEqual('dummy http://link_url content', actual)
+
+    def test_use_href_if_text_is_same(self):
+        placeholders = {'content': 'dummy [http://link_url](http://link_url) content'}
+
+        actual = self.renderer.render(placeholders)
+
+        self.assertEqual('dummy http://link_url content', actual)
+
 
 class TestSubjectRenderer(TestCase):
     def setUp(self):
