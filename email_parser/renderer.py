@@ -5,6 +5,7 @@ Different ways of rendering emails.
 import markdown
 import bs4
 import pystache
+import logging
 import inlinestyler.utils as inline_styler
 import xml.etree.ElementTree as ET
 from collections import OrderedDict
@@ -93,7 +94,8 @@ class HtmlRenderer(object):
             # add subject for rendering as we have it in html
             return renderer.render(html, dict(parts.items() | {'subject': subject}.items() | {'base_url': self.options[consts.OPT_IMAGES]}.items()))
         except pystache.context.KeyNotFoundError as e:
-            raise errors.MissingTemplatePlaceholderError('template has missing placeholders') from e
+            message = 'template {} for locale {} has missing placeholders: {}'.format(self.template.name, self.locale, e)
+            raise errors.MissingTemplatePlaceholderError(message) from e
 
 
     def render(self, placeholders):
@@ -138,6 +140,10 @@ def render(email, template, placeholders, ignored_plceholder_names, options):
     text = text_renderer.render(placeholders)
 
     html_renderer = HtmlRenderer(template, options, email.locale)
-    html = html_renderer.render(placeholders)
+    try:
+        html = html_renderer.render(placeholders)
+    except errors.MissingTemplatePlaceholderError as e:
+        html = ''
+        logging.error('failed to generate html content for %s with message: %s', email.full_path, e)
 
     return subject, text, html
