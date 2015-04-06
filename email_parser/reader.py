@@ -2,6 +2,7 @@
 Extracts email information from an email file.
 """
 
+import logging
 from collections import namedtuple, OrderedDict
 from xml.etree import ElementTree
 
@@ -35,9 +36,13 @@ def read(email_path):
     Reads an email from the path.
 
     :param email_path: full path to an email
-    :returns: tuple of email template and a collection of placeholders
+    :returns: tuple of email template, a collection of placeholders and ignored_placeholder_names
     """
-    tree = ElementTree.parse(email_path)
+    try:
+        tree = ElementTree.parse(email_path)
+    except ElementTree.ParseError:
+        logging.exception('Unable to read content from %s', email_path)
+        return None, {}, []
 
     template = _template(tree)
     placeholders = _placeholders(tree)

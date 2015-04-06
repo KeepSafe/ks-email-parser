@@ -18,8 +18,9 @@ def parse_emails(options):
     for email in emails:
         logging.debug('parsing {}'.format(email.path))
         template, placeholders, ignored_plceholder_names = reader.read(email.full_path)
-        subject, text, html = renderer.render(email, template, placeholders, ignored_plceholder_names, options)
-        fs.save(email, subject, text, html, options[consts.OPT_DESTINATION])
+        if template:
+            subject, text, html = renderer.render(email, template, placeholders, ignored_plceholder_names, options)
+            fs.save(email, subject, text, html, options[consts.OPT_DESTINATION])
 
 
 def init_log(loglevel):
