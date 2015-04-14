@@ -170,7 +170,18 @@ class TestHtmlRenderer(TestCase):
 
         actual = r.render(placeholders)
 
-        self.assertEqual('<body><div dir="rtl">\n<p>dummy_content</p>\n</div></body>', actual)
+        self.assertEqual('<body dir="rtl">\n <p>\n  dummy_content\n </p>\n</body>', actual)
+
+    @patch('email_parser.fs.read_file')
+    def test_rtl_two_placeholders(self, mock_read):
+        html = '<body><div>{{content1}}</div><div>{{content2}}</div></body>'
+        placeholders = {'content1': 'dummy_content1', 'content2': 'dummy_content2'}
+        mock_read.side_effect = iter(['', html])
+        r = renderer.HtmlRenderer(self.template, self.options, 'ar')
+
+        actual = r.render(placeholders)
+
+        self.assertEqual('<body dir="rtl">\n <div>\n  <p>\n   dummy_content1\n  </p>\n </div>\n <div>\n  <p>\n   dummy_content2\n  </p>\n </div>\n</body>', actual)
 
     @patch('email_parser.fs.read_file')
     def test_inline_styles(self, mock_read):

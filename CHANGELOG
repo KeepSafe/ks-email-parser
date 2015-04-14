@@ -1,6 +1,11 @@
 CHANGES
 =======
 
+0.1.10 (2015-04-14)
+------------------
+
+- Set dir attribute for entire content not for each placeholder.
+
 0.1.9 (2015-04-06)
 ------------------
 

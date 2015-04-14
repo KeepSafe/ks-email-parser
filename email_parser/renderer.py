@@ -80,12 +80,15 @@ class HtmlRenderer(object):
         return body.strip()
 
     def _wrap_with_text_direction(self, html):
-        return '<div dir="rtl">\n' + html + '\n</div>'
+        if self.locale in self.options[consts.OPT_RIGHT_TO_LEFT]:
+            soup = bs4.BeautifulSoup(html, 'html.parser')
+            soup.contents[0]['dir'] = 'rtl'
+            return soup.prettify()
+        else:
+            return html
 
     def _render_placeholder(self, placeholder, css):
         html = _md_to_html(placeholder, self.options[consts.OPT_IMAGES])
-        if self.locale in self.options[consts.OPT_RIGHT_TO_LEFT]:
-            html = self._wrap_with_text_direction(html)
         return self._inline_css(html, css)
 
     def _concat_parts(self, subject, parts):
@@ -105,7 +108,9 @@ class HtmlRenderer(object):
         subject, contents = _split_subject(placeholders)
         css = self._read_css()
         parts = {k: self._render_placeholder(v, css) for k, v in contents.items()}
-        return self._concat_parts(subject, parts)
+        html = self._concat_parts(subject, parts)
+        html = self._wrap_with_text_direction(html)
+        return html
 
 
 
