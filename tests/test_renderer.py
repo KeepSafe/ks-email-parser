@@ -69,6 +69,13 @@ class TestTextRenderer(TestCase):
 
         self.assertEqual('dummy http://link_url content', actual)
 
+    def test_url_with_params(self):
+        placeholders = {'content': 'dummy [param_link](https://something.com/thing?id=mooo) content'}
+
+        actual = self.renderer.render(placeholders)
+
+        self.assertEqual('dummy param_link https://something.com/thing?id=mooo content', actual)
+
 
 class TestSubjectRenderer(TestCase):
     def setUp(self):
