@@ -28,10 +28,11 @@ class TestParser(TestCase):
     def tearDown(self):
         shutil.rmtree(self.dest)
 
-    def _run_and_assert(self, filename):
+    def _run_and_assert(self, actual_filename, expected_filename=None):
+        expected_filename = expected_filename or actual_filename
         email_parser.parse_emails(self.options)
-        expected = read_fixture(filename).strip()
-        actual = fs.read_file(self.dest, 'en', filename).strip()
+        expected = read_fixture(expected_filename).strip()
+        actual = fs.read_file(self.dest, 'en', actual_filename).strip()
         self.assertEqual(expected, actual)
 
     def test_subject(self):
@@ -42,3 +43,7 @@ class TestParser(TestCase):
 
     def test_html(self):
         self._run_and_assert('email.html')
+
+    def test_rtl(self):
+        self.options[consts.OPT_RIGHT_TO_LEFT] = ['en']
+        self._run_and_assert('email.html', 'email.rtl.html')

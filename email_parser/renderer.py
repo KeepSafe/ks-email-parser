@@ -82,7 +82,12 @@ class HtmlRenderer(object):
     def _wrap_with_text_direction(self, html):
         if self.locale in self.options[consts.OPT_RIGHT_TO_LEFT]:
             soup = bs4.BeautifulSoup(html, 'html.parser')
-            soup.contents[0]['dir'] = 'rtl'
+            for element in soup.contents:
+                try:
+                    element['dir'] = 'rtl'
+                    break
+                except TypeError:
+                    continue
             return soup.prettify()
         else:
             return html
