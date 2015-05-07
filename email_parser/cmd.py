@@ -58,6 +58,7 @@ def read_args(argsargs=argparse.ArgumentParser):
     args.add_argument('-p', '--pattern',
                       help='Email file search pattern, default: %s' % DEFAULT_PATTERN,
                       default=DEFAULT_PATTERN)
+    args.add_argument('-v', '--version', help='Show version', action='store_true')
 
     subparsers = args.add_subparsers(help='Generate 3rd party template', dest='client')
 

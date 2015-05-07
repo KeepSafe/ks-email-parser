@@ -31,6 +31,11 @@ def init_log(loglevel):
 
 def main():
     options = cmd.read_args()
+    if options.get('version'):
+        import pkg_resources
+        version = pkg_resources.require('ks-email-parser')[0].version
+        print(version)
+        return
     init_log(options[consts.OPT_LOG_LEVEL])
     if options.get(consts.OPT_CLIENT) is None:
         parse_emails(options)
