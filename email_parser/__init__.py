@@ -20,7 +20,7 @@ def parse_emails(options=None):
     for email in emails:
         if not placeholder.validate_email(email, options[consts.OPT_SOURCE]):
             continue
-        logging.debug('parsing {}'.format(email.path))
+        logging.info('parsing {}'.format(email.path))
         template, placeholders, ignored_plceholder_names = reader.read(email.full_path)
         if template:
             subject, text, html = renderer.render(email, template, placeholders, ignored_plceholder_names, options)
@@ -33,11 +33,14 @@ def init_log(loglevel):
 
 
 def handle_client_command(options):
-    client = clients.client(options[consts.CMD_CLIENT])
+    client_name = options[consts.CMD_CLIENT]
+    client = clients.client(client_name)
+    logger.infp('parsing for client %s with options %s', client_name, options)
     client.parse(options)
 
 
 def handle_placeholder_command(options):
+    logger.info('generating config for placeholders')
     placeholder.generate_config(options)
 
 

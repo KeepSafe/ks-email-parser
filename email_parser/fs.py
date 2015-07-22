@@ -13,6 +13,7 @@ from . import errors, consts
 
 Email = namedtuple('Email', ['name', 'locale', 'path', 'full_path'])
 
+logger = logging.getLogger()
 
 def _parse_params(pattern):
     params = [p for p in map(lambda e: e[1], Formatter().parse(pattern)) if p]
@@ -24,6 +25,19 @@ def _parse_params(pattern):
             '{{name}} is a required parameter in the pattern but it is not present in {}'.format(pattern))
     return params
 
+def _emails(src_dir, pattern, params):
+    wildcard_params = {k: '*' for k in params}
+    wildcard_pattern = pattern.format(**wildcard_params)
+    parser = parse.compile(pattern)
+
+    for path in Path(src_dir).glob(wildcard_pattern):
+        if not path.is_dir():
+            str_path = str(path.relative_to(src_dir))
+            result = parser.parse(str_path)
+            result.named['path'] = str_path
+            result.named['full_path'] = str(path.resolve())
+            logging.debug('loading email %s', result.named['full_path'])
+            yield result
 
 def emails(src_dir, pattern):
     """
@@ -36,18 +50,8 @@ def emails(src_dir, pattern):
     :returns: generator for the emails matching the pattern
     """
     params = _parse_params(pattern)
-
-    wildcard_params = {k: '*' for k in params}
-    wildcard_pattern = pattern.format(**wildcard_params)
-    parser = parse.compile(pattern)
-
-    for path in Path(src_dir).glob(wildcard_pattern):
-        if not path.is_dir():
-            str_path = str(path.relative_to(src_dir))
-            result = parser.parse(str_path)
-            result.named['path'] = str_path
-            result.named['full_path'] = str(path.resolve())
-            yield Email(**result.named)
+    for result in _emails(src_dir, pattern, params):
+        yield Email(**result.named)
 
 
 def email(src_dir, pattern, email_name):
@@ -61,22 +65,10 @@ def email(src_dir, pattern, email_name):
     :returns: generator for the emails with email_name
     """
     single_email_pattern = pattern.replace('{name}', email_name)
-
-    #TODO refactor with emails
     params = _parse_params(pattern)
-
-    wildcard_params = {k: '*' for k in params}
-    wildcard_pattern = single_email_pattern.format(**wildcard_params)
-    parser = parse.compile(single_email_pattern)
-
-    for path in Path(src_dir).glob(wildcard_pattern):
-        if not path.is_dir():
-            str_path = str(path.relative_to(src_dir))
-            result = parser.parse(str_path)
-            result.named['name'] = email_name
-            result.named['path'] = str_path
-            result.named['full_path'] = str(path.resolve())
-            yield Email(**result.named)
+    for result in _emails(src_dir, single_email_pattern, params):
+        result.named['name'] = email_name
+        yield Email(**result.named)
 
 
 def read_file(*path_parts):
@@ -84,6 +76,7 @@ def read_file(*path_parts):
     Helper for reading files
     """
     path = os.path.join(*path_parts)
+    logger.debug('reading file from %s', path)
     with open(path) as fp:
         return fp.read()
 
@@ -92,6 +85,7 @@ def save_file(content, *path_parts):
     Helper for saving files
     """
     path = os.path.join(*path_parts)
+    logger.debug('saving file to %s', path)
     with open(path, 'w') as fp:
         return fp.write(content)
 

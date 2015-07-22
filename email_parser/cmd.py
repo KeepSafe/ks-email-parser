@@ -3,6 +3,7 @@ Handles command line and calls the email parser with corrent options.
 """
 
 import argparse
+import logging
 from collections import namedtuple
 
 from . import consts
@@ -16,6 +17,7 @@ DEFAULT_IMAGES_DIR = 'http://www.getkeepsafe.com/emails/img'
 DEFAULT_RTL_CODES = 'ar,he'
 DEFAULT_PATTERN = '{locale}/{name}.xml'
 
+logger = logging.getLogger()
 
 def default_options():
     return {
@@ -31,6 +33,7 @@ def default_options():
 
 
 def read_args(argsargs=argparse.ArgumentParser):
+    logger.debug('reading arguments list')
     args = argsargs(epilog='Brought to you by KeepSafe - www.getkeepsafe.com')
 
     args.add_argument('-l', '--loglevel',

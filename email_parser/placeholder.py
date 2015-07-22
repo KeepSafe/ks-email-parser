@@ -83,6 +83,7 @@ def validate_email(email, src_dir=''):
     try:
         all_placeholders = _read_email_placeholders(email.name, src_dir)
         email_placeholders = _parse_email_placeholders(email.full_path)
+        logger.debug('validating placeholders for %s', email.path)
         return _validate_email_placeholders(email.name, email.locale, email_placeholders, all_placeholders)
     except FileNotFoundError:
         # If the file does not exist skip validation

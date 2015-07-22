@@ -3,8 +3,13 @@ Each email service has it's own client. The client is responsible for generating
 """
 
 from . import fs, reader, renderer, consts
+import logging
+
+logger = logging.getLogger()
+
 
 class CustomerIoClient(object):
+
     """
     Generates file for customer.io
     Custmer.io has a custom formatting for emails http://customer.io/docs/localization-i18n.html
@@ -15,9 +20,9 @@ class CustomerIoClient(object):
 
     def _append_content(self, locale, old_content, new_content):
         if old_content:
-            content = old_content + '\n' + self._next_locale_selection.format(locale) + '\n' +  new_content
+            content = old_content + '\n' + self._next_locale_selection.format(locale) + '\n' + new_content
         else:
-            content = self._start_locale_selection.format(locale) + '\n' +  new_content
+            content = self._start_locale_selection.format(locale) + '\n' + new_content
         return content
 
     def parse(self, options):
@@ -25,14 +30,16 @@ class CustomerIoClient(object):
         emails = fs.email(options[consts.OPT_SOURCE], options[consts.OPT_PATTERN], email_name)
         subject, text, html, last_email = '', '', '', None
         for email in emails:
+            logger.info('parsing email %s locale %s', email.name, email.locale)
             template, placeholders, ignored_plceholder_names = reader.read(email.full_path)
-            email_subject, email_text, email_html = renderer.render(email, template, placeholders, ignored_plceholder_names, options)
+            email_subject, email_text, email_html = renderer.render(
+                email, template, placeholders, ignored_plceholder_names, options)
             subject = self._append_content(email.locale, subject, email_subject)
             text = self._append_content(email.locale, text, email_text)
             html = self._append_content(email.locale, html, email_html)
             last_email = email
         if not last_email:
-            print('No emails found for given name %s' % email_name)
+            logger.error('No emails found for given name %s' % email_name)
             return
         subject = subject + '\n' + self._end_locale_selection
         text = text + '\n' + self._end_locale_selection
@@ -44,6 +51,7 @@ class CustomerIoClient(object):
 _clients = {
     'customerio': CustomerIoClient()
 }
+
 
 def client(client_name):
     return _clients[client_name]
