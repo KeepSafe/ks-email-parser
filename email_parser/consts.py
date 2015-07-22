@@ -8,8 +8,11 @@ OPT_IMAGES = 'images'
 OPT_RIGHT_TO_LEFT = 'right_to_left'
 OPT_STRICT = 'strict'
 OPT_PATTERN = 'pattern'
-OPT_CLIENT = 'client'
 OPT_EMAIL_NAME = 'email_name'
+OPT_COMMAND = 'command'
+
+CMD_CLIENT = 'client'
+CMD_CONFIG_PLACEHOLDERS = 'config_placeholders'
 
 SUBJECT_EXTENSION = '.subject'
 TEXT_EXTENSION = '.text'

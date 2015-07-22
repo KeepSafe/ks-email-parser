@@ -60,10 +60,13 @@ def read_args(argsargs=argparse.ArgumentParser):
                       default=DEFAULT_PATTERN)
     args.add_argument('-v', '--version', help='Show version', action='store_true')
 
-    subparsers = args.add_subparsers(help='Generate 3rd party template', dest='client')
+    subparsers = args.add_subparsers(help='Parser additional commands', dest='command')
 
-    template_parser = subparsers.add_parser('customerio')
+    template_parser = subparsers.add_parser('client')
+    template_parser.add_argument('client', help='Provider name')
     template_parser.add_argument('email_name',
                                  help='Name of the email to generate the template for')
+
+    config_parser = subparsers.add_parser('config_placeholders')
 
     return vars(args.parse_args())

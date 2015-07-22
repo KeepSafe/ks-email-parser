@@ -20,19 +20,24 @@ class CustomerIoClient(object):
             content = self._start_locale_selection.format(locale) + '\n' +  new_content
         return content
 
-    def parse(self, options, email_name):
+    def parse(self, options):
+        email_name = options[consts.OPT_EMAIL_NAME]
         emails = fs.email(options[consts.OPT_SOURCE], options[consts.OPT_PATTERN], email_name)
-        subject, text, html = '', '', ''
+        subject, text, html, last_email = '', '', '', None
         for email in emails:
             template, placeholders, ignored_plceholder_names = reader.read(email.full_path)
             email_subject, email_text, email_html = renderer.render(email, template, placeholders, ignored_plceholder_names, options)
             subject = self._append_content(email.locale, subject, email_subject)
             text = self._append_content(email.locale, text, email_text)
             html = self._append_content(email.locale, html, email_html)
+            last_email = email
+        if not last_email:
+            print('No emails found for given name %s' % email_name)
+            return
         subject = subject + '\n' + self._end_locale_selection
         text = text + '\n' + self._end_locale_selection
         html = html + '\n' + self._end_locale_selection
-        email = fs.Email(email.name, '', email.path, email.full_path)
+        email = fs.Email(last_email.name, '', last_email.path, last_email.full_path)
         fs.save(email, subject, text, html, options[consts.OPT_DESTINATION])
 
 

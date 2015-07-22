@@ -24,7 +24,7 @@ class TestParser(TestCase):
             consts.OPT_STRICT: False,
             consts.OPT_PATTERN: 'src/{locale}/{name}.xml',
             consts.OPT_EMAIL_NAME: 'email',
-            consts.OPT_CLIENT: 'customerio'
+            consts.CMD_CLIENT: 'customerio'
         }
         self.client = clients.CustomerIoClient()
 
@@ -32,7 +32,7 @@ class TestParser(TestCase):
         shutil.rmtree(self.dest)
 
     def _run_and_assert(self, filename, fixture_filename):
-        self.client.parse(self.options, 'email')
+        self.client.parse(self.options)
         expected = read_fixture(fixture_filename).strip()
         actual = fs.read_file(self.dest, filename).strip()
         self.assertEqual(expected, actual)

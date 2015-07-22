@@ -47,3 +47,12 @@ class TestParser(TestCase):
     def test_rtl(self):
         self.options[consts.OPT_RIGHT_TO_LEFT] = ['en']
         self._run_and_assert('email.html', 'email.rtl.html')
+
+    def test_placeholder(self):
+        email_parser.parse_emails(self.options)
+        fs.read_file(self.dest, 'en', 'placeholder.html')
+
+    def test_missing_placeholder(self):
+        email_parser.parse_emails(self.options)
+        with self.assertRaises(FileNotFoundError):
+            fs.read_file(self.dest, 'en', 'missing_placeholder.html')

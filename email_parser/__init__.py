@@ -10,13 +10,16 @@
 
 import logging
 import sys
-from . import cmd, fs, reader, renderer
+from . import cmd, fs, reader, renderer, clients, placeholder
 
+logger = logging.getLogger()
 
 def parse_emails(options=None):
     options = options or cmd.default_options()
     emails = fs.emails(options[consts.OPT_SOURCE], options[consts.OPT_PATTERN])
     for email in emails:
+        if not placeholder.validate_email(email, options[consts.OPT_SOURCE]):
+            continue
         logging.debug('parsing {}'.format(email.path))
         template, placeholders, ignored_plceholder_names = reader.read(email.full_path)
         if template:
@@ -29,6 +32,21 @@ def init_log(loglevel):
     logging.basicConfig(level=num_level, format='%(message)s')
 
 
+def handle_client_command(options):
+    client = clients.client(options[consts.CMD_CLIENT])
+    client.parse(options)
+
+
+def handle_placeholder_command(options):
+    placeholder.generate_config(options)
+
+
+command_dispatcher = {
+    consts.CMD_CLIENT: handle_client_command,
+    consts.CMD_CONFIG_PLACEHOLDERS: handle_placeholder_command
+}
+
+
 def main():
     options = cmd.read_args()
     if options.get('version'):
@@ -37,11 +55,10 @@ def main():
         print(version)
         return
     init_log(options[consts.OPT_LOG_LEVEL])
-    if options.get(consts.OPT_CLIENT) is None:
-        parse_emails(options)
+    if options.get(consts.OPT_COMMAND) is not None:
+        command_dispatcher[options[consts.OPT_COMMAND]](options)
     else:
-        client = client(options[consts.OPT_CLIENT])
-        client.parse(options, email_name)
+        parse_emails(options)
 
 
 if __name__ == '__main__':
