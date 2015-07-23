@@ -1,3 +1,5 @@
 {
-    "placeholder": ["placeholder"]
+    "placeholder": {
+        "placeholder": 1
+    }
 }

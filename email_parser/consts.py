@@ -10,6 +10,7 @@ OPT_STRICT = 'strict'
 OPT_PATTERN = 'pattern'
 OPT_EMAIL_NAME = 'email_name'
 OPT_COMMAND = 'command'
+OPT_FORCE = 'force'
 
 CMD_CLIENT = 'client'
 CMD_CONFIG_PLACEHOLDERS = 'config_placeholders'

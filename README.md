@@ -130,6 +130,26 @@ In case you want to put some non-text values in emails, like colors, you can use
 
 The only valid false value for isText is `false`, everything else counts as true including omitting the attribute.
 
+## Placeholders validation
+
+To make sure the placeholders are consistent between languages and every language has all needed placeholders you can create configuration file to hold needed placeholders.
+
+### Config file
+
+The file is a mapping of name to required placeholders and the number of times they appear. It's a json file with structure as below:
+
+```
+{
+    "email name" : {"placeholder1":1, "placeholder2":2}
+}
+```
+
+You can generate the file in the provided source directory from existing emails with `ks-email-parser config_placeholders`. It will go through your email and extract placeholders.
+
+### Validation
+
+If the config file is present in the source directory each email will be validated for having placeholders specified in the file. The parsing will fail with an error if any email is missing one of required placeholders.
+
 ## 3rd party support
 Some 3rd party services have custom formats to represent emails in multiple languages. This is a list of supported providers.
 

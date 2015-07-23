@@ -99,7 +99,7 @@ class HtmlRenderer(object):
     def _concat_parts(self, subject, parts):
         html = self._read_template()
         strict = 'strict' if self.options[consts.OPT_STRICT] else 'ignore'
-        # pystache escapes html by default, pass escape option to disable this
+        # pystache escapes html by default, we pass escape option to disable this
         renderer = pystache.Renderer(escape=lambda u: u, missing_tags=strict)
         try:
             # add subject for rendering as we have it in html

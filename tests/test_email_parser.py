@@ -22,6 +22,7 @@ class TestParser(TestCase):
             consts.OPT_IMAGES: 'images_base',
             consts.OPT_RIGHT_TO_LEFT: ['ar', 'he'],
             consts.OPT_STRICT: False,
+            consts.OPT_FORCE: False,
             consts.OPT_PATTERN: 'src/{locale}/{name}.xml'
         }
 
@@ -49,6 +50,7 @@ class TestParser(TestCase):
         self._run_and_assert('email.html', 'email.rtl.html')
 
     def test_placeholder(self):
+        self.options[consts.OPT_FORCE] = True
         email_parser.parse_emails(self.options)
         fs.read_file(self.dest, 'en', 'placeholder.html')
 
