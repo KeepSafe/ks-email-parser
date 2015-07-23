@@ -29,7 +29,7 @@ def parse_emails(options=None):
 
 def init_log(loglevel):
     num_level = getattr(logging, loglevel.upper(), 'INFO')
-    logging.basicConfig(level=num_level, format='%(message)s')
+    logging.basicConfig(stream=sys.stdout, level=num_level, format='%(message)s')
 
 
 def handle_client_command(options):
