@@ -84,6 +84,7 @@ def _reduce_to_email_placeholders(placeholders):
 
 def generate_config(options, indent=4):
     emails = fs.emails(options[consts.OPT_SOURCE], options[consts.OPT_PATTERN])
+    emails = filter(lambda e: e.locale == 'en', emails)
     placeholders = _placeholders_from_emails(emails)
     if placeholders and (_validate_placeholders(placeholders) or options[consts.OPT_FORCE]):
         placeholders = _reduce_to_email_placeholders(placeholders)
