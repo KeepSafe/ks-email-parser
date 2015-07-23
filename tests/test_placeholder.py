@@ -10,7 +10,8 @@ class TestGenerator(TestCase):
     def setUp(self):
         self.options = {
             consts.OPT_SOURCE: 'test_src',
-            consts.OPT_PATTERN: 'test_pattern'
+            consts.OPT_PATTERN: 'test_pattern',
+            consts.OPT_FORCE: False
         }
 
     @patch('email_parser.placeholder.fs')
