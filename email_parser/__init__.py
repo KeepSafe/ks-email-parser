@@ -11,9 +11,10 @@
 import logging
 import sys
 import shutil
-from . import cmd, fs, reader, renderer, clients, placeholder
+from . import cmd, fs, reader, renderer, clients, placeholder, utils
 
 logger = logging.getLogger()
+
 
 def parse_emails(options=None):
     result = True
@@ -21,20 +22,25 @@ def parse_emails(options=None):
     shutil.rmtree(options[consts.OPT_DESTINATION])
     emails = fs.emails(options[consts.OPT_SOURCE], options[consts.OPT_PATTERN])
     for email in emails:
-        logging.info('parsing {}'.format(email.path))
         if not placeholder.validate_email(email, options[consts.OPT_SOURCE]):
             result = False
+            logging.info('F', extra={'same_line': True})
             continue
         template, placeholders, ignored_plceholder_names = reader.read(email.full_path)
         if template:
             subject, text, html = renderer.render(email, template, placeholders, ignored_plceholder_names, options)
+            logging.info('.', extra={'same_line': True})
             fs.save(email, subject, text, html, options[consts.OPT_DESTINATION])
+        else:
+            logging.info('F', extra={'same_line': True})
     return result
 
 
 def init_log(loglevel):
     num_level = getattr(logging, loglevel.upper(), 'INFO')
-    logging.basicConfig(stream=sys.stdout, level=num_level, format='%(message)s')
+    handler = utils.ProgressConsoleHandler(stream=sys.stdout)
+    logger.setLevel(num_level)
+    logger.addHandler(handler)
 
 
 def handle_client_command(options):
@@ -68,6 +74,7 @@ def main():
         result = command_dispatcher[options[consts.OPT_COMMAND]](options)
     else:
         result = parse_emails(options)
+    logging.info('All done', extra={'flush_errors': True})
     return 0 if result else 1
 
 
