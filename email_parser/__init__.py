@@ -75,7 +75,7 @@ def main():
     else:
         result = parse_emails(options)
     logging.info('All done', extra={'flush_errors': True})
-    return 0 if result else 1
+    sys.exit(0) if result else sys.exit(1)
 
 
 if __name__ == '__main__':
