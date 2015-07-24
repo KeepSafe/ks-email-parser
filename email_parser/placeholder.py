@@ -89,6 +89,8 @@ def generate_config(options, indent=4):
     placeholders = _reduce_to_email_placeholders(placeholders)
     if placeholders:
         _save_placeholders_file(placeholders, options[consts.OPT_SOURCE], indent)
+        return True
+    return False
 
 
 def validate_email(email, src_dir=''):

@@ -40,12 +40,13 @@ class CustomerIoClient(object):
             last_email = email
         if not last_email:
             logger.error('No emails found for given name %s' % email_name)
-            return
+            return False
         subject = subject + '\n' + self._end_locale_selection
         text = text + '\n' + self._end_locale_selection
         html = html + '\n' + self._end_locale_selection
         email = fs.Email(last_email.name, '', last_email.path, last_email.full_path)
         fs.save(email, subject, text, html, options[consts.OPT_DESTINATION])
+        return True
 
 
 _clients = {
