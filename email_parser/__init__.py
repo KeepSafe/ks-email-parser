@@ -19,8 +19,8 @@ def parse_emails(options=None):
     emails = fs.emails(options[consts.OPT_SOURCE], options[consts.OPT_PATTERN])
     for email in emails:
         logging.info('parsing {}'.format(email.path))
-        if not placeholder.validate_email(email, options[consts.OPT_SOURCE]) and not options[consts.OPT_FORCE]:
-            break
+        if not placeholder.validate_email(email, options[consts.OPT_SOURCE]):
+            continue
         template, placeholders, ignored_plceholder_names = reader.read(email.full_path)
         if template:
             subject, text, html = renderer.render(email, template, placeholders, ignored_plceholder_names, options)

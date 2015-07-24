@@ -10,8 +10,7 @@ class TestGenerator(TestCase):
     def setUp(self):
         self.options = {
             consts.OPT_SOURCE: 'test_src',
-            consts.OPT_PATTERN: 'test_pattern',
-            consts.OPT_FORCE: False
+            consts.OPT_PATTERN: 'test_pattern'
         }
 
     @patch('email_parser.placeholder.fs')
@@ -25,15 +24,6 @@ class TestGenerator(TestCase):
             '{"test_name": {"placeholder": 1}}', 'test_src', 'placeholders_config.json')
 
     @patch('email_parser.placeholder.fs')
-    def test_fail_if_one_email_has_0_placeholders(self, mock_fs):
-        mock_fs.emails.return_value = [fs.Email('test_name', 'en', 'path', 'full_path'), fs.Email('test_name', 'de', 'path', 'full_path')]
-        mock_fs.read_file.side_effect = iter(['{{placeholder}}', 'content'])
-
-        placeholder.generate_config(self.options, None)
-
-        self.assertFalse(mock_fs.save_file.called)
-
-    @patch('email_parser.placeholder.fs')
     def test_no_emails(self, mock_fs):
         mock_fs.emails.return_value = []
         mock_fs.read_file.return_value = '{{placeholder}}'
@@ -43,16 +33,17 @@ class TestGenerator(TestCase):
         self.assertFalse(mock_fs.save_file.called)
 
     @patch('email_parser.placeholder.fs')
-    def test_extra_placeholders(self, mock_fs):
+    def test_use_default_language_to_count_placeholders(self, mock_fs):
         mock_fs.emails.return_value = [
             fs.Email('test_name', 'en', 'path', 'full_path'),
             fs.Email('test_name', 'de', 'path', 'full_path')
         ]
         mock_fs.read_file.side_effect = iter(['{{placeholder}}', '{{placeholder}}{{extra_placeholder}}'])
 
-        placeholder.generate_config(self.options)
+        placeholder.generate_config(self.options, None)
 
-        self.assertFalse(mock_fs.save_file.called)
+        mock_fs.save_file.assert_called_with(
+            '{"test_name": {"placeholder": 1}}', 'test_src', 'placeholders_config.json')
 
 
 class TestValidate(TestCase):

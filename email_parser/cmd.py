@@ -28,7 +28,6 @@ def default_options():
         consts.OPT_IMAGES: DEFAULT_IMAGES_DIR,
         consts.OPT_RIGHT_TO_LEFT: DEFAULT_RTL_CODES,
         consts.OPT_STRICT: True,
-        consts.OPT_FORCE: False,
         consts.OPT_PATTERN: DEFAULT_PATTERN
     }
 
@@ -58,9 +57,6 @@ def read_args(argsargs=argparse.ArgumentParser):
                       default=DEFAULT_IMAGES_DIR)
     args.add_argument('-st', '--strict',
                              help='Parse templates in strict mode, failing for missing or extra placeholders',
-                             action='store_true')
-    args.add_argument('-f', '--force',
-                             help='Don\'t stop on errors, continue parsing',
                              action='store_true')
     args.add_argument('-p', '--pattern',
                       help='Email file search pattern, default: %s' % DEFAULT_PATTERN,

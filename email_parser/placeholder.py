@@ -86,8 +86,9 @@ def generate_config(options, indent=4):
     emails = fs.emails(options[consts.OPT_SOURCE], options[consts.OPT_PATTERN])
     emails = filter(lambda e: e.locale == 'en', emails)
     placeholders = _placeholders_from_emails(emails)
-    if placeholders and (_validate_placeholders(placeholders) or options[consts.OPT_FORCE]):
-        placeholders = _reduce_to_email_placeholders(placeholders)
+    placeholders = _reduce_to_email_placeholders(placeholders)
+    if placeholders:
+        print(placeholders)
         _save_placeholders_file(placeholders, options[consts.OPT_SOURCE], indent)
 
 
