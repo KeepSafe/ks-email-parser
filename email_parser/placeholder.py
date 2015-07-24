@@ -88,7 +88,6 @@ def generate_config(options, indent=4):
     placeholders = _placeholders_from_emails(emails)
     placeholders = _reduce_to_email_placeholders(placeholders)
     if placeholders:
-        print(placeholders)
         _save_placeholders_file(placeholders, options[consts.OPT_SOURCE], indent)
 
 

@@ -10,12 +10,14 @@
 
 import logging
 import sys
+import shutil
 from . import cmd, fs, reader, renderer, clients, placeholder
 
 logger = logging.getLogger()
 
 def parse_emails(options=None):
     options = options or cmd.default_options()
+    shutil.rmtree(options[consts.OPT_DESTINATION])
     emails = fs.emails(options[consts.OPT_SOURCE], options[consts.OPT_PATTERN])
     for email in emails:
         logging.info('parsing {}'.format(email.path))
