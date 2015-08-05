@@ -6,6 +6,7 @@ target/
 __pycache__/
 *.egg-info
 venv/
+*.pyc
 
 # Intellij files
 .idea/
