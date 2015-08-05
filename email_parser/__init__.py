@@ -24,8 +24,9 @@ def parse_emails(options=None):
     for email in emails:
         if not placeholder.validate_email(email, options[consts.OPT_SOURCE]):
             result = False
-            logging.info('F', extra={'same_line': True})
-            continue
+            if not options[consts.OPT_FORCE]:
+                logging.info('F', extra={'same_line': True})
+                continue
         template, placeholders, ignored_plceholder_names = reader.read(email.full_path)
         if template:
             subject, text, html = renderer.render(email, template, placeholders, ignored_plceholder_names, options)
@@ -36,10 +37,10 @@ def parse_emails(options=None):
     return result
 
 
-def init_log(loglevel):
-    num_level = getattr(logging, loglevel.upper(), 'INFO')
+def init_log(verbose):
+    log_level = logging.DEBUG if verbose else logging.INFO
     handler = utils.ProgressConsoleHandler(stream=sys.stdout)
-    logger.setLevel(num_level)
+    logger.setLevel(log_level)
     logger.addHandler(handler)
 
 
@@ -69,7 +70,7 @@ def main():
         version = pkg_resources.require('ks-email-parser')[0].version
         print(version)
         return
-    init_log(options[consts.OPT_LOG_LEVEL])
+    init_log(options[consts.OPT_VERBOSE])
     if options.get(consts.OPT_COMMAND) is not None:
         result = command_dispatcher[options[consts.OPT_COMMAND]](options)
     else:

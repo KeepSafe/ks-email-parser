@@ -22,6 +22,7 @@ class TestParser(TestCase):
             consts.OPT_IMAGES: 'images_base',
             consts.OPT_RIGHT_TO_LEFT: ['ar', 'he'],
             consts.OPT_STRICT: False,
+            consts.OPT_FORCE: False,
             consts.OPT_PATTERN: 'src/{locale}/{name}.xml',
             consts.OPT_EMAIL_NAME: 'email',
             consts.CMD_CLIENT: 'customerio'

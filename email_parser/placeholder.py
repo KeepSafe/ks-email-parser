@@ -40,13 +40,15 @@ def _validate_email_placeholders(email_name, email_locale, email_placeholders, a
         logger.error('There are extra placeholders %s in email %s, locale %s' %
                      (extra_placeholders, email_name, email_locale))
         return False
+        
+    result = True
     for name, count in all_placeholders.items():
         email_count = email_placeholders[name]
         if count != email_count:
             logger.error('The number of placeholders "%s" in email "%s" locale "%s" should be %s but was %s' %
                          (name, email_name, email_locale, count, email_count))
-            return False
-    return True
+            result = False
+    return result
 
 
 def _all_placeholders_for_email_name(locale_placeholders):

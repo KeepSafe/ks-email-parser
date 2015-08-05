@@ -9,7 +9,6 @@ from collections import namedtuple
 from . import consts
 
 
-DEFAULE_LOG_LEVEL = 'INFO'
 DEFAULT_DESTINATION = 'target'
 DEAFULT_SOURCE = 'src'
 DEFAULT_TEMPLATES = 'templates_html'
@@ -21,13 +20,14 @@ logger = logging.getLogger()
 
 def default_options():
     return {
-        consts.OPT_LOG_LEVEL: DEFAULE_LOG_LEVEL,
+        consts.OPT_VERBOSE: False,
         consts.OPT_SOURCE: DEAFULT_SOURCE,
         consts.OPT_DESTINATION: DEFAULT_DESTINATION,
         consts.OPT_TEMPLATES: DEFAULT_TEMPLATES,
         consts.OPT_IMAGES: DEFAULT_IMAGES_DIR,
         consts.OPT_RIGHT_TO_LEFT: DEFAULT_RTL_CODES,
         consts.OPT_STRICT: True,
+        consts.OPT_FORCE: False,
         consts.OPT_PATTERN: DEFAULT_PATTERN
     }
 
@@ -36,10 +36,6 @@ def read_args(argsargs=argparse.ArgumentParser):
     logger.debug('reading arguments list')
     args = argsargs(epilog='Brought to you by KeepSafe - www.getkeepsafe.com')
 
-    args.add_argument('-l', '--loglevel',
-                      help='Specify log level (DEBUG, INFO, WARNING, ERROR, CRITICAL), default: %s'
-                      % DEFAULE_LOG_LEVEL,
-                      default=DEFAULE_LOG_LEVEL)
     args.add_argument('-s', '--source',
                       help='args\'s source folder, default: %s' % DEAFULT_SOURCE,
                       default=DEAFULT_SOURCE)
@@ -56,12 +52,14 @@ def read_args(argsargs=argparse.ArgumentParser):
                       help='Images base directory, default: %s' % DEFAULT_IMAGES_DIR,
                       default=DEFAULT_IMAGES_DIR)
     args.add_argument('-st', '--strict',
-                             help='Parse templates in strict mode, failing for missing or extra placeholders',
-                             action='store_true')
+                             help='Disable strict mode, allow templates with unfilled parameters',
+                             action='store_false')
     args.add_argument('-p', '--pattern',
                       help='Email file search pattern, default: %s' % DEFAULT_PATTERN,
                       default=DEFAULT_PATTERN)
     args.add_argument('-v', '--version', help='Show version', action='store_true')
+    args.add_argument('-f', '--force', help='Generate emails despite errors', action='store_true')
+    args.add_argument('-vv', '--verbose', help='Generate emails despite errors', action='store_true')
 
     subparsers = args.add_subparsers(help='Parser additional commands', dest='command')
 

@@ -1,6 +1,6 @@
 TEXT_EMAIL_PLACEHOLDER_SEPARATOR = '\n\n'
 
-OPT_LOG_LEVEL = 'loglevel'
+OPT_VERBOSE = 'verbose'
 OPT_SOURCE = 'source'
 OPT_DESTINATION = 'destination'
 OPT_TEMPLATES = 'templates'
@@ -10,6 +10,7 @@ OPT_STRICT = 'strict'
 OPT_PATTERN = 'pattern'
 OPT_EMAIL_NAME = 'email_name'
 OPT_COMMAND = 'command'
+OPT_FORCE = 'force'
 
 CMD_CLIENT = 'client'
 CMD_CONFIG_PLACEHOLDERS = 'config_placeholders'
