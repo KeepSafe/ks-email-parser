@@ -19,7 +19,7 @@ logger = logging.getLogger()
 def parse_emails(options=None):
     result = True
     options = options or cmd.default_options()
-    shutil.rmtree(options[consts.OPT_DESTINATION])
+    shutil.rmtree(options[consts.OPT_DESTINATION], ignore_errors=True)
     emails = fs.emails(options[consts.OPT_SOURCE], options[consts.OPT_PATTERN])
     for email in emails:
         if not placeholder.validate_email(email, options[consts.OPT_SOURCE]):
