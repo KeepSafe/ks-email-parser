@@ -16,22 +16,21 @@ from . import cmd, fs, reader, renderer, clients, placeholder, utils
 logger = logging.getLogger()
 
 
-def parse_emails(options=None):
+def parse_emails(settings):
     result = True
-    options = options or cmd.default_options()
-    shutil.rmtree(options[consts.OPT_DESTINATION], ignore_errors=True)
-    emails = fs.emails(options[consts.OPT_SOURCE], options[consts.OPT_PATTERN])
+    shutil.rmtree(settings.destination, ignore_errors=True)
+    emails = fs.emails(settings.source, settings.pattern)
     for email in emails:
-        if not placeholder.validate_email(email, options[consts.OPT_SOURCE]):
+        if not placeholder.validate_email(email, settings.source):
             result = False
-            if not options[consts.OPT_FORCE]:
+            if not settings.force:
                 logging.info('F', extra={'same_line': True})
                 continue
         template, placeholders, ignored_plceholder_names = reader.read(email.full_path)
         if template:
-            subject, text, html = renderer.render(email, template, placeholders, ignored_plceholder_names, options)
+            subject, text, html = renderer.render(email, template, placeholders, ignored_plceholder_names, settings)
             logging.info('.', extra={'same_line': True})
-            fs.save(email, subject, text, html, options[consts.OPT_DESTINATION])
+            fs.save(email, subject, text, html, settings.destination)
         else:
             logging.info('F', extra={'same_line': True})
     return result
@@ -44,38 +43,24 @@ def init_log(verbose):
     logger.addHandler(handler)
 
 
-def handle_client_command(options):
-    client_name = options[consts.CMD_CLIENT]
-    client = clients.client(client_name)
-    logger.infp('parsing for client %s with options %s', client_name, options)
-    return client.parse(options)
-
-
-def handle_placeholder_command(options):
-    logger.info('generating config for placeholders')
-    return placeholder.generate_config(options)
-
-
-command_dispatcher = {
-    consts.CMD_CLIENT: handle_client_command,
-    consts.CMD_CONFIG_PLACEHOLDERS: handle_placeholder_command
-}
+# def handle_client_command(options):
+#     client_name = options[consts.CMD_CLIENT]
+#     client = clients.client(client_name)
+#     logger.infp('parsing for client %s with options %s', client_name, options)
+#     return client.parse(options)
 
 
 def main():
-    result = True
-    options = cmd.read_args()
-    if options.get('version'):
-        import pkg_resources
-        version = pkg_resources.require('ks-email-parser')[0].version
-        print(version)
-        return
-    init_log(options[consts.OPT_VERBOSE])
-    if options.get(consts.OPT_COMMAND) is not None:
-        result = command_dispatcher[options[consts.OPT_COMMAND]](options)
+    args = cmd.read_args()
+    if args.version:
+        result = cmd.print_version()
+    elif args.command:
+        result = cmd.execute_command(args)
     else:
-        result = parse_emails(options)
-    logging.info('All done', extra={'flush_errors': True})
+        settings = cmd.read_settings(args)
+        init_log(settings.verbose)
+        result = parse_emails(settings)
+    logger.info('All done', extra={'flush_errors': True})
     sys.exit(0) if result else sys.exit(1)
 
 

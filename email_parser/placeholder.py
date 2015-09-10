@@ -1,9 +1,10 @@
-from . import fs, consts
 from collections import defaultdict, Counter
 from functools import reduce, lru_cache
 import json
 import re
 import logging
+
+from . import fs
 
 PLACEHOLDERS_FILENAME = 'placeholders_config.json'
 
@@ -40,7 +41,7 @@ def _validate_email_placeholders(email_name, email_locale, email_placeholders, a
         logger.error('There are extra placeholders %s in email %s, locale %s' %
                      (extra_placeholders, email_name, email_locale))
         return False
-        
+
     result = True
     for name, count in all_placeholders.items():
         email_count = email_placeholders[name]
@@ -84,13 +85,13 @@ def _reduce_to_email_placeholders(placeholders):
             for email_name, locale_placeholders in placeholders.items()}
 
 
-def generate_config(options, indent=4):
-    emails = fs.emails(options[consts.OPT_SOURCE], options[consts.OPT_PATTERN])
+def generate_config(settings, indent=4):
+    emails = fs.emails(settings.source, settings.pattern)
     emails = filter(lambda e: e.locale == 'en', emails)
     placeholders = _placeholders_from_emails(emails)
     placeholders = _reduce_to_email_placeholders(placeholders)
     if placeholders:
-        _save_placeholders_file(placeholders, options[consts.OPT_SOURCE], indent)
+        _save_placeholders_file(placeholders, settings.source, indent)
         return True
     return False
 

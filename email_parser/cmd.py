@@ -6,60 +6,57 @@ import argparse
 import logging
 from collections import namedtuple
 
-from . import consts
-
-
-DEFAULT_DESTINATION = 'target'
-DEAFULT_SOURCE = 'src'
-DEFAULT_TEMPLATES = 'templates_html'
-DEFAULT_IMAGES_DIR = 'http://www.getkeepsafe.com/emails/img'
-DEFAULT_RTL_CODES = 'ar,he'
-DEFAULT_PATTERN = '{locale}/{name}.xml'
+from . import placeholder
 
 logger = logging.getLogger()
 
-def default_options():
-    return {
-        consts.OPT_VERBOSE: False,
-        consts.OPT_SOURCE: DEAFULT_SOURCE,
-        consts.OPT_DESTINATION: DEFAULT_DESTINATION,
-        consts.OPT_TEMPLATES: DEFAULT_TEMPLATES,
-        consts.OPT_IMAGES: DEFAULT_IMAGES_DIR,
-        consts.OPT_RIGHT_TO_LEFT: DEFAULT_RTL_CODES,
-        consts.OPT_STRICT: True,
-        consts.OPT_FORCE: False,
-        consts.OPT_PATTERN: DEFAULT_PATTERN
-    }
+Settings = namedtuple('Settings', [
+    'source',
+    'destination',
+    'templates',
+    'images',
+    'pattern',
+    'right_to_left',
+    'strict',
+    'force',
+    'verbose'
+])
+
+
+def default_settings():
+    return Settings(
+        verbose=False,
+        strict=True,
+        force=False,
+        source='src',
+        destination='target',
+        templates='templates_html',
+        images='http://www.getkeepsafe.com/emails/img',
+        right_to_left=['ar', 'he'],
+        pattern='{locale}/{name}.xml'
+    )
 
 
 def read_args(argsargs=argparse.ArgumentParser):
+    settings = default_settings()
     logger.debug('reading arguments list')
     args = argsargs(epilog='Brought to you by KeepSafe - www.getkeepsafe.com')
 
-    args.add_argument('-s', '--source',
-                      help='args\'s source folder, default: %s' % DEAFULT_SOURCE,
-                      default=DEAFULT_SOURCE)
+    args.add_argument('-s', '--source', help='args\'s source folder, default: %s' % settings.source)
     args.add_argument('-d', '--destination',
-                      help='args\'s destination folder, default: %s' % DEFAULT_DESTINATION,
-                      default=DEFAULT_DESTINATION)
-    args.add_argument('-t', '--templates',
-                      help='Templates folder, default: %s' % DEFAULT_TEMPLATES,
-                      default=DEFAULT_TEMPLATES)
+                      help='args\'s destination folder, default: %s' % settings.destination)
+    args.add_argument('-t', '--templates', help='Templates folder, default: %s' % settings.templates)
     args.add_argument('-rtl', '--right-to-left',
-                      help='Comma separated list of RTL language codes, default: %s' % DEFAULT_RTL_CODES,
-                      default=DEFAULT_RTL_CODES)
-    args.add_argument('-i', '--images',
-                      help='Images base directory, default: %s' % DEFAULT_IMAGES_DIR,
-                      default=DEFAULT_IMAGES_DIR)
-    args.add_argument('-st', '--strict',
-                             help='Disable strict mode, allow templates with unfilled parameters',
-                             action='store_false')
-    args.add_argument('-p', '--pattern',
-                      help='Email file search pattern, default: %s' % DEFAULT_PATTERN,
-                      default=DEFAULT_PATTERN)
-    args.add_argument('-v', '--version', help='Show version', action='store_true')
+                      help='Comma separated list of RTL language codes, default: %s' % settings.right_to_left)
+    args.add_argument('-i', '--images', help='Images base directory, default: %s' % settings.images)
+    args.add_argument('-p', '--pattern', help='Email file search pattern, default: %s' % settings.pattern)
+
+    args.add_argument('-nst', '--not-strict',
+                      help='Disable strict mode, allow templates with unfilled parameters',
+                      action='store_false')
     args.add_argument('-f', '--force', help='Generate emails despite errors', action='store_true')
     args.add_argument('-vv', '--verbose', help='Generate emails despite errors', action='store_true')
+    args.add_argument('-v', '--version', help='Show version', action='store_true')
 
     subparsers = args.add_subparsers(help='Parser additional commands', dest='command')
 
@@ -68,6 +65,38 @@ def read_args(argsargs=argparse.ArgumentParser):
     template_parser.add_argument('email_name',
                                  help='Name of the email to generate the template for')
 
-    config_parser = subparsers.add_parser('config_placeholders')
+    config_parser = subparsers.add_parser('config')
+    config_parser.add_argument('config_name', help='Name of config to generate')
 
-    return vars(args.parse_args())
+    return args.parse_args()
+
+
+def read_settings(args):
+    args = vars(args)
+    settings = vars(default_settings())
+    for k in settings:
+        if k in args and args[k] is not None:
+            settings[k] = args[k]
+    return Settings(**settings)
+
+
+def print_version():
+    import pkg_resources
+    version = pkg_resources.require('ks-email-parser')[0].version
+    print(version)
+    return True
+
+
+def generate_config(args):
+    if args.config_name == 'placeholders':
+        logger.info('generating config for placeholders')
+        settings = read_settings(args)
+        placeholder.generate_config(settings)
+        return True
+    return False
+
+
+def execute_command(args):
+    if args.command == 'config':
+        return generate_config(args)
+    return False

@@ -1,7 +1,7 @@
 from unittest import TestCase
 from unittest.mock import patch, MagicMock
 
-from email_parser import renderer, consts, errors
+from email_parser import renderer, errors, cmd
 from email_parser.reader import Template
 
 
@@ -19,7 +19,7 @@ class TestTextRenderer(TestCase):
 
     def test_concat_multiple_placeholders(self):
         placeholders = {'content1': 'dummy content', 'content2': 'dummy content'}
-        expected = consts.TEXT_EMAIL_PLACEHOLDER_SEPARATOR.join(placeholders.values())
+        expected = renderer.TEXT_EMAIL_PLACEHOLDER_SEPARATOR.join(placeholders.values())
 
         actual = self.renderer.render(placeholders)
 
@@ -97,14 +97,13 @@ class TestSubjectRenderer(TestCase):
 
 class TestHtmlRenderer(TestCase):
     def setUp(self):
-        self.options = {
-            consts.OPT_TEMPLATES: 'dummy_templates',
-            consts.OPT_IMAGES: 'dummy_images',
-            consts.OPT_RIGHT_TO_LEFT: ['ar', 'he'],
-            consts.OPT_STRICT: False
-        }
+        settings = vars(cmd.default_settings())
+        settings['templates'] = 'dummy_templates'
+        settings['images'] = 'dummy_images'
+        self.settings = cmd.Settings(**settings)
+
         self.template = Template('template_name', ['template_style'])
-        self.renderer = renderer.HtmlRenderer(self.template, self.options, 'locale')
+        self.renderer = renderer.HtmlRenderer(self.template, self.settings, 'locale')
 
     @patch('email_parser.fs.read_file')
     def test_happy_path(self, mock_read):
@@ -151,8 +150,12 @@ class TestHtmlRenderer(TestCase):
         html = '<body>{{content}}{{missing}}</body>'
         placeholders = {'content': 'dummy_content'}
         mock_read.side_effect = iter(['', html])
+        settings = vars(self.settings)
+        settings['strict'] = False
+        settings = cmd.Settings(**settings)
+        r = renderer.HtmlRenderer(self.template, settings, 'locale')
 
-        actual = self.renderer.render(placeholders)
+        actual = r.render(placeholders)
 
         self.assertEqual('<body><p>dummy_content</p></body>', actual)
 
@@ -162,18 +165,16 @@ class TestHtmlRenderer(TestCase):
         html = '<body>{{content}}{{missing}}</body>'
         placeholders = {'content': 'dummy_content'}
         mock_read.side_effect = iter(['', html])
-        self.options[consts.OPT_STRICT] = True
-        r = renderer.HtmlRenderer(self.template, self.options, 'locale')
 
         with self.assertRaises(errors.MissingTemplatePlaceholderError):
-            r.render(placeholders)
+            self.renderer.render(placeholders)
 
     @patch('email_parser.fs.read_file')
     def test_rtl_locale(self, mock_read):
         html = '<body>{{content}}</body>'
         placeholders = {'content': 'dummy_content'}
         mock_read.side_effect = iter(['', html])
-        r = renderer.HtmlRenderer(self.template, self.options, 'ar')
+        r = renderer.HtmlRenderer(self.template, self.settings, 'ar')
 
         actual = r.render(placeholders)
 
@@ -184,7 +185,7 @@ class TestHtmlRenderer(TestCase):
         html = '<body><div>{{content1}}</div><div>{{content2}}</div></body>'
         placeholders = {'content1': 'dummy_content1', 'content2': 'dummy_content2'}
         mock_read.side_effect = iter(['', html])
-        r = renderer.HtmlRenderer(self.template, self.options, 'ar')
+        r = renderer.HtmlRenderer(self.template, self.settings, 'ar')
 
         actual = r.render(placeholders)
 

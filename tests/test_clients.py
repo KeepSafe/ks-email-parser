@@ -3,7 +3,8 @@ import tempfile
 import shutil
 from unittest import TestCase
 
-from email_parser import consts, fs, clients
+from email_parser import fs, clients, cmd
+
 
 def read_fixture(filename):
     with open(os.path.join('tests/fixtures', filename)) as fp:
@@ -15,25 +16,20 @@ class TestParser(TestCase):
 
     def setUp(self):
         self.dest = tempfile.mkdtemp()
-        self.options = {
-            consts.OPT_SOURCE: 'tests',
-            consts.OPT_DESTINATION: self.dest,
-            consts.OPT_TEMPLATES: 'tests/templates_html',
-            consts.OPT_IMAGES: 'images_base',
-            consts.OPT_RIGHT_TO_LEFT: ['ar', 'he'],
-            consts.OPT_STRICT: False,
-            consts.OPT_FORCE: False,
-            consts.OPT_PATTERN: 'src/{locale}/{name}.xml',
-            consts.OPT_EMAIL_NAME: 'email',
-            consts.CMD_CLIENT: 'customerio'
-        }
+        settings = vars(cmd.default_settings())
+        settings['destination'] = self.dest
+        settings['source'] = 'tests'
+        settings['templates'] = 'tests/templates_html'
+        settings['images'] = 'images_base'
+        settings['pattern'] = 'src/{locale}/{name}.xml'
+        self.settings = cmd.Settings(**settings)
         self.client = clients.CustomerIoClient()
 
     def tearDown(self):
         shutil.rmtree(self.dest)
 
     def _run_and_assert(self, filename, fixture_filename):
-        self.client.parse(self.options)
+        self.client.parse('email', self.settings)
         expected = read_fixture(fixture_filename).strip()
         actual = fs.read_file(self.dest, filename).strip()
         self.assertEqual(expected, actual)

@@ -10,7 +10,9 @@ import inlinestyler.utils as inline_styler
 import xml.etree.ElementTree as ET
 from collections import OrderedDict
 
-from . import markdown_ext, consts, errors, fs
+from . import markdown_ext, errors, fs
+
+TEXT_EMAIL_PLACEHOLDER_SEPARATOR = '\n\n'
 
 
 def _md_to_html(text, base_url=None):
@@ -50,16 +52,16 @@ class HtmlRenderer(object):
     Renders email' body as html.
     """
 
-    def __init__(self, template, options, locale):
+    def __init__(self, template, settings, locale):
         self.template = template
-        self.options = options
+        self.settings = settings
         self.locale = locale
 
     def _read_template(self):
-        return fs.read_file(self.options[consts.OPT_TEMPLATES], self.template.name)
+        return fs.read_file(self.settings.templates, self.template.name)
 
     def _read_css(self):
-        css = [fs.read_file(self.options[consts.OPT_TEMPLATES], f) or ' ' for f in self.template.styles]
+        css = [fs.read_file(self.settings.templates, f) or ' ' for f in self.template.styles]
         return ''.join(['<style>{}</style>'.format(c) for c in css])
 
     def _inline_css(self, html, css):
@@ -80,7 +82,7 @@ class HtmlRenderer(object):
         return body.strip()
 
     def _wrap_with_text_direction(self, html):
-        if self.locale in self.options[consts.OPT_RIGHT_TO_LEFT]:
+        if self.locale in self.settings.right_to_left:
             soup = bs4.BeautifulSoup(html, 'html.parser')
             for element in soup.contents:
                 try:
@@ -93,17 +95,17 @@ class HtmlRenderer(object):
             return html
 
     def _render_placeholder(self, placeholder, css):
-        html = _md_to_html(placeholder, self.options[consts.OPT_IMAGES])
+        html = _md_to_html(placeholder, self.settings.images)
         return self._inline_css(html, css)
 
     def _concat_parts(self, subject, parts):
         html = self._read_template()
-        strict = 'strict' if self.options[consts.OPT_STRICT] else 'ignore'
+        strict = 'strict' if self.settings.strict else 'ignore'
         # pystache escapes html by default, we pass escape option to disable this
         renderer = pystache.Renderer(escape=lambda u: u, missing_tags=strict)
         try:
             # add subject for rendering as we have it in html
-            return renderer.render(html, dict(parts.items() | {'subject': subject}.items() | {'base_url': self.options[consts.OPT_IMAGES]}.items()))
+            return renderer.render(html, dict(parts.items() | {'subject': subject}.items() | {'base_url': self.settings.images}.items()))
         except pystache.context.KeyNotFoundError as e:
             message = 'template {} for locale {} has missing placeholders: {}'.format(self.template.name, self.locale, e)
             raise errors.MissingTemplatePlaceholderError(message) from e
@@ -130,7 +132,7 @@ class TextRenderer(object):
     def render(self, placeholders):
         _, contents = _split_subject(placeholders)
         parts = [_md_to_text(v) for k, v in contents.items() if k not in self.ignored_plceholder_names]
-        return consts.TEXT_EMAIL_PLACEHOLDER_SEPARATOR.join(_md_to_text(v) for v in filter(bool, parts))
+        return TEXT_EMAIL_PLACEHOLDER_SEPARATOR.join(_md_to_text(v) for v in filter(bool, parts))
 
 
 class SubjectRenderer(object):
@@ -145,14 +147,14 @@ class SubjectRenderer(object):
         return subject
 
 
-def render(email, template, placeholders, ignored_plceholder_names, options):
+def render(email, template, placeholders, ignored_plceholder_names, settings):
     subject_renderer = SubjectRenderer()
     subject = subject_renderer.render(placeholders)
 
     text_renderer = TextRenderer(ignored_plceholder_names)
     text = text_renderer.render(placeholders)
 
-    html_renderer = HtmlRenderer(template, options, email.locale)
+    html_renderer = HtmlRenderer(template, settings, email.locale)
     try:
         html = html_renderer.render(placeholders)
     except errors.MissingTemplatePlaceholderError as e:

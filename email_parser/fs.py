@@ -9,11 +9,15 @@ from pathlib import Path
 from string import Formatter
 from collections import namedtuple
 
-from . import errors, consts
+from . import errors
+
+SUBJECT_EXTENSION = '.subject'
+TEXT_EXTENSION = '.text'
+HTML_EXTENSION = '.html'
 
 Email = namedtuple('Email', ['name', 'locale', 'path', 'full_path'])
-
 logger = logging.getLogger()
+
 
 def _parse_params(pattern):
     params = [p for p in map(lambda e: e[1], Formatter().parse(pattern)) if p]
@@ -101,6 +105,6 @@ def save(email, subject, text, html, dest_dir):
     :param dest_dir: root destination directory
     """
     os.makedirs(os.path.join(dest_dir, email.locale), exist_ok=True)
-    save_file(subject, dest_dir, email.locale, email.name + consts.SUBJECT_EXTENSION)
-    save_file(text, dest_dir, email.locale, email.name + consts.TEXT_EXTENSION)
-    save_file(html, dest_dir, email.locale, email.name + consts.HTML_EXTENSION)
+    save_file(subject, dest_dir, email.locale, email.name + SUBJECT_EXTENSION)
+    save_file(text, dest_dir, email.locale, email.name + TEXT_EXTENSION)
+    save_file(html, dest_dir, email.locale, email.name + HTML_EXTENSION)

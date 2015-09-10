@@ -2,23 +2,23 @@ from unittest import TestCase
 from unittest.mock import MagicMock, patch
 import json
 
-from email_parser import placeholder, consts, fs
+from email_parser import placeholder, fs, cmd
 
 
 class TestGenerator(TestCase):
 
     def setUp(self):
-        self.options = {
-            consts.OPT_SOURCE: 'test_src',
-            consts.OPT_PATTERN: 'test_pattern'
-        }
+        settings = vars(cmd.default_settings())
+        settings['source'] = 'test_src'
+        settings['pattern'] = 'test_pattern'
+        self.settings = cmd.Settings(**settings)
 
     @patch('email_parser.placeholder.fs')
     def test_happy_path(self, mock_fs):
         mock_fs.emails.return_value = [fs.Email('test_name', 'en', 'path', 'full_path')]
         mock_fs.read_file.return_value = '{{placeholder}}'
 
-        placeholder.generate_config(self.options, None)
+        placeholder.generate_config(self.settings, None)
 
         mock_fs.save_file.assert_called_with(
             '{"test_name": {"placeholder": 1}}', 'test_src', 'placeholders_config.json')
@@ -28,7 +28,7 @@ class TestGenerator(TestCase):
         mock_fs.emails.return_value = []
         mock_fs.read_file.return_value = '{{placeholder}}'
 
-        placeholder.generate_config(self.options)
+        placeholder.generate_config(self.settings)
 
         self.assertFalse(mock_fs.save_file.called)
 
@@ -40,7 +40,7 @@ class TestGenerator(TestCase):
         ]
         mock_fs.read_file.side_effect = iter(['{{placeholder}}', '{{placeholder}}{{extra_placeholder}}'])
 
-        placeholder.generate_config(self.options, None)
+        placeholder.generate_config(self.settings, None)
 
         mock_fs.save_file.assert_called_with(
             '{"test_name": {"placeholder": 1}}', 'test_src', 'placeholders_config.json')

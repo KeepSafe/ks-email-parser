@@ -2,7 +2,7 @@
 Each email service has it's own client. The client is responsible for generating email for the service to process.
 """
 
-from . import fs, reader, renderer, consts
+from . import fs, reader, renderer
 import logging
 
 logger = logging.getLogger()
@@ -25,15 +25,14 @@ class CustomerIoClient(object):
             content = self._start_locale_selection.format(locale) + '\n' + new_content
         return content
 
-    def parse(self, options):
-        email_name = options[consts.OPT_EMAIL_NAME]
-        emails = fs.email(options[consts.OPT_SOURCE], options[consts.OPT_PATTERN], email_name)
+    def parse(self, email_name, settings):
+        emails = fs.email(settings.source, settings.pattern, email_name)
         subject, text, html, last_email = '', '', '', None
         for email in emails:
             logger.info('parsing email %s locale %s', email.name, email.locale)
             template, placeholders, ignored_plceholder_names = reader.read(email.full_path)
             email_subject, email_text, email_html = renderer.render(
-                email, template, placeholders, ignored_plceholder_names, options)
+                email, template, placeholders, ignored_plceholder_names, settings)
             subject = self._append_content(email.locale, subject, email_subject)
             text = self._append_content(email.locale, text, email_text)
             html = self._append_content(email.locale, html, email_html)
@@ -45,7 +44,7 @@ class CustomerIoClient(object):
         text = text + '\n' + self._end_locale_selection
         html = html + '\n' + self._end_locale_selection
         email = fs.Email(last_email.name, '', last_email.path, last_email.full_path)
-        fs.save(email, subject, text, html, options[consts.OPT_DESTINATION])
+        fs.save(email, subject, text, html, settings.destination)
         return True
 
 
