@@ -31,7 +31,7 @@ def _html_to_text(html):
         text = anchor.string or ''
         href = anchor.get('href') or text
         if href != text:
-            anchor.replace_with('{} {}'.format(text, href))
+            anchor.replace_with('{} ({})'.format(text, href))
         elif href:
             anchor.replace_with(href)
 
