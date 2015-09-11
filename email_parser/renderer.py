@@ -10,7 +10,7 @@ import inlinestyler.utils as inline_styler
 import xml.etree.ElementTree as ET
 from collections import OrderedDict
 
-from . import markdown_ext, errors, fs
+from . import markdown_ext, errors, fs, link_shortener
 
 TEXT_EMAIL_PLACEHOLDER_SEPARATOR = '\n\n'
 
@@ -22,43 +22,12 @@ def _md_to_html(text, base_url=None):
     return markdown.markdown(text, extensions=extensions)
 
 
-def _html_to_text(html):
-    soup = bs4.BeautifulSoup(html)
-
-    # replace the value in <a> with the href because soup.get_text() takes the value inside <a> instead or href
-    anchors = soup.find_all('a')
-    for anchor in anchors:
-        text = anchor.string or ''
-        href = anchor.get('href') or text
-        if href != text:
-            anchor.replace_with('{} ({})'.format(text, href))
-        elif href:
-            anchor.replace_with(href)
-
-    # add prefix to lists, it wont be added automatically
-    unordered_lists = soup('ul')
-    for unordered_list in unordered_lists:
-        for element in unordered_list('li'):
-            element.replace_with('- ' + element.string)
-    ordered_lists = soup('ol')
-    for ordered_list in ordered_lists:
-        for idx, element in enumerate(ordered_list('li')):
-            element.replace_with('%s. %s' % (idx + 1, element.string))
-
-
-    return soup.get_text()
-
-
-def _md_to_text(text, base_url=None):
-    html = _md_to_html(text, base_url)
-    return _html_to_text(html)
-
-
 def _split_subject(placeholders):
     return placeholders.get('subject'), OrderedDict((k, v) for k, v in placeholders.items() if k != 'subject')
 
 
 class HtmlRenderer(object):
+
     """
     Renders email' body as html.
     """
@@ -116,11 +85,12 @@ class HtmlRenderer(object):
         renderer = pystache.Renderer(escape=lambda u: u, missing_tags=strict)
         try:
             # add subject for rendering as we have it in html
-            return renderer.render(html, dict(parts.items() | {'subject': subject}.items() | {'base_url': self.settings.images}.items()))
+            return renderer.render(
+                html, dict(parts.items() | {'subject': subject}.items() | {'base_url': self.settings.images}.items()))
         except pystache.context.KeyNotFoundError as e:
-            message = 'template {} for locale {} has missing placeholders: {}'.format(self.template.name, self.locale, e)
+            message = 'template {} for locale {} has missing placeholders: {}'.format(
+                self.template.name, self.locale, e)
             raise errors.MissingTemplatePlaceholderError(message) from e
-
 
     def render(self, placeholders):
         subject, contents = _split_subject(placeholders)
@@ -131,22 +101,55 @@ class HtmlRenderer(object):
         return html
 
 
-
 class TextRenderer(object):
+
     """
-    Renders email' body as text.
+    Renders email's body as text.
     """
 
-    def __init__(self, ignored_plceholder_names):
+    def __init__(self, ignored_plceholder_names, shortener_config=None):
         self.ignored_plceholder_names = ignored_plceholder_names
+        self.shortener = link_shortener.shortener(shortener_config)
+
+    def _html_to_text(self, html):
+        soup = bs4.BeautifulSoup(html)
+
+        # replace the value in <a> with the href because soup.get_text() takes the value inside <a> instead or href
+        anchors = soup.find_all('a')
+        for anchor in anchors:
+            text = anchor.string or ''
+            href = anchor.get('href') or text
+            href = self.shortener.shorten(href)
+            if href != text:
+                anchor.replace_with('{} ({})'.format(text, href))
+            elif href:
+                anchor.replace_with(href)
+
+        # add prefix to lists, it wont be added automatically
+        unordered_lists = soup('ul')
+        for unordered_list in unordered_lists:
+            for element in unordered_list('li'):
+                if element.string:
+                    element.replace_with('- ' + element.string)
+        ordered_lists = soup('ol')
+        for ordered_list in ordered_lists:
+            for idx, element in enumerate(ordered_list('li')):
+                element.replace_with('%s. %s' % (idx + 1, element.string))
+
+        return soup.get_text()
+
+    def _md_to_text(self, text, base_url=None):
+        html = _md_to_html(text, base_url)
+        return self._html_to_text(html)
 
     def render(self, placeholders):
         _, contents = _split_subject(placeholders)
-        parts = [_md_to_text(v) for k, v in contents.items() if k not in self.ignored_plceholder_names]
+        parts = [self._md_to_text(v) for k, v in contents.items() if k not in self.ignored_plceholder_names]
         return TEXT_EMAIL_PLACEHOLDER_SEPARATOR.join(v for v in filter(bool, parts))
 
 
 class SubjectRenderer(object):
+
     """
     Renders email's subject as text.
     """
@@ -162,13 +165,14 @@ def render(email, template, placeholders, ignored_plceholder_names, settings):
     subject_renderer = SubjectRenderer()
     subject = subject_renderer.render(placeholders)
 
-    text_renderer = TextRenderer(ignored_plceholder_names)
+    text_renderer = TextRenderer(ignored_plceholder_names, settings.shortener)
     text = text_renderer.render(placeholders)
 
     html_renderer = HtmlRenderer(template, settings, email.locale)
     try:
         html = html_renderer.render(placeholders)
     except errors.MissingTemplatePlaceholderError as e:
-        raise errors.RenderingError('failed to generate html content for {} with message: {}'.format(email.full_path, e)) from e
+        raise errors.RenderingError(
+            'failed to generate html content for {} with message: {}'.format(email.full_path, e)) from e
 
     return subject, text, html

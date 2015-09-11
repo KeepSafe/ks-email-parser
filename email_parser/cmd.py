@@ -10,6 +10,11 @@ from . import placeholder
 
 logger = logging.getLogger()
 
+ShortenerSettings = namedtuple('ShortenerSettings', [
+    'name',
+    'properties'
+])
+
 Settings = namedtuple('Settings', [
     'source',
     'destination',
@@ -19,7 +24,8 @@ Settings = namedtuple('Settings', [
     'right_to_left',
     'strict',
     'force',
-    'verbose'
+    'verbose',
+    'shortener'
 ])
 
 
@@ -33,7 +39,8 @@ def default_settings():
         templates='templates_html',
         images='http://www.getkeepsafe.com/emails/img',
         right_to_left=['ar', 'he'],
-        pattern='{locale}/{name}.xml'
+        pattern='{locale}/{name}.xml',
+        shortener={}
     )
 
 
