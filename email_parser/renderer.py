@@ -35,6 +35,17 @@ def _html_to_text(html):
         elif href:
             anchor.replace_with(href)
 
+    # add prefix to lists, it wont be added automatically
+    unordered_lists = soup('ul')
+    for unordered_list in unordered_lists:
+        for element in unordered_list('li'):
+            element.replace_with('- ' + element.string)
+    ordered_lists = soup('ol')
+    for ordered_list in ordered_lists:
+        for idx, element in enumerate(ordered_list('li')):
+            element.replace_with('%s. %s' % (idx + 1, element.string))
+
+
     return soup.get_text()
 
 
@@ -132,7 +143,7 @@ class TextRenderer(object):
     def render(self, placeholders):
         _, contents = _split_subject(placeholders)
         parts = [_md_to_text(v) for k, v in contents.items() if k not in self.ignored_plceholder_names]
-        return TEXT_EMAIL_PLACEHOLDER_SEPARATOR.join(_md_to_text(v) for v in filter(bool, parts))
+        return TEXT_EMAIL_PLACEHOLDER_SEPARATOR.join(v for v in filter(bool, parts))
 
 
 class SubjectRenderer(object):

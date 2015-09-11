@@ -76,6 +76,20 @@ class TestTextRenderer(TestCase):
 
         self.assertEqual('dummy param_link (https://something.com/thing?id=mooo) content', actual)
 
+    def test_unordered_list(self):
+        placeholders = {'content': '- one\n- two\n- three'}
+
+        actual = self.renderer.render(placeholders)
+
+        self.assertEqual('- one\n- two\n- three', actual.strip())
+
+    def test_ordered_list(self):
+        placeholders = {'content': '1. one\n2. two\n3. three'}
+
+        actual = self.renderer.render(placeholders)
+
+        self.assertEqual('1. one\n2. two\n3. three', actual.strip())
+
 
 class TestSubjectRenderer(TestCase):
     def setUp(self):
