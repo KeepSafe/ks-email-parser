@@ -57,6 +57,8 @@ class HtmlRenderer(object):
             body = ''.join(ET.tostring(e, encoding='unicode') for e in body)
         else:
             body = ET.fromstring(html_with_css).find('.//body/p')
+            if body is None:
+                raise ValueError()
             body = body.text
 
         return body.strip()
@@ -75,6 +77,8 @@ class HtmlRenderer(object):
             return html
 
     def _render_placeholder(self, placeholder, css):
+        if not placeholder.strip():
+            return placeholder
         html = _md_to_html(placeholder, self.settings.images)
         return self._inline_css(html, css)
 
