@@ -144,7 +144,13 @@ The file is a mapping of name to required placeholders and the number of times t
 }
 ```
 
-You can generate the file in the provided source directory from existing emails with `ks-email-parser config_placeholders`. It will go through your email and extract placeholders.
+You can generate the file in the provided source directory from existing emails with 
+
+```
+$ ks-email-parser config placeholders
+```
+
+It will go through your email and extract placeholders.
 
 ### Validation
 
