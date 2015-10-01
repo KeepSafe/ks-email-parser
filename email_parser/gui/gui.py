@@ -28,7 +28,7 @@ class InlineFormReplacer(object):
     # Group 2: preceding non-space character (if any)
     # Group 3: replace tag
     # Group 4: lookahead: following non-space character (if any)
-    CONTENT_REGEX = re.compile(r'((\S)?\s*)\{\{\s*(\w+)\s*\}\}(?=\s*(\S?))')
+    CONTENT_REGEX = re.compile(r'(([">]?)[^">{}]*)\{\{\s*(\w+)\s*\}\}(?=[^"<{}]*(["<]?))')
 
     def __init__(self, builtins=None, values=None):
         self.builtins = builtins or dict()
@@ -37,8 +37,9 @@ class InlineFormReplacer(object):
         self.attrs = list()
         self.required = list()
 
-    def _get(self, name):
-        self.names.append(name)
+    def get(self, name):
+        if name not in self.names:
+            self.names.append(name)
         if self.values.get(name):
             return self.values[name]
         else:
@@ -57,30 +58,40 @@ class InlineFormReplacer(object):
             return before + self._textarea(name)
         elif '"' in (prefix, postfix):
             self.attrs.append(name)
-            return before + (self._get(name) or ('{{' + name + '}}'))
+            return before + (self.get(name) or ('{{' + name + '}}'))
         else:
             return before + self._textarea(name)
 
     def _textarea(self, name):
-        return '<textarea name="{0}" placeholder="{0}">{1}</textarea>'.format(name, self._get(name))
+        return ('<textarea name="{0}" placeholder="{0}"' +
+                ' style="resize: vertical; width: 95%; height: 160px;">{1}</textarea>'.format(name, self.get(name))
+                )
 
     def replace(self, template_html):
         return self.CONTENT_REGEX.sub(self._sub, template_html)
+
+    def placeholders(self):
+        return {
+            K: '[[{0}]]'.format(V) if K in self.attrs else V
+            for K, V in self.values.items()
+            }
 
     def _generate_fields(self, names=None, classname='names'):
         result = list()
         if names:
             result.append('<fieldset class="{0}"><ul>'.format(classname))
             for name in names:
-                result.append('    <li><label>{0}: <input type="text" name="{0}" placeholder="{0}" /></label></li>'.format(name))
+                result.append('    <li><label>{0}: <input type="text" name="{0}" placeholder="{0}" value="{1}"/></label></li>'
+                              .format(name, self.values.get(name, ''))
+                              )
             result.append('</ul></fieldset>')
         return '\n'.join(result)
 
-    def name_fields(self):
-        return self._generate_fields(self.names)
+    def name_fields(self, extra_fields=()):
+        return self._generate_fields(list(extra_fields) + list(self.names))
 
-    def attr_fields(self):
-        return self._generate_fields(self.attrs)
+    def attr_fields(self, extra_fields=()):
+        return self._generate_fields(list(extra_fields) + list(self.attrs))
 
 
 class InlineFormRenderer(object):
@@ -149,19 +160,32 @@ class InlineFormRenderer(object):
             return self._index(template_name)
         else:
             replacer = InlineFormReplacer({'base_url': self.settings.images}, vars)
+            replacer.get('subject')
             template_html = self._read_template(template_name)
             html = replacer.replace(template_html)
+            subject_line = '<h1 class="subject" style="text-align: center">{}</h1>'.format(vars.get('subject'))
             html = self._wrap_body_in_form(
                 html,
-                [self._style_list(styles), replacer.attr_fields()],
-                ['<fieldset><input type="submit" value="Render" /></fieldset>']
+                prefixes=[
+                    self._style_list(styles),
+                    replacer.attr_fields(['subject']),
+                    subject_line
+                ],
+                postfixes=['<fieldset><input type="submit" value="Render" /></fieldset>']
             )
 
             if replacer.required:
                 print(replacer.required)
                 return html
-            else:  # Everything filled in!
-                return HtmlRenderer(Template(template_name, styles), self.settings, '').render(vars)
+            else:  # Everything filled in, use "real" renderer
+                placeholders = replacer.placeholders()
+                print(placeholders)
+                html = HtmlRenderer(Template(template_name, styles), self.settings, '').render(placeholders)
+                return self._wrap_body_in_form(
+                    html,
+                    prefixes=[subject_line],
+                    postfixes=['<fieldset><input type="submit" value="Save" /></fieldset>']
+                )
 
 
 class Server(object):
