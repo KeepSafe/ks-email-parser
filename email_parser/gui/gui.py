@@ -6,13 +6,61 @@ from ..renderer import HtmlRenderer
 from ..reader import Template, read as reader_read
 import fnmatch
 import cherrypy
+from collections.abc import Sequence
+from functools import lru_cache
+from uuid import uuid4
+from collections import namedtuple
+import random, string
 
 
-STYLES_PARAM_NAME = 'styles'
-EDIT_PARAM_NAME = 'edit'
-EDITED_PARAM_NAME = 'edited'
-TEMPLATE_PARAM_NAME = 'template'
+STYLES_PARAM_NAME = 'HIDDEN__styles'
+TEMPLATE_PARAM_NAME = 'HIDDEN__template'
+EMAIL_PARAM_NAME = 'HIDDEN__saved_email_filename'
+WORKING_PARAM_NAME = 'HIDDEN__working_name'
+
+OVERWRITE_PARAM_NAME = 'overwrite'
 SAVEAS_PARAM_NAME = 'saveas_filename'
+
+
+Document = namedtuple('Document', ['working_name', 'email_name', 'template_name', 'styles', 'args'])
+
+
+RECENT_DOCUMENTS = dict()
+
+
+@lru_cache(maxsize=64)
+def _get_working_args(working_name):
+    result = RECENT_DOCUMENTS.get(working_name, {WORKING_PARAM_NAME: working_name})
+    RECENT_DOCUMENTS[working_name] = result
+    return result
+
+
+def _new_working_args():
+    working_name = ''.join(random.SystemRandom().choice(string.ascii_letters + string.digits) for _ in range(8))
+    return _get_working_args(working_name)
+
+
+def _extract_document(args=None, working_name=None, email_name=None, template_name=None, template_styles=None):
+    # Return working_name, email_name, template_name, styles, args
+    args = args or dict()
+    working_name = working_name or args.pop(WORKING_PARAM_NAME, working_name)
+    if working_name:
+        working_args = _get_working_args(working_name)
+    else:
+        working_args = _new_working_args()
+    working_args.update(args)
+    if email_name:
+        working_args.update({EMAIL_PARAM_NAME: email_name})
+    if template_name:
+        working_args.update({TEMPLATE_PARAM_NAME: template_name})
+
+    result_args = dict(working_args)
+    working_name = result_args.pop(WORKING_PARAM_NAME)
+    email_name = result_args.pop(EMAIL_PARAM_NAME, None)
+    template_name = result_args.pop(TEMPLATE_PARAM_NAME, None)
+    styles = template_styles or _pop_styles(result_args) or []
+    working_args.update({STYLES_PARAM_NAME: ','.join(styles)})
+    return Document(working_name, email_name, template_name, styles, result_args)
 
 
 def soup_fragment(html_fragment):
@@ -48,6 +96,8 @@ def _make_hidden_fields(*args):
     result.append('<div class="generated-hidden">')
     for values in args:
         for name, value in values.items():
+            if isinstance(value, Sequence) and not isinstance(value, str):
+                value = ','.join(value)
             result.append('<input type="hidden" name="{0}" value="{1}"/>'.format(name, value))
     result.append('</div>')
     return '\n'.join(result)
@@ -67,7 +117,7 @@ def _make_index(title, description):
     html = '''<html>
 <head><title>{title}</title></head>
 <body>
-<h1>{title}</h1>
+<h1 class="text-align: center;">{title}</h1>
 <div class="description">{description}</div>
 </body>
 </html>'''.format(title=title, description=description)
@@ -124,6 +174,16 @@ def _wrap_body_in_form(html, prefixes=[], postfixes=[]):
     return str(soup)
 
 
+def _pop_styles(args):
+    styles = args.pop(STYLES_PARAM_NAME, [])
+    if isinstance(styles, str):
+        return styles.split(',')
+    elif isinstance(styles, Sequence):
+        return styles
+    else:
+        raise NotImplemented
+
+
 def _make_subject_line(subject):
     return '<h1 class="subject" style="text-align: center">{}</h1>'.format(subject or '<em>&lt;no subject&gt;</em>')
 
@@ -158,6 +218,8 @@ class InlineFormReplacer(object):
             self.names.append(name)
         if self.values.get(name):
             return self.values[name]
+        elif self.builtins.get(name):
+            return self.builtins[name]
         else:
             self.required.append(name)
             return ''
@@ -191,6 +253,29 @@ class InlineFormReplacer(object):
             for K, V in self.values.items()
         }
 
+    def make_xml(self, template_name, styles):
+        result = list()
+        result.append('<?xml version="1.0" encoding="UTF-8"?>')
+        result.append(
+            '<resources xmlns:tools="http://schemas.android.com/tools" template="{0}" style="{1}">'.format(
+                template_name, ','.join(styles)
+            )
+        )
+        written_names = set()
+        for name in self.names:
+            if name in written_names or name in self.builtins:
+                continue
+            written_names.add(name)
+            value = self.require(name)
+            if name == 'subject':
+                result.append('    <string name="{0}">{1}</string>'.format(name, value))
+            elif name in self.attrs:
+                result.append('    <string name="{0}" isText="false"><![CDATA[[[{1}]]]]></string>'.format(name, value))
+            else:
+                result.append('    <string name="{0}"><![CDATA[{1}]]></string>'.format(name, value))
+        result.append('</resources>')
+        return '\n'.join(result)
+
 
 class InlineFormRenderer(object):
     def __init__(self, settings):
@@ -214,7 +299,16 @@ class InlineFormRenderer(object):
         else:
             return ''
 
-    def render(self, template_name, styles=(), force_edit=False,
+    def save(self, email_name, template_name, styles, **args):
+        replacer = InlineFormReplacer({'base_url': self.settings.images}, args)
+        replacer.require('subject')
+        template_html = self._read_template(template_name)
+        replacer.replace(template_html)
+        xml = replacer.make_xml(template_name, styles)
+
+        fs.save_file(xml, self.settings.source, email_name)
+
+    def render(self, template_name, styles=(),
                editing_actions=[],
                preview_actions=[],
                **args
@@ -224,6 +318,7 @@ class InlineFormRenderer(object):
         template_html = self._read_template(template_name)
         html = replacer.replace(template_html)
 
+        force_edit = not preview_actions
         if force_edit or replacer.required or not styles:
             # Some things are missing, show form with stuff still required
             html = _wrap_body_in_form(
@@ -248,7 +343,6 @@ class InlineFormRenderer(object):
                     _make_subject_line(args.get('subject'))
                 ],
                 postfixes=[
-                    _make_hidden_fields(args, {STYLES_PARAM_NAME: styles[0]}),
                     _make_actions(preview_actions)
                 ]
             )
@@ -258,18 +352,6 @@ class Server(object):
     def __init__(self, settings, renderer):
         self.settings = settings
         self.renderer = renderer
-
-    def _edit_template(self, name):
-        return '/template/{0}?{1}=1'.format(name, EDIT_PARAM_NAME)
-
-    def _edit_email(self, name):
-        return '/email/{0}?{1}=1'.format(name, EDIT_PARAM_NAME)
-
-    def _edited_email(self, name):
-        return '/email/{0}?{1}=1'.format(name, EDITED_PARAM_NAME)
-
-    def _editing_email(self, name):
-        return '/email/{0}?{1}=1&{2}=1'.format(name, EDIT_PARAM_NAME, EDITED_PARAM_NAME)
 
     @cherrypy.expose
     def index(self):
@@ -286,51 +368,150 @@ class Server(object):
         )
 
     @cherrypy.expose
-    def template(self, *paths, **args):
+    def timeout(self, *_ignored, **_also_ignored):
+        return _wrap_body_in_form(_make_index(
+            '&#x1f62d; SORRY &#x1f62d;',
+            'Your session has timed out! Do you want to create a new email from a template, or edit an existing email?'
+        ), [],
+            [
+                _make_actions([
+                    ['Create new', '/template'],
+                    ['Edit', '/email'],
+                ])
+            ]
+        )
+
+    @cherrypy.expose
+    def template(self, *paths, **_ignored):
         template_name = '/'.join(paths)
         template_path = os.path.join(self.settings.templates, template_name)
         if os.path.isdir(template_path):
             return _directory(template_name or 'template directory',
                               self.settings.templates, template_name, '/template/{}'.format)
         else:  # A file
-            styles = [args.pop(STYLES_PARAM_NAME)] if STYLES_PARAM_NAME in args else []
-            force_edit = args.pop(EDIT_PARAM_NAME, False)
-            return self.renderer.render(template_name, styles, force_edit,
+            document = _extract_document({}, template_name=template_name)
+            if not document.template_name:
+                raise cherrypy.HTTPRedirect('/timeout')
+            return self.renderer.render(document.template_name,
+                                        document.styles,
                                         editing_actions=[
-                                            ['Preview', '/template/{}'.format(template_name)],
+                                            ['Preview', '/preview/{}'.format(document.working_name)],
                                         ],
                                         preview_actions=[
-                                            ['Save', '/save?{0}={1}'.format(TEMPLATE_PARAM_NAME, template_name)],
-                                            ['Edit', self._edit_template(template_name)],
+                                            ['Save', '/save/{}'.format(document.working_name)],
+                                            ['Edit', '/edit/{}'.format(document.working_name)],
                                         ],
-                                        **args)
+                                        )
 
     @cherrypy.expose
-    def save(self, *email_paths, **args):
-        template_name = args.pop(TEMPLATE_PARAM_NAME, None)
-        if not template_name:
-            raise Exception('Requires template name to save!')
+    def preview(self, working_name, **args):
+        document = _extract_document(args, working_name)
+        if not document.template_name:
+            raise cherrypy.HTTPRedirect('/timeout')
+
+        preview_actions = []
+        if document.email_name:
+            preview_actions.append(['Save', '/save/{}/{}'.format(document.working_name, document.email_name)])
+        else:
+            preview_actions.append(['Save', '/save/{}'.format(document.working_name)])
+        preview_actions.append(['Edit', '/edit/{}'.format(document.working_name)])
+        if document.email_name:
+            preview_actions.append(['Reset', '/email/{}'.format(document.email_name)])
+
+        return self.renderer.render(document.template_name,
+                                    document.styles,
+                                    editing_actions= [
+                                        ['Preview', '/preview/{}'.format(document.working_name)],
+                                    ],
+                                    preview_actions=preview_actions,
+                                    **document.args
+                                    )
+
+    @cherrypy.expose
+    def edit(self, working_name, **args):
+        document = _extract_document(args, working_name)
+        if not document.template_name:
+            raise cherrypy.HTTPRedirect('/timeout')
+
+        return self.renderer.render(document.template_name,
+                                    document.styles,
+                                    editing_actions=[
+                                        ['Preview', '/preview/{}'.format(document.working_name)],
+                                    ],
+                                    **document.args
+                                    )
+
+    @cherrypy.expose
+    def email(self, *paths, **_ignored):
+        email_name = '/'.join(paths)
+        email_path = os.path.join(self.settings.source, email_name)
+        if os.path.isdir(email_path):
+            return _directory(email_name or 'source directory',
+                              self.settings.source, email_name, '/email/{}'.format)
+        else:  # A file
+            template, placeholders, _ = reader_read(email_path)
+            args = _unplaceholder(placeholders)
+
+            html = HtmlRenderer(template, self.settings, '').render(placeholders)
+            return _wrap_body_in_form(
+                html,
+                prefixes=[
+                    _make_subject_line(args.get('subject'))
+                ],
+                postfixes=[
+                    _make_actions([
+                            ['Edit', '/alter/{}'.format(email_name)],
+                    ])
+                ]
+            )
+
+    @cherrypy.expose
+    def alter(self, *paths, **_ignored):
+        email_name = '/'.join(paths)
+        email_path = os.path.join(self.settings.source, email_name)
+        template, placeholders, _ = reader_read(email_path)
+        args = _unplaceholder(placeholders)
+        document = _extract_document(args,
+                                     email_name=email_name,
+                                     template_name=template.name,
+                                     template_styles=template.styles
+                                     )
+        raise cherrypy.HTTPRedirect('/edit/{}'.format(document.working_name))
+
+    @cherrypy.expose
+    def saveas(self, working_name, *email_paths, **args):
         email_name = '/'.join(email_paths)
         saveas = args.pop(SAVEAS_PARAM_NAME, None)
         if saveas:
             email_name = '/'.join((email_name, saveas))
+        raise cherrypy.HTTPRedirect('/save/{0}/{1}'.format(working_name, email_name))
+
+    @cherrypy.expose
+    def save(self, working_name, *email_paths, **args):
+        email_name = '/'.join(email_paths)
         email_path = os.path.join(self.settings.source, email_name)
-        if not os.path.exists(email_path):
+        document = _extract_document({}, working_name, email_name=email_name)
+        if not document.template_name:
+            raise cherrypy.HTTPRedirect('/timeout')
+
+        overwrite = args.pop(OVERWRITE_PARAM_NAME, False)
+        if overwrite or not os.path.exists(email_path):
             # Create and save
-            raise NotImplemented
+            self.renderer.save(email_name, document.template_name, document.styles, **document.args)
+            raise cherrypy.HTTPRedirect('/email/{}'.format(email_name))
         elif os.path.isdir(email_path):
             # Show directory or allow user to create new file
-            html = _directory('Select save name/directory: ' + email_path,
+            html = _directory('Select save name/directory: ' + email_name,
                               self.settings.source, email_name,
-                              (lambda path: '/save/{0}?{1}={2}'.format(path, TEMPLATE_PARAM_NAME, template_name))
+                              (lambda path: '/save/{0}/{1}'.format(working_name, path))
                               )
             html = _wrap_body_in_form(html,
                                       [],
                                       [
-                                          _make_hidden_fields(args),
                                           _make_fields([SAVEAS_PARAM_NAME], {}, {SAVEAS_PARAM_NAME: 'New filename'}),
                                           _make_actions([
-                                              ['Save', '/save/{0}?{1}={2}'.format(email_name, TEMPLATE_PARAM_NAME, template_name)]
+                                              ['Save', '/saveas/{0}/{1}'.format(working_name, email_name)],
+                                              ['Return to Preview', '/preview/{}'.format(working_name)]
                                           ])
                                       ])
             return html
@@ -341,69 +522,18 @@ class Server(object):
                 'Are you sure you want to overwrite the existing email <code>{}</code>?'.format(email_name),
             ), [],
                 [
-                    _make_hidden_fields(args),
                     _make_actions([
-                        ['No, I\'m not sure',
-                         '/save/{0}?{1}={2}'.format(os.path.dirname(email_name), TEMPLATE_PARAM_NAME, template_name)],
+                        ['No, save as a new file',
+                         '/save/{0}/{1}'.format(
+                             working_name, os.path.dirname(email_name)
+                         )],
                         ['Yes, how dare you question me!',
-                         '/overwrite/{0}?{1}={2}'.format(email_name, TEMPLATE_PARAM_NAME, template_name)],
+                         '/save/{0}/{1}?{2}=1'.format(
+                             working_name, email_name, OVERWRITE_PARAM_NAME
+                         )],
                     ])
                 ]
             )
-
-
-    @cherrypy.expose
-    def overwrite(self, *email_paths, **args):
-        raise NotImplemented
-
-    @cherrypy.expose
-    def email(self, *paths, **args):
-        email_name = '/'.join(paths)
-        email_path = os.path.join(self.settings.source, email_name)
-        if os.path.isdir(email_path):
-            return _directory(email_name or 'source directory',
-                              self.settings.source, email_name, '/email/{}'.format)
-        else:  # A file
-            force_edit = args.pop(EDIT_PARAM_NAME, False)
-            was_edited = args.pop(EDITED_PARAM_NAME, False)
-            template, placeholders, _ = reader_read(email_path)
-            edited_args = _unplaceholder(placeholders)
-            if was_edited:
-                edited_args.update(args)
-            styles = [edited_args.pop(STYLES_PARAM_NAME)] if STYLES_PARAM_NAME in edited_args else template.styles
-            print(styles)
-            print(template.styles)
-
-            if force_edit or was_edited:
-                return self.renderer.render(template.name, styles, force_edit,
-                                            editing_actions=[
-                                                ['Preview', self._edited_email(email_name)],
-                                                ['Edit', self._editing_email(email_name)],
-                                                ['Reset', self._edit_email(email_name)],
-                                            ],
-                                            preview_actions=[
-                                                ['Save', '/save/{2}?{0}={1}'.format(
-                                                    TEMPLATE_PARAM_NAME, template.name, email_name
-                                                )],
-                                                ['Edit', self._editing_email(email_name)],
-                                                ['Reset', '/email/{}'.format(email_name)],
-                                            ],
-                                            **edited_args
-                                            )
-            else:  # Show existing email
-                html = HtmlRenderer(template, self.settings, '').render(placeholders)
-                return _wrap_body_in_form(
-                    html,
-                    prefixes=[
-                        _make_subject_line(edited_args.get('subject'))
-                    ],
-                    postfixes=[
-                        _make_hidden_fields(edited_args, {STYLES_PARAM_NAME: template.styles[0]}),
-                        _make_actions([
-                                ['Edit', self._edit_email(email_name)],
-                        ])
-                    ]
-                )
 
 
 def render(args):
