@@ -1,6 +1,5 @@
 import re
 import bs4
-import http.server
 import os, os.path
 from .. import fs
 from ..renderer import HtmlRenderer
@@ -12,6 +11,8 @@ import cherrypy
 STYLES_PARAM_NAME = 'styles'
 EDIT_PARAM_NAME = 'edit'
 EDITED_PARAM_NAME = 'edited'
+TEMPLATE_PARAM_NAME = 'template'
+SAVEAS_PARAM_NAME = 'saveas_filename'
 
 
 def soup_fragment(html_fragment):
@@ -25,16 +26,18 @@ def soup_fragment(html_fragment):
         return soup
 
 
-def _make_fields(names, values):
+def _make_fields(names, values=None, friendly_names=None):
+    values = values or dict()
+    friendly_names = friendly_names or dict()
     result = list()
     if names:
         result.append('<fieldset class="generated-fields"><ul>')
         for name in names:
             result.append((
-                '<li><label>{0}: ' +
+                '<li><label>{2}: ' +
                 '<input type="text" name="{0}" placeholder="{0}" value="{1}" style="width: 60%" />' +
                 '</label></li>').format(
-                name, values.get(name, '')
+                name, values.get(name, ''), friendly_names.get(name, name)
             ))
         result.append('</ul></fieldset>')
     return '\n'.join(result)
@@ -50,21 +53,35 @@ def _make_hidden_fields(*args):
     return '\n'.join(result)
 
 
-def _make_actions(items):
+def _make_actions(actions):
     result = list()
-    if items:
-        result.append('<fieldset class="generated-actions">')
-        for name, action in items:
-            result.append('<input type="submit" value="{0}" formaction="{1}" />'.format(name, action))
+    if actions:
+        result.append('<fieldset class="generated-actions" style="text-align: center; padding-bottom: 200px" >')
+        for name, action in actions:
+            result.append('<input type="submit" value="{0}" formaction="{1}" style="font-size: large" />'.format(name, action))
         result.append('</fieldset>')
     return '\n'.join(result)
 
 
-def _directory(description, root, path, href, accepts=(lambda name: not name.startswith('.'))):
+def _make_index(title, description):
+    html = '''<html>
+<head><title>{title}</title></head>
+<body>
+<h1>{title}</h1>
+<div class="description">{description}</div>
+</body>
+</html>'''.format(title=title, description=description)
+    return html
 
-    full_path = os.path.join(root, path)
+
+def _directory(
+        description, root, path, href,
+        accepts=(lambda path: not os.path.basename(path).startswith('.'))
+):
+
+    root_path = os.path.join(root, path)
     soup = bs4.BeautifulSoup('''<html>
-<head><title>Template index of {0}</title></head>
+<head><title>Directory of {0}</title></head>
 <body>
 <h1>Contents of <span class="index-path">{0}</span></h1>
 <ul>
@@ -72,12 +89,21 @@ def _directory(description, root, path, href, accepts=(lambda name: not name.sta
 </body>
 </html>'''.format(description))
     ul = soup.find('ul')
-    for name in sorted(os.listdir(full_path)):
+    if path:
+        ul.append(soup_fragment('<li><a href="{}">&#8593; <em>Parent Directory</em></a></li>'.format(
+            href(os.path.dirname(path))
+        )))
+    for name in sorted(os.listdir(root_path)):
+        name_path = os.path.join(path, name)
         if accepts(name):
-            name_path = os.path.join(path, name)
-            ul.append(soup_fragment('<li><a href="{href}">{name}</a></li>'.format(
-                href=href(name_path), name=name
-            )))
+            if os.path.isdir(os.path.join(root, path, name)):
+                ul.append(soup_fragment('<li><a href="{href}">&#128194; <code>{name}</code></a></li>'.format(
+                    href=href(name_path), name=name
+                )))
+            else:
+                ul.append(soup_fragment('<li><a href="{href}">&#128196; <code>{name}</code></a></li>'.format(
+                    href=href(name_path), name=name
+                )))
     return soup.prettify()
 
 
@@ -99,7 +125,7 @@ def _wrap_body_in_form(html, prefixes=[], postfixes=[]):
 
 
 def _make_subject_line(subject):
-    return '<h1 class="subject" style="text-align: center">{}</h1>'.format(subject)
+    return '<h1 class="subject" style="text-align: center">{}</h1>'.format(subject or '<em>&lt;no subject&gt;</em>')
 
 
 def _unplaceholder(placeholders):
@@ -246,6 +272,20 @@ class Server(object):
         return '/email/{0}?{1}=1&{2}=1'.format(name, EDIT_PARAM_NAME, EDITED_PARAM_NAME)
 
     @cherrypy.expose
+    def index(self):
+        return _wrap_body_in_form(_make_index(
+            'KS-Email-Parser GUI',
+            'Do you want to create a new email from a template, or edit an existing email?'
+        ), [],
+            [
+                _make_actions([
+                    ['Create new', '/template'],
+                    ['Edit', '/email'],
+                ])
+            ]
+        )
+
+    @cherrypy.expose
     def template(self, *paths, **args):
         template_name = '/'.join(paths)
         template_path = os.path.join(self.settings.templates, template_name)
@@ -260,22 +300,61 @@ class Server(object):
                                             ['Preview', '/template/{}'.format(template_name)],
                                         ],
                                         preview_actions=[
-                                            ['Save', '/saveas/{}'.format(template_name)],
+                                            ['Save', '/save?{0}={1}'.format(TEMPLATE_PARAM_NAME, template_name)],
                                             ['Edit', self._edit_template(template_name)],
                                         ],
                                         **args)
 
     @cherrypy.expose
-    def saveas(self, *template_paths, **args):
-        template_name = '/'.join(template_paths)
-        raise NotImplemented
-        # Request path to save under, save it, & forward to complete rendered email
+    def save(self, *email_paths, **args):
+        template_name = args.pop(TEMPLATE_PARAM_NAME, None)
+        if not template_name:
+            raise Exception('Requires template name to save!')
+        email_name = '/'.join(email_paths)
+        saveas = args.pop(SAVEAS_PARAM_NAME, None)
+        if saveas:
+            email_name = '/'.join((email_name, saveas))
+        email_path = os.path.join(self.settings.source, email_name)
+        if not os.path.exists(email_path):
+            # Create and save
+            raise NotImplemented
+        elif os.path.isdir(email_path):
+            # Show directory or allow user to create new file
+            html = _directory('Select save name/directory: ' + email_path,
+                              self.settings.source, email_name,
+                              (lambda path: '/save/{0}?{1}={2}'.format(path, TEMPLATE_PARAM_NAME, template_name))
+                              )
+            html = _wrap_body_in_form(html,
+                                      [],
+                                      [
+                                          _make_hidden_fields(args),
+                                          _make_fields([SAVEAS_PARAM_NAME], {}, {SAVEAS_PARAM_NAME: 'New filename'}),
+                                          _make_actions([
+                                              ['Save', '/save/{0}?{1}={2}'.format(email_name, TEMPLATE_PARAM_NAME, template_name)]
+                                          ])
+                                      ])
+            return html
+        else:
+            # File already exists: overwrite?
+            return _wrap_body_in_form(_make_index(
+                'Overwriting ' + email_name,
+                'Are you sure you want to overwrite the existing email <code>{}</code>?'.format(email_name),
+            ), [],
+                [
+                    _make_hidden_fields(args),
+                    _make_actions([
+                        ['No, I\'m not sure',
+                         '/save/{0}?{1}={2}'.format(os.path.dirname(email_name), TEMPLATE_PARAM_NAME, template_name)],
+                        ['Yes, how dare you question me!',
+                         '/overwrite/{0}?{1}={2}'.format(email_name, TEMPLATE_PARAM_NAME, template_name)],
+                    ])
+                ]
+            )
+
 
     @cherrypy.expose
-    def save(self, *email_paths, **args):
-        email_name = '/'.join(email_paths)
+    def overwrite(self, *email_paths, **args):
         raise NotImplemented
-        # Choose to overwrite or save as
 
     @cherrypy.expose
     def email(self, *paths, **args):
@@ -303,7 +382,9 @@ class Server(object):
                                                 ['Reset', self._edit_email(email_name)],
                                             ],
                                             preview_actions=[
-                                                ['Save', '/save/{}'.format(email_name)],
+                                                ['Save', '/save/{2}?{0}={1}'.format(
+                                                    TEMPLATE_PARAM_NAME, template.name, email_name
+                                                )],
                                                 ['Edit', self._editing_email(email_name)],
                                                 ['Reset', '/email/{}'.format(email_name)],
                                             ],
