@@ -81,11 +81,12 @@ def _make_fields(names, values=None, friendly_names=None):
     if names:
         result.append('<fieldset class="generated-fields"><ul>')
         for name in names:
+            value = values.get(name, '')
             result.append((
                 '<li><label>{2}: ' +
-                '<input type="text" name="{0}" placeholder="{0}" value="{1}" style="width: 60%" />' +
+                '<input type="text" class="{3}" name="{0}" placeholder="{0}" value="{1}" style="width: 60%" />' +
                 '</label></li>').format(
-                name, values.get(name, ''), friendly_names.get(name, name)
+                name, value, friendly_names.get(name, name), 'present' if value else 'absent'
             ))
         result.append('</ul></fieldset>')
     return '\n'.join(result)
@@ -157,10 +158,14 @@ def _directory(
     return soup.prettify()
 
 
-def _wrap_body_in_form(html, prefixes=[], postfixes=[]):
+def _wrap_body_in_form(html, prefixes=[], postfixes=[], highlight=True):
     soup = bs4.BeautifulSoup(html)
     body = soup.find('body')
     new_form = soup.new_tag('form', **{'method': 'POST'})
+    if highlight:
+        new_form.insert(0, soup_fragment(
+            '<style type="text/css" scoped>.absent {border-size: 4px; border-color: #ff4444;}</style>'
+        ))
     for content in reversed(body.contents):
         new_form.insert(0, content.extract())
     for prefix in reversed(prefixes):
@@ -177,11 +182,9 @@ def _wrap_body_in_form(html, prefixes=[], postfixes=[]):
 def _pop_styles(args):
     styles = args.pop(STYLES_PARAM_NAME, [])
     if isinstance(styles, str):
-        return styles.split(',')
-    elif isinstance(styles, Sequence):
-        return styles
-    else:
-        raise NotImplemented
+        styles = styles.split(',')
+    styles = [S for S in styles if S.lower().endswith('.css')]
+    return styles
 
 
 def _make_subject_line(subject):
@@ -241,8 +244,10 @@ class InlineFormReplacer(object):
             return before + self._textarea(name)
 
     def _textarea(self, name):
-        return ('<textarea name="{0}" placeholder="{0}"' +
-                ' style="resize: vertical; width: 95%; height: 160px;">{1}</textarea>').format(name, self.require(name))
+        value = self.require(name)
+        return ('<textarea class="{2}" name="{0}" placeholder="{0}"' +
+                ' style="resize: vertical; width: 95%; height: 160px;">{1}</textarea>'
+                ).format(name, value, 'present' if value else 'absent')
 
     def replace(self, template_html):
         return self.CONTENT_REGEX.sub(self._sub, template_html)
@@ -286,13 +291,18 @@ class InlineFormRenderer(object):
 
     def _style_list(self, styles=(), path_glob='*.css'):
         result = list()
-        result.append('<fieldset><select multiple name="{0}">'.format(STYLES_PARAM_NAME))
+        styles_found = 0
         for path in fnmatch.filter(os.listdir(self.settings.templates), path_glob):
+            if path in styles:
+                styles_found += 1
             result.append(
                 '    <option {1} value="{0}">{0}</option>'.format(
                     path, 'selected' if path in styles else ''
                 )
             )
+        result.insert(0, '<fieldset><select multiple class="{1}" name="{0}">'
+                      .format(STYLES_PARAM_NAME, 'present' if styles_found else 'absent')
+                      )
         result.append('</select></fieldset>')
         if len(result) > 2:
             return '\n'.join(result)
@@ -330,7 +340,8 @@ class InlineFormRenderer(object):
                 ],
                 postfixes=[
                     _make_actions(editing_actions)
-                ]
+                ],
+                highlight=True if preview_actions else False
             )
             return html
         else:
@@ -387,7 +398,11 @@ class Server(object):
         template_path = os.path.join(self.settings.templates, template_name)
         if os.path.isdir(template_path):
             return _directory(template_name or 'template directory',
-                              self.settings.templates, template_name, '/template/{}'.format)
+                              self.settings.templates,
+                              template_name,
+                              '/template/{}'.format,
+                              (lambda path: os.path.isdir(path) or '.htm' in path.lower())
+                              )
         else:  # A file
             document = _extract_document({}, template_name=template_name)
             if not document.template_name:
