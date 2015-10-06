@@ -76,8 +76,9 @@ def read_args(argsargs=argparse.ArgumentParser):
     config_parser.add_argument('config_name', help='Name of config to generate')
 
     gui_parser = subparsers.add_parser('gui')
-    gui_parser.add_argument('-T', '--template', help='Template to render in GUI')
-    gui_parser.add_argument('-P', '--port', type=int, help='Port to serve on')
+    gui_parser.add_argument('-P', '--port', type=int, help='Port to serve on', default=8080)
+    gui_parser.add_argument('-I', '--local-images', type=str, help='Server image directory',
+                            default='templates_html/img')
 
     return args.parse_args()
 
@@ -111,7 +112,7 @@ def execute_command(args):
     if args.command == 'config':
         return generate_config(args)
     elif args.command == 'gui':
-        from .gui.gui import render
-        render(args)
+        from .gui.gui import serve
+        serve(args)
         return True
     return False

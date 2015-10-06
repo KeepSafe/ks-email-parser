@@ -8,15 +8,19 @@ import fnmatch
 import cherrypy
 from collections.abc import Sequence
 from functools import lru_cache
-from uuid import uuid4
 from collections import namedtuple
 import random, string
+import time
+
+
+DOCUMENT_TIMEOUT = 24 * 60 * 60  # 24 hours
 
 
 STYLES_PARAM_NAME = 'HIDDEN__styles'
 TEMPLATE_PARAM_NAME = 'HIDDEN__template'
 EMAIL_PARAM_NAME = 'HIDDEN__saved_email_filename'
 WORKING_PARAM_NAME = 'HIDDEN__working_name'
+LAST_ACCESS_PARAM_NAME = 'HIDDEN__last_access_time'
 
 OVERWRITE_PARAM_NAME = 'overwrite'
 SAVEAS_PARAM_NAME = 'saveas_filename'
@@ -25,7 +29,29 @@ SAVEAS_PARAM_NAME = 'saveas_filename'
 Document = namedtuple('Document', ['working_name', 'email_name', 'template_name', 'styles', 'args'])
 
 
+CONTENT_TYPES = {
+    '.png': 'image/png',
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+}
+
+
 RECENT_DOCUMENTS = dict()
+
+
+def _html_encode(text):
+    # This is wrong, fix when on the ground
+    return text.replace('<', '&lt;').replace('>', '&gt;')
+
+
+def _clean_documents():
+    expired_keys = set()
+    for key, value in RECENT_DOCUMENTS.items():
+        last_access = value.setdefault(LAST_ACCESS_PARAM_NAME, time.time())
+        if last_access < time.time() - DOCUMENT_TIMEOUT:
+            expired_keys.add(key)
+    for key in expired_keys:
+        del RECENT_DOCUMENTS[key]
 
 
 @lru_cache(maxsize=64)
@@ -37,6 +63,7 @@ def _get_working_args(working_name):
 
 def _new_working_args():
     working_name = ''.join(random.SystemRandom().choice(string.ascii_letters + string.digits) for _ in range(8))
+    _clean_documents()
     return _get_working_args(working_name)
 
 
@@ -49,6 +76,7 @@ def _extract_document(args=None, working_name=None, email_name=None, template_na
     else:
         working_args = _new_working_args()
     working_args.update(args)
+    working_args[LAST_ACCESS_PARAM_NAME] = time.time()
     if email_name:
         working_args.update({EMAIL_PARAM_NAME: email_name})
     if template_name:
@@ -114,6 +142,41 @@ def _make_actions(actions):
     return '\n'.join(result)
 
 
+def _list_files_recursively(path, hidden=False):
+    result = set()
+    for dirpath, _, filenames in os.walk(path):
+        if hidden or not dirpath.startswith('.'):
+            for filename in filenames:
+                if hidden or not filename.startswith('.'):
+                    result.add(os.path.join(dirpath, filename))
+    return sorted(result)
+
+
+def _insert_image_selectors(html, base_url, local_dir=None):
+    local_dir = local_dir or base_url
+    soup = bs4.BeautifulSoup(html)
+    pattern = re.compile('^.*\{\{.*\}\}.*$')
+    for image in soup.find_all(
+            'img',
+            attrs={
+                'src': (lambda x: x.startswith(base_url) and pattern.match(x))
+                   }
+    ):
+        src = image.get('src')
+        parent = image.parent
+        index = parent.index(image)
+        image.extract()
+
+        selector = list()
+        selector.append('<select>')
+        for item in _list_files_recursively(local_dir):
+            selector.append('<option value="{0}">{0}</option>'.format(item))
+        selector.append('</select>')
+
+        parent.insert(index, soup_fragment('\n'.join(selector)))
+    return str(soup)
+
+
 def _make_index(title, description):
     html = '''<html>
 <head><title>{title}</title></head>
@@ -163,8 +226,8 @@ def _wrap_body_in_form(html, prefixes=[], postfixes=[], highlight=True):
     body = soup.find('body')
     new_form = soup.new_tag('form', **{'method': 'POST'})
     if highlight:
-        new_form.insert(0, soup_fragment(
-            '<style type="text/css" scoped>.absent {border-size: 4px; border-color: #ff4444;}</style>'
+        soup.find('head').insert(0, soup_fragment(
+            '<style type="text/css">.absent {border-size: 4px; border-color: #ff4444;}</style>'
         ))
     for content in reversed(body.contents):
         new_form.insert(0, content.extract())
@@ -188,7 +251,8 @@ def _pop_styles(args):
 
 
 def _make_subject_line(subject):
-    return '<h1 class="subject" style="text-align: center">{}</h1>'.format(subject or '<em>&lt;no subject&gt;</em>')
+    subject = _html_encode(subject) if subject else '<em>&lt;no subject&gt;</em>'
+    return '<h1 class="subject" style="text-align: center">{}</h1>'.format(subject)
 
 
 def _unplaceholder(placeholders):
@@ -198,7 +262,6 @@ def _unplaceholder(placeholders):
         else:
             return item
     X = {K: fix_item(V) for K, V in placeholders.items()}
-    print(X)
     return X
 
 
@@ -229,7 +292,6 @@ class InlineFormReplacer(object):
 
     def _sub(self, match):
         before, prefix, name, postfix = match.groups()
-        print(match.groups())
 
         self.names.append(name)
 
@@ -256,6 +318,7 @@ class InlineFormReplacer(object):
         return {
             K: '[[{0}]]'.format(V) if K in self.attrs else V
             for K, V in self.values.items()
+            if K in self.names and K not in self.builtins
         }
 
     def make_xml(self, template_name, styles):
@@ -331,6 +394,7 @@ class InlineFormRenderer(object):
         force_edit = not preview_actions
         if force_edit or replacer.required or not styles:
             # Some things are missing, show form with stuff still required
+            html = _insert_image_selectors(html, self.settings.images)
             html = _wrap_body_in_form(
                 html,
                 prefixes=[
@@ -363,6 +427,27 @@ class Server(object):
     def __init__(self, settings, renderer):
         self.settings = settings
         self.renderer = renderer
+
+    @cherrypy.expose
+    def img(self, *path):
+        img_name = os.path.join(*path) if path else ''
+        img_path = os.path.join(self.settings.images, *path)
+        if os.path.isdir(img_path):
+            return _directory(img_name or 'image directory',
+                              self.settings.images,
+                              img_name,
+                              '/img/{}'.format,
+                              )
+        else:
+            _, ext = os.path.splitext(os.path.join(*path))
+            content_type = CONTENT_TYPES.get(
+                ext.lower(),
+                'image/{}'.format(ext[1:].lower())
+            )
+
+            data = fs.read_file(self.settings.images, *path, mode='rb')
+            cherrypy.response.headers['Content-Type'] = content_type
+            return data
 
     @cherrypy.expose
     def index(self):
@@ -421,6 +506,7 @@ class Server(object):
     @cherrypy.expose
     def preview(self, working_name, **args):
         document = _extract_document(args, working_name)
+        print(document)
         if not document.template_name:
             raise cherrypy.HTTPRedirect('/timeout')
 
@@ -551,14 +637,13 @@ class Server(object):
             )
 
 
-def render(args):
+
+
+
+def serve(args):
     from ..cmd import read_settings
     settings = read_settings(args)
 
     renderer = InlineFormRenderer(settings)
-    if args.port:
-        cherrypy.config.update({'server.socket_port': args.port})
-        cherrypy.quickstart(Server(settings, renderer), '/')
-
-    elif args.template:
-        print(renderer.render(args.template))
+    cherrypy.config.update({'server.socket_port': args.port})
+    cherrypy.quickstart(Server(settings, renderer), '/')
