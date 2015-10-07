@@ -154,13 +154,15 @@ def _list_files_recursively(path, hidden=False):
 
 def _insert_image_selectors(html, base_url, local_dir=None):
     local_dir = local_dir or base_url
+    if not os.path.isdir(local_dir):
+        return html
     soup = bs4.BeautifulSoup(html)
     pattern = re.compile('^.*\{\{.*\}\}.*$')
     for image in soup.find_all(
             'img',
             attrs={
                 'src': (lambda x: x.startswith(base_url) and pattern.match(x))
-                   }
+            }
     ):
         src = image.get('src')
         parent = image.parent
@@ -637,13 +639,10 @@ class Server(object):
             )
 
 
-
-
-
 def serve(args):
     from ..cmd import read_settings
     settings = read_settings(args)
 
     renderer = InlineFormRenderer(settings)
-    cherrypy.config.update({'server.socket_port': args.port})
+    cherrypy.config.update({'server.socket_port': args.port or 8080})
     cherrypy.quickstart(Server(settings, renderer), '/')
