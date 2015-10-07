@@ -75,13 +75,13 @@ def email(src_dir, pattern, email_name):
         yield Email(**result.named)
 
 
-def read_file(*path_parts):
+def read_file(*path_parts, **kwargs):
     """
     Helper for reading files
     """
     path = os.path.join(*path_parts)
     logger.debug('reading file from %s', path)
-    with open(path) as fp:
+    with open(path, **kwargs) as fp:
         return fp.read()
 
 def save_file(content, *path_parts):
