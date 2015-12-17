@@ -259,7 +259,7 @@ def _make_subject_line(subject):
 
 def _unplaceholder(placeholders):
     def fix_item(item):
-        if item.startswith('[[') and item.startswith(']]'):
+        if item.startswith('[[') and item.endswith(']]'):
             return item[2:-2]
         else:
             return item
