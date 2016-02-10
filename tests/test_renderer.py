@@ -111,7 +111,7 @@ class TestSubjectRenderer(TestCase):
 
 class TestHtmlRenderer(TestCase):
     def setUp(self):
-        settings = vars(cmd.default_settings())
+        settings = cmd.default_settings()._asdict()
         settings['templates'] = 'dummy_templates'
         settings['images'] = 'dummy_images'
         self.settings = cmd.Settings(**settings)
@@ -164,7 +164,7 @@ class TestHtmlRenderer(TestCase):
         html = '<body>{{content}}{{missing}}</body>'
         placeholders = {'content': 'dummy_content'}
         mock_read.side_effect = iter(['', html])
-        settings = vars(self.settings)
+        settings = self.settings._asdict()
         settings['strict'] = False
         settings = cmd.Settings(**settings)
         r = renderer.HtmlRenderer(self.template, settings, 'locale')

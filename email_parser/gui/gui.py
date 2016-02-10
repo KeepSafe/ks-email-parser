@@ -15,6 +15,7 @@ import time
 
 DOCUMENT_TIMEOUT = 24 * 60 * 60  # 24 hours
 
+HTML_PARSER = 'lxml'
 
 STYLES_PARAM_NAME = 'HIDDEN__styles'
 TEMPLATE_PARAM_NAME = 'HIDDEN__template'
@@ -93,7 +94,7 @@ def _extract_document(args=None, working_name=None, email_name=None, template_na
 
 def soup_fragment(html_fragment):
     # http://stackoverflow.com/a/15981476
-    soup = bs4.BeautifulSoup(html_fragment)
+    soup = bs4.BeautifulSoup(html_fragment, HTML_PARSER)
     if soup.body:
         return soup.body.next
     elif soup.html:
@@ -156,7 +157,7 @@ def _insert_image_selectors(html, base_url, local_dir=None):
     local_dir = local_dir or base_url
     if not os.path.isdir(local_dir):
         return html
-    soup = bs4.BeautifulSoup(html)
+    soup = bs4.BeautifulSoup(html, HTML_PARSER)
     pattern = re.compile('^.*\{\{.*\}\}.*$')
     for image in soup.find_all(
             'img',
@@ -203,7 +204,7 @@ def _directory(
 <ul>
 </ul>
 </body>
-</html>'''.format(description))
+</html>'''.format(description), HTML_PARSER)
     ul = soup.find('ul')
     if path:
         ul.append(soup_fragment('<li><a href="{}">&#8593; <em>Parent Directory</em></a></li>'.format(
@@ -224,7 +225,7 @@ def _directory(
 
 
 def _wrap_body_in_form(html, prefixes=[], postfixes=[], highlight=True):
-    soup = bs4.BeautifulSoup(html)
+    soup = bs4.BeautifulSoup(html, HTML_PARSER)
     body = soup.find('body')
     new_form = soup.new_tag('form', **{'method': 'POST'})
     if highlight:
