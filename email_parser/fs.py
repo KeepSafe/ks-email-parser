@@ -33,8 +33,7 @@ def _emails(src_dir, pattern, params):
     wildcard_params = {k: '*' for k in params}
     wildcard_pattern = pattern.format(**wildcard_params)
     parser = parse.compile(pattern)
-
-    for path in Path(src_dir).glob(wildcard_pattern):
+    for path in sorted(Path(src_dir).glob(wildcard_pattern), key=lambda path: str(path)):
         if not path.is_dir():
             str_path = str(path.relative_to(src_dir))
             result = parser.parse(str_path)
