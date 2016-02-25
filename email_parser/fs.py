@@ -29,12 +29,18 @@ def _parse_params(pattern):
             '{{name}} is a required parameter in the pattern but it is not present in {}'.format(pattern))
     return params
 
-def _emails(src_dir, pattern, params):
+def _emails(src_dir, pattern, params, exclusive_path=None):
     wildcard_params = {k: '*' for k in params}
     wildcard_pattern = pattern.format(**wildcard_params)
     parser = parse.compile(pattern)
-    for path in sorted(Path(src_dir).glob(wildcard_pattern), key=lambda path: str(path)):
-        if not path.is_dir():
+
+    if exclusive_path:
+        glob_path = Path('.').glob(exclusive_path)
+    else:
+        glob_path = Path(src_dir).glob(wildcard_pattern)
+
+    for path in sorted(glob_path, key=lambda path: str(path)):
+        if not path.is_dir() and (not exclusive_path or _has_correct_ext(path, pattern)):
             str_path = str(path.relative_to(src_dir))
             result = parser.parse(str_path)
             result.named['path'] = str_path
@@ -42,18 +48,22 @@ def _emails(src_dir, pattern, params):
             logging.debug('loading email %s', result.named['full_path'])
             yield result
 
-def emails(src_dir, pattern):
+def _has_correct_ext(path, pattern):
+    return os.path.splitext(str(path))[1] == os.path.splitext(pattern)[1]
+
+def emails(src_dir, pattern, exclusive_path=None):
     """
     Resolves a pattern to a collection of emails. The pattern needs to have 'name' and 'locale' as this is used later
     to produce the results.
 
     :param src_dir: base dir for the search
     :param pattern: search pattern
+    :exclusive_path: single email path, glob path for emails subset or None to not affect emails set 
 
     :returns: generator for the emails matching the pattern
     """
     params = _parse_params(pattern)
-    for result in _emails(src_dir, pattern, params):
+    for result in _emails(src_dir, pattern, params, exclusive_path):
         yield Email(**result.named)
 
 

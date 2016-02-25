@@ -18,8 +18,11 @@ logger = logging.getLogger()
 
 def parse_emails(settings):
     result = True
-    shutil.rmtree(settings.destination, ignore_errors=True)
-    emails = fs.emails(settings.source, settings.pattern)
+
+    if not settings.exclusive:
+        shutil.rmtree(settings.destination, ignore_errors=True)
+
+    emails = fs.emails(settings.source, settings.pattern, settings.exclusive)
     for email in emails:
         if not placeholder.validate_email(email, settings.source):
             result = False
