@@ -4,15 +4,31 @@
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.0/jquery.min.js"></script>
         <script type="application/ecmascript">
             $(document).ready(function() {{
-                window.setInterval(
-                    function() {{
-                        $.post('{view_url}', $("#gui-form").serialize(), function(data) {{
-                            console.info(data);
+                var FINAL_INCOMPLETE_CODE = 'HIDDEN__final_incomplete_code';
+                var last_serialized = '``````';
+                var last_subject = '``````';
+                var update_display = function() {{
+                    var this_subject = $("input[name=subject]").val();
+                    if (this_subject != last_subject) {{
+                        $("#gui-view-subject>.subject").text(this_subject || "<no subject>");
+                        last_subject = this_subject;
+                    }}
+
+                    var this_serialized = $("#gui-form").serialize();
+                    if (this_serialized != last_serialized) {{
+                        $.post('{view_url}', this_serialized, function (data) {{
+                            if (data.indexOf(FINAL_INCOMPLETE_CODE) >= 0) {{
+                                $("#gui-submit-save").attr('disabled', 'disabled');
+                            }} else {{
+                                $("#gui-submit-save").removeAttr('disabled');
+                            }}
                             $("#gui-view-content").html(data);
+                            last_serialized = this_serialized;
                         }}, 'html');
-                        $("#gui-view-subject>.subject").html($("input[name=subject]").val() || "<no subject>");
-                    }}, 250
-                );
+                    }}
+                }};
+                update_display();
+                window.setInterval(update_display, 1500);
             }});
         </script>
     </head>
@@ -20,19 +36,24 @@
         <form id="gui-form" method="POST">
             <table>
                 <tr>
+                    <td id="gui-edit-styles" valign="top" colspan="2">{styles}</td>
+                </tr>
+                <tr>
                     <td id="gui-edit-subject">{subject}</td>
                     <td id="gui-view-subject"><h1 class="subject" style="text-align: center">TODO</h1></td>
                 </tr>
                 <tr>
-                    <td id="gui-edit-content" valign="top">{content}</td>
+                    <td id="gui-edit-content" valign="top" rowspan="2">{content}</td>
                     <td id="gui-view-content" valign="top"></td>
                 </tr>
                 <tr>
-                    <td id="gui-edit-styles" valign="top">{styles}</td>
-                    <td id="gui-view-styles" valign="top"></td>
-                </tr>
-                <tr>
-                    <td id="gui-actions" colspan="2">{actions}</td>
+                    <td id="gui-actions" valign="top">
+                        <fieldset class="gui-template-actions" style="text-align: center; border-style: none">
+                            <input type="reset" value="Reset" style="font-size: large" />
+                            <input id="gui-submit-save" type="submit" value="Save" formaction="{save_url}"
+                                   style="font-size: large" disabled="disabled" />
+                        </fieldset>
+                    </td>
                 </tr>
             </table>
         </form>

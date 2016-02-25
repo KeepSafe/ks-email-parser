@@ -12,6 +12,7 @@ from collections import namedtuple
 import random, string
 import urllib.parse
 import time
+import html
 
 
 DOCUMENT_TIMEOUT = 24 * 60 * 60  # 24 hours
@@ -22,6 +23,7 @@ TEMPLATE_PARAM_NAME = 'HIDDEN__template'
 EMAIL_PARAM_NAME = 'HIDDEN__saved_email_filename'
 WORKING_PARAM_NAME = 'HIDDEN__working_name'
 LAST_ACCESS_PARAM_NAME = 'HIDDEN__last_access_time'
+FINAL_INCOMPLETE_CODE = 'HIDDEN__final_incomplete_code'
 
 OVERWRITE_PARAM_NAME = 'overwrite'
 SAVEAS_PARAM_NAME = 'saveas_filename'
@@ -38,11 +40,6 @@ CONTENT_TYPES = {
 
 
 RECENT_DOCUMENTS = dict()
-
-
-def _html_encode(text):
-    # This is wrong, fix when on the ground
-    return text.replace('<', '&lt;').replace('>', '&gt;')
 
 
 def _clean_documents():
@@ -66,16 +63,6 @@ def _new_working_args():
     working_name = ''.join(random.SystemRandom().choice(string.ascii_letters + string.digits) for _ in range(8))
     _clean_documents()
     return _get_working_args(working_name)
-
-
-def _get_body_content_string(soup, comments=True):
-    if not isinstance(soup, bs4.BeautifulSoup):
-        soup = bs4.BeautifulSoup(soup)
-    return ''.join(
-        ('<!--{}-->'.format(C) if comments else '') if isinstance(C, bs4.Comment)
-        else str(C)
-        for C in soup.body.contents
-    )
 
 
 def _extract_document(args=None, working_name=None, email_name=None, template_name=None, template_styles=None):
@@ -111,6 +98,16 @@ def soup_fragment(html_fragment):
         return soup.html.next
     else:
         return soup
+
+
+def _get_body_content_string(soup, comments=True):
+    if not isinstance(soup, bs4.BeautifulSoup):
+        soup = bs4.BeautifulSoup(soup)
+    return ''.join(
+        ('<!--{}-->'.format(C) if comments else '') if isinstance(C, bs4.Comment)
+        else str(C)
+        for C in soup.body.contents
+    )
 
 
 def _make_fieldset(names, values=None, friendly_names=None):
@@ -195,7 +192,7 @@ def _pop_styles(args):
 
 
 def _make_subject_line(subject):
-    subject = _html_encode(subject) if subject else '<em>&lt;no subject&gt;</em>'
+    subject = html.escape(subject) if subject else '<em>&lt;no subject&gt;</em>'
     return '<h1 class="subject" style="text-align: center">{}</h1>'.format(subject)
 
 
@@ -392,9 +389,7 @@ class InlineFormRenderer(GenericRenderer):
         return replacer, html
 
     def save(self, email_name, template_name, styles, **args):
-        replacer = self._make_replacer(args)
-        template_html = self._read_template(template_name)
-        replacer.replace(template_html)
+        replacer, _ = self._make_replacer(args, template_name)
         xml = replacer.make_xml(template_name, styles)
 
         fs.save_file(xml, self.settings.source, email_name)
@@ -487,7 +482,10 @@ class InlineFormRenderer(GenericRenderer):
 
     def render_final(self, template_name, styles, **args):
         replacer, _ = self._make_replacer(args, template_name)
-        return self._render_final_content(template_name, styles, replacer)
+        html = self._render_final_content(template_name, styles, replacer)
+        if replacer.required or not styles:
+            html = '{} <!-- {} -->'.format(html, FINAL_INCOMPLETE_CODE)
+        return html
 
     def _render_two_column(
             self, template_name, styles=(),
@@ -511,7 +509,7 @@ class InlineFormRenderer(GenericRenderer):
             subject=_make_fieldset(['subject'], args),
             content=edit_column,
             styles=self._style_list(styles),
-            actions=_make_actions(actions),  # TODO: get rid of submit, edit, etc.
+            save_url=internal_actions.get('save')
         )
 
         return html
@@ -549,7 +547,7 @@ class Server(object):
         return {
             'final': '/final/{}{}'.format(document.working_name, qargs),
             'preview': '/preview/{}{}'.format(document.working_name, qargs),
-            'save': '/save/{}{}'.format(document.working_name, qargs),
+            'save': '{}{}'.format(cls._make_save_url(document), qargs),
             'edit': '/edit/{}{}'.format(document.working_name, qargs),
             'final_fragment': '/final_fragment/{}{}'.format(document.working_name, qargs),
         }
@@ -560,7 +558,7 @@ class Server(object):
         img_path = os.path.join(self.settings.images, *path)
         if os.path.isdir(img_path):
             return self.renderer.directory(
-                img_name or 'image directory',
+                'Contents of ' + (img_name or 'image directory'),
                 self.settings.images, img_name,
                 '/img/{}'.format,
             )
@@ -603,7 +601,7 @@ class Server(object):
         template_path = os.path.join(self.settings.templates, template_name)
         if os.path.isdir(template_path):
             return self.renderer.directory(
-                template_name or 'template directory',
+                'Contents of ' + (template_name or 'template directory'),
                 self.settings.templates, template_name,
                 '/template/{}'.format,
                 (lambda path: os.path.isdir(path) or '.htm' in path.lower())
@@ -625,6 +623,13 @@ class Server(object):
                 internal_actions=self._internal_actions(document, **{TEMPLATE_PARAM_NAME: template_name}),
             )
 
+    @classmethod
+    def _make_save_url(cls, document):
+        if document.email_name:
+            return '/save/{}/{}'.format(document.working_name, document.email_name)
+        else:
+            return '/save/{}'.format(document.working_name)
+
     @cherrypy.expose
     def preview(self, working_name, **args):
         document = _extract_document(args, working_name)
@@ -632,12 +637,10 @@ class Server(object):
         if not document.template_name:
             raise cherrypy.HTTPRedirect('/timeout')
 
-        preview_actions = []
-        if document.email_name:
-            preview_actions.append(['Save', '/save/{}/{}'.format(document.working_name, document.email_name)])
-        else:
-            preview_actions.append(['Save', '/save/{}'.format(document.working_name)])
-        preview_actions.append(['Edit', '/edit/{}'.format(document.working_name)])
+        preview_actions = [
+            ['Save', self._make_save_url(document)],
+            ['Edit', '/edit/{}'.format(document.working_name)],
+        ]
         if document.email_name:
             preview_actions.append(['Reset', '/email/{}'.format(document.email_name)])
 
@@ -700,7 +703,7 @@ class Server(object):
         email_path = os.path.join(self.settings.source, email_name)
         if os.path.isdir(email_path):
             return self.renderer.directory(
-                email_name or 'source directory',
+                'Contents of ' + (email_name or 'source directory'),
                 self.settings.source, email_name,
                 '/email/{}'.format
             )
@@ -732,7 +735,18 @@ class Server(object):
                                      template_name=template.name,
                                      template_styles=template.styles
                                      )
-        raise cherrypy.HTTPRedirect('/edit/{}'.format(document.working_name))
+
+        return self.renderer.render(
+            document.template_name,
+            document.styles,
+            editing_actions=[
+                ['Preview', '/preview/{}'.format(document.working_name)],
+            ],
+            internal_actions=self._internal_actions(document, **{EMAIL_PARAM_NAME: email_name}),
+            **document.args
+        )
+
+        # raise cherrypy.HTTPRedirect('/edit/{}'.format(document.working_name))
 
     @cherrypy.expose
     def saveas(self, working_name, *email_paths, **args):
