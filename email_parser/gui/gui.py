@@ -11,7 +11,8 @@ from collections import namedtuple
 import random, string
 import urllib.parse
 import time
-import html
+from html import escape as html_escape
+import jinja2
 
 
 DOCUMENT_TIMEOUT = 24 * 60 * 60  # 24 hours
@@ -113,18 +114,6 @@ def _get_body_content_string(soup, comments=True):
         else str(C)
         for C in soup.body.contents
     )
-
-
-def _make_actions(actions, excluded=()):
-    result = list()
-    excluded = set(E.lower() for E in excluded)
-    actions = [(name, action) for (name, action) in actions if name.lower() not in excluded]
-    if actions:
-        result.append('<fieldset class="generated-actions" style="text-align: center; padding-bottom: 200px" >')
-        for name, action in actions:
-            result.append('<input type="submit" value="{0}" formaction="{1}" style="font-size: large" />'.format(name, action))
-        result.append('</fieldset>')
-    return '\n'.join(result)
 
 
 # Utilities
@@ -279,6 +268,10 @@ class GenericRenderer(object):
             self._resource_cache[resource_name] = resource
         return resource
 
+    def gui_template(self, template_name, **args):
+        resource = self.resource(template_name)
+        return jinja2.Template(resource).render(**args)
+
     def directory(
             self,
             description, root, path, href,
@@ -287,43 +280,30 @@ class GenericRenderer(object):
             actions=()
     ):
         root_path = os.path.join(root, path)
-        if actions:
-            soup = bs4.BeautifulSoup(
-                self.resource('directory.save.html').format(
-                    title=html.escape(description),
-                    old_filename=old_filename,
-                    actions=_make_actions(actions)
-                ), HTML_PARSER
-            )
-        else:
-            soup = bs4.BeautifulSoup(
-                self.resource('directory.html').format(
-                    title=html.escape(description)
-                ), HTML_PARSER
-            )
-        ul = soup.find('ul')
-        if path:
-            ul.append(soup_fragment('<li><a href="{}">&#8593; <em>Parent Directory</em></a></li>'.format(
-                href(os.path.dirname(path))
-            )))
+        parent = href(os.path.dirname(path)) if path else None
+        files = list()
         for name in sorted(os.listdir(root_path)):
             name_path = os.path.join(path, name)
             if accepts(name):
                 if os.path.isdir(os.path.join(root, path, name)):
-                    ul.append(soup_fragment('<li><a href="{href}">&#128194; <code>{name}</code></a></li>'.format(
-                        href=href(name_path), name=name
-                    )))
+                    files.append([href(name_path), "&#128194;", name])
                 else:
-                    ul.append(soup_fragment('<li><a href="{href}">&#128196; <code>{name}</code></a></li>'.format(
-                        href=href(name_path), name=name
-                    )))
-        return soup.prettify()
+                    files.append([href(name_path), "&#128196;", name])
+        return self.gui_template(
+            'directory.html.jinja2',
+            title=description,
+            old_filename=old_filename,
+            parent=parent,
+            actions=actions,
+            files=files,
+        )
 
     def question(self, title, description, actions):
-        return self.resource('question.html').format(
-            title=html.escape(title),
+        return self.gui_template(
+            'question.html.jinja2',
+            title=title,
             description=description,
-            actions=_make_actions(actions)
+            actions=actions,
         )
 
 
@@ -365,17 +345,22 @@ class InlineFormRenderer(GenericRenderer):
 
         edit_column = _get_body_content_string(self._render_editable_content(html)).strip()
 
-        return self.resource("editor.html").format(
+        return self.gui_template(
+            "editor.html.jinja2",
             view_url=actions.get('preview_fragment'),
             title='Editing {}'.format(template_name),
-            subject=html.escape(args.get('subject', '')),
+            subject=args.get('subject', ''),
             content=edit_column,
-            styles=self._style_list(styles),
+            all_styles=self._find_styles(),
+            styles=styles,
             save_url=actions.get('save')
         )
 
     def _read_template(self, template_name):
         return fs.read_file(self.settings.templates, template_name)
+
+    def _find_styles(self, path_glob='*.css'):
+        return list(fnmatch.filter(os.listdir(self.settings.templates), path_glob))
 
     def _style_list(self, styles=(), path_glob='*.css'):
         result = list()
@@ -581,7 +566,7 @@ class Server(object):
 
             html = HtmlRenderer(template, self.settings, '').render(placeholders)
             return self.renderer.question(
-                title=html.escape(args.get('subject')),
+                title=html_escape(args.get('subject')),
                 description=_get_body_content_string(html),
                 actions=[
                     ['Edit', '/alter/{}'.format(email_name)],
@@ -594,11 +579,12 @@ class Server(object):
         email_path = os.path.join(self.settings.source, email_name)
         template, placeholders, _ = reader_read(email_path)
         args = _unplaceholder(placeholders)
-        document = _extract_document(args,
-                                     email_name=email_name,
-                                     template_name=template.name,
-                                     template_styles=template.styles
-                                     )
+        document = _extract_document(
+            args,
+            email_name=email_name,
+            template_name=template.name,
+            template_styles=template.styles
+        )
 
         return self.renderer.render(
             document.template_name,
@@ -647,14 +633,14 @@ class Server(object):
                 'Overwriting ' + rel_path,
                 'Are you sure you want to overwrite the existing email <code>{}</code>?'.format(rel_path),
                 [
-                        ['No, save as a new file',
-                         '/save/{0}/{1}'.format(
-                             working_name, os.path.dirname(rel_path)
-                         )],
-                        ['Yes, how dare you question me!',
-                         '/save/{0}/{1}?{2}=1'.format(
-                             working_name, rel_path, OVERWRITE_PARAM_NAME
-                         )],
+                    ['No, save as a new file',
+                     '/save/{0}/{1}'.format(
+                         working_name, os.path.dirname(rel_path)
+                     )],
+                    ['Yes, how dare you question me!',
+                     '/save/{0}/{1}?{2}=1'.format(
+                         working_name, rel_path, OVERWRITE_PARAM_NAME
+                     )],
                 ]
             )
 

@@ -1,45 +1,51 @@
 <html>
     <head>
-        <title>{title}</title>
+        <title>{{ title|e }}</title>
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.0/jquery.min.js"></script>
         <script type="application/ecmascript">
-            $(document).ready(function() {{
+            $(document).ready(function() {
                 var FINAL_INCOMPLETE_CODE = 'HIDDEN__preview_incomplete_code';
                 var last_serialized = '``````';
                 var last_subject = '``````';
-                var update_display = function() {{
+                var update_display = function() {
                     var this_subject = $("input[name=subject]").val();
-                    if (this_subject != last_subject) {{
+                    if (this_subject != last_subject) {
                         $("#gui-view-subject>.subject").text(this_subject || "<no subject>");
                         last_subject = this_subject;
-                    }}
+                    }
 
                     var this_serialized = $("#gui-form").serialize();
-                    if (this_serialized != last_serialized) {{
-                        $.post('{view_url}', this_serialized, function (data) {{
-                            if (data.indexOf(FINAL_INCOMPLETE_CODE) >= 0) {{
+                    if (this_serialized != last_serialized) {
+                        $.post('{{ view_url }}', this_serialized, function (data) {
+                            if (data.indexOf(FINAL_INCOMPLETE_CODE) >= 0) {
                                 $("#gui-submit-save").attr('disabled', 'disabled');
-                            }} else {{
+                            } else {
                                 $("#gui-submit-save").removeAttr('disabled');
-                            }}
+                            }
                             $("#gui-view-content").html(data);
                             last_serialized = this_serialized;
-                        }}, 'html');
-                    }}
-                }};
+                        }, 'html');
+                    }
+                };
                 update_display();
                 window.setInterval(update_display, 1500);
-            }});
+            });
         </script>
         <style type="text/css">
-            input.absent {{border-size: 4px; border-color: #ff4444;}}
+            input.absent {border-size: 4px; border-color: #ff4444;}
         </style>
     </head>
     <body>
         <form id="gui-form" method="POST">
             <table>
                 <tr>
-                    <td id="gui-edit-styles" valign="top" colspan="2">{styles}</td>
+                    <td id="gui-edit-styles" valign="top" colspan="2">
+                        <fieldset><select multiple class="{{ 'present' if styles else 'absent' }}" name="HIDDEN__styles">
+                        {% for style in all_styles %}
+                            <option {{ 'selected' if style in styles else '' }} value="{{ style|e }}">{{ style|e }}</option>
+                        {% endfor %}
+                        </select></fieldset>
+                    </td>
                 </tr>
                 <tr>
                     <td id="gui-edit-subject">
@@ -48,23 +54,23 @@
                                 <input type="text"
                                        name="subject"
                                        placeholder="Type subject here"
-                                       value="{subject}"
+                                       value="{{ subject|e }}"
                                        style="width: 60%"
                                 />
                             </label>
                         </fieldset>
                     </td>
-                    <td id="gui-view-subject"><h1 class="subject" style="text-align: center">{subject}</h1></td>
+                    <td id="gui-view-subject"><h1 class="subject" style="text-align: center">{{ subject|e }}</h1></td>
                 </tr>
                 <tr>
-                    <td id="gui-edit-content" valign="top" rowspan="2">{content}</td>
+                    <td id="gui-edit-content" valign="top" rowspan="2">{{ content }}</td>
                     <td id="gui-view-content" valign="top"></td>
                 </tr>
                 <tr>
                     <td id="gui-actions" valign="top">
                         <fieldset class="gui-template-actions" style="text-align: center; border-style: none">
                             <input type="reset" value="Reset" style="font-size: large" />
-                            <input id="gui-submit-save" type="submit" value="Save" formaction="{save_url}"
+                            <input id="gui-submit-save" type="submit" value="Save" formaction="{{ save_url|e }}"
                                    style="font-size: large" disabled="disabled" />
                         </fieldset>
                     </td>
