@@ -220,28 +220,16 @@ class InlineFormReplacer(object):
                     print('Added!', key, result[key])
         return result
 
-    def make_xml(self, template_name, styles):
-        result = list()
-        result.append('<?xml version="1.0" encoding="UTF-8"?>')
-        result.append(
-            '<resources xmlns:tools="http://schemas.android.com/tools" template="{0}" style="{1}">'.format(
-                template_name, ','.join(styles)
-            )
-        )
+    def make_value_list(self):
+        values = list()
         written_names = set()
         for name in self.names:
             if name in written_names or name in self.builtins:
                 continue
             written_names.add(name)
             value = self.require(name)
-            if name == 'subject':
-                result.append('    <string name="{0}">{1}</string>'.format(name, value))
-            elif name in self.attrs:
-                result.append('    <string name="{0}" isText="false"><![CDATA[[[{1}]]]]></string>'.format(name, value))
-            else:
-                result.append('    <string name="{0}"><![CDATA[{1}]]></string>'.format(name, value))
-        result.append('</resources>')
-        return '\n'.join(result)
+            values.append([name, value])
+        return values
 
 
 class GenericRenderer(object):
@@ -278,9 +266,9 @@ class GenericRenderer(object):
             name_path = os.path.join(path, name)
             if accepts(name):
                 if os.path.isdir(os.path.join(root, path, name)):
-                    files.append([href(name_path), "&#128194;", name])
+                    files.append([href(name_path), "\U0001f4c2", name])
                 else:
-                    files.append([href(name_path), "&#128196;", name])
+                    files.append([href(name_path), "\U0001f4c4", name])
         return self.gui_template(
             'directory.html.jinja2',
             title=description,
@@ -317,7 +305,13 @@ class InlineFormRenderer(GenericRenderer):
         :return:
         """
         replacer, _ = self._make_replacer(args, template_name)
-        xml = replacer.make_xml(template_name, styles)
+        xml = self.gui_template(
+            'email.xml.jinja2',
+            template=template_name,
+            style=','.join(styles),
+            attrs=replacer.attrs,
+            values=replacer.make_value_list(),
+        )
 
         fs.save_file(xml, self.settings.source, email_name)
 
@@ -447,7 +441,7 @@ class Server(object):
     @cherrypy.expose
     def timeout(self, *_ignored, **_also_ignored):
         return self.renderer.question(
-            '&#x1f62d; SORRY &#x1f62d;',
+            '\U0001f62d SORRY \U0001f62d',
             'Your session has timed out! Do you want to create a new email from a template, or edit an existing email?',
             [
                     ['Create new', '/template'],
