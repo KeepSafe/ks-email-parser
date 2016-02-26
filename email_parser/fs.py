@@ -67,20 +67,25 @@ def emails(src_dir, pattern, exclusive_path=None):
         yield Email(**result.named)
 
 
-def email(src_dir, pattern, email_name):
+def email(src_dir, pattern, email_name, locale=None):
     """
     Gets an email by name. Used for clients which should produce a single file for all locales.
 
     :param src_dir: base dir for the search
     :param pattern: search pattern
-    :param email_name: email name for all locales
+    :param email_name: email name
+    :param locale: locale name or None for all locales
 
     :returns: generator for the emails with email_name
     """
     single_email_pattern = pattern.replace('{name}', email_name)
+    if locale:
+        single_email_pattern = single_email_pattern.replace('{locale}', locale)
     params = _parse_params(pattern)
     for result in _emails(src_dir, single_email_pattern, params):
         result.named['name'] = email_name
+        if locale:
+            result.named['locale'] = locale
         yield Email(**result.named)
 
 
@@ -103,7 +108,7 @@ def save_file(content, *path_parts):
         return fp.write(content)
 
 
-def save(email, subject, text, html, dest_dir):
+def save(email, subject, text, html, dest_dir, fallback_locale=None):
     """
     Saves an email. The locale and name are taken from email tuple.
 
@@ -113,7 +118,9 @@ def save(email, subject, text, html, dest_dir):
     :param html: email's body as html
     :param dest_dir: root destination directory
     """
-    os.makedirs(os.path.join(dest_dir, email.locale), exist_ok=True)
-    save_file(subject, dest_dir, email.locale, email.name + SUBJECT_EXTENSION)
-    save_file(text, dest_dir, email.locale, email.name + TEXT_EXTENSION)
-    save_file(html, dest_dir, email.locale, email.name + HTML_EXTENSION)
+    locale = fallback_locale if fallback_locale else email.locale
+
+    os.makedirs(os.path.join(dest_dir, locale), exist_ok=True)
+    save_file(subject, dest_dir, locale, email.name + SUBJECT_EXTENSION)
+    save_file(text, dest_dir, locale, email.name + TEXT_EXTENSION)
+    save_file(html, dest_dir, locale, email.name + HTML_EXTENSION)

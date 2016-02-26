@@ -15,6 +15,17 @@ from . import cmd, fs, reader, renderer, clients, placeholder, utils
 
 logger = logging.getLogger()
 
+def _render_email(email, settings, fallback_locale=None):
+    if not placeholder.validate_email(email, settings.source) and not settings.force:
+        return False
+
+    template, placeholders, ignored_plceholder_names = reader.read(email.full_path)
+    if template:
+        subject, text, html = renderer.render(email, template, placeholders, ignored_plceholder_names, settings)
+        fs.save(email, subject, text, html, settings.destination, fallback_locale)
+        return True
+    else:
+        return False
 
 def parse_emails(settings):
     result = True
@@ -24,18 +35,17 @@ def parse_emails(settings):
 
     emails = fs.emails(settings.source, settings.pattern, settings.exclusive)
     for email in emails:
-        if not placeholder.validate_email(email, settings.source):
-            result = False
-            if not settings.force:
-                logging.info('F', extra={'same_line': True})
-                continue
-        template, placeholders, ignored_plceholder_names = reader.read(email.full_path)
-        if template:
-            subject, text, html = renderer.render(email, template, placeholders, ignored_plceholder_names, settings)
+        if _render_email(email, settings):
             logging.info('.', extra={'same_line': True})
-            fs.save(email, subject, text, html, settings.destination)
         else:
-            logging.info('F', extra={'same_line': True})
+            result = False
+            default_locale_email = next(fs.email(settings.source, settings.pattern, email.name, settings.default_locale), None)
+            if default_locale_email and _render_email(default_locale_email, settings, email.locale):
+                logging.info('!', extra={'same_line': True})
+                logging.warn("Email %s/%s substitued by %s/%s" % (email.locale, email.name, default_locale_email.locale, default_locale_email.name))
+            else:
+                logging.info('F', extra={'same_line': True})
+
     return result
 
 
