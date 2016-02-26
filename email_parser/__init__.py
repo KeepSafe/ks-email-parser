@@ -11,6 +11,7 @@
 import logging
 import sys
 import shutil
+import asyncio
 from . import cmd, fs, reader, renderer, clients, placeholder, utils
 
 logger = logging.getLogger()
@@ -27,6 +28,27 @@ def _render_email(email, settings, fallback_locale=None):
     else:
         return False
 
+@asyncio.coroutine
+def _parse_emails_batch(future, emails, settings, logger):
+    result = True
+    for email in emails:
+        if not _parse_email(email, settings, logger):
+            result = False
+    future.set_result(result)
+
+def _parse_email(email, settings, logger):
+    if _render_email(email, settings):
+        logging.info('.', extra={'same_line': True})
+        return True
+    else:
+        default_locale_email = next(fs.email(settings.source, settings.pattern, email.name, settings.default_locale), None)
+        if default_locale_email and _render_email(default_locale_email, settings, email.locale):
+            logging.info('!', extra={'same_line': True})
+            logging.warn("Email %s/%s substituted by %s/%s" % (email.locale, email.name, default_locale_email.locale, default_locale_email.name))
+        else:
+            logging.info('F', extra={'same_line': True})
+        return False
+
 def parse_emails(settings):
     result = True
 
@@ -34,17 +56,28 @@ def parse_emails(settings):
         shutil.rmtree(settings.destination, ignore_errors=True)
 
     emails = fs.emails(settings.source, settings.pattern, settings.exclusive)
-    for email in emails:
-        if _render_email(email, settings):
-            logging.info('.', extra={'same_line': True})
-        else:
-            result = False
-            default_locale_email = next(fs.email(settings.source, settings.pattern, email.name, settings.default_locale), None)
-            if default_locale_email and _render_email(default_locale_email, settings, email.locale):
-                logging.info('!', extra={'same_line': True})
-                logging.warn("Email %s/%s substitued by %s/%s" % (email.locale, email.name, default_locale_email.locale, default_locale_email.name))
-            else:
-                logging.info('F', extra={'same_line': True})
+    if settings.thread_pool > 1:
+        loop = asyncio.get_event_loop()
+        loop.set_debug(False)
+        tasks = []
+        futures = []
+
+        emails = list(emails)
+        for chunk in [emails[i:i+settings.thread_pool] for i in range(0, len(emails), settings.thread_pool)]:
+            f = asyncio.Future()
+            tasks.append(_parse_emails_batch(f, chunk, settings, logger))
+            futures.append(f)
+
+
+        loop.run_until_complete(asyncio.wait(tasks))
+        for f in futures:
+            if not f.result() == True:
+                result = False
+        loop.close()
+
+    else:
+        for email in emails:
+            _parse_email(email, settings, logger)
 
     return result
 

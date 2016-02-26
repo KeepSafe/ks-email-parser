@@ -27,7 +27,8 @@ Settings = namedtuple('Settings', [
     'verbose',
     'shortener',
     'exclusive',
-    'default_locale'
+    'default_locale',
+    'thread_pool'
 ])
 
 
@@ -44,7 +45,8 @@ def default_settings():
         pattern='{locale}/{name}.xml',
         shortener={},
         exclusive=None,
-        default_locale='en'
+        default_locale='en',
+        thread_pool=2
     )
 
 
@@ -67,6 +69,8 @@ def read_args(argsargs=argparse.ArgumentParser):
                       help='Disable strict mode, allow templates with unfilled parameters',
                       action='store_false')
     args.add_argument('-f', '--force', help='Generate emails despite errors', action='store_true')
+    args.add_argument('-tp', '--thread-pool',
+                      help='Number of threads, default: %s' % settings.thread_pool)
     args.add_argument('-vv', '--verbose', help='Generate emails despite errors', action='store_true')
     args.add_argument('-v', '--version', help='Show version', action='store_true')
 
