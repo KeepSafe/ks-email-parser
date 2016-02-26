@@ -4,7 +4,7 @@
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.0/jquery.min.js"></script>
         <script type="application/ecmascript">
             $(document).ready(function() {{
-                var FINAL_INCOMPLETE_CODE = 'HIDDEN__final_incomplete_code';
+                var FINAL_INCOMPLETE_CODE = 'HIDDEN__preview_incomplete_code';
                 var last_serialized = '``````';
                 var last_subject = '``````';
                 var update_display = function() {{
@@ -31,6 +31,9 @@
                 window.setInterval(update_display, 1500);
             }});
         </script>
+        <style type="text/css">
+            input.absent {{border-size: 4px; border-color: #ff4444;}}
+        </style>
     </head>
     <body>
         <form id="gui-form" method="POST">
@@ -39,8 +42,19 @@
                     <td id="gui-edit-styles" valign="top" colspan="2">{styles}</td>
                 </tr>
                 <tr>
-                    <td id="gui-edit-subject">{subject}</td>
-                    <td id="gui-view-subject"><h1 class="subject" style="text-align: center">TODO</h1></td>
+                    <td id="gui-edit-subject">
+                        <fieldset class="gui-edit-subject">
+                            <label>Subject:
+                                <input type="text"
+                                       name="subject"
+                                       placeholder="Type subject here"
+                                       value="{subject}"
+                                       style="width: 60%"
+                                />
+                            </label>
+                        </fieldset>
+                    </td>
+                    <td id="gui-view-subject"><h1 class="subject" style="text-align: center">{subject}</h1></td>
                 </tr>
                 <tr>
                     <td id="gui-edit-content" valign="top" rowspan="2">{content}</td>

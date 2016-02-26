@@ -23,20 +23,22 @@ TEMPLATE_PARAM_NAME = 'HIDDEN__template'
 EMAIL_PARAM_NAME = 'HIDDEN__saved_email_filename'
 WORKING_PARAM_NAME = 'HIDDEN__working_name'
 LAST_ACCESS_PARAM_NAME = 'HIDDEN__last_access_time'
-FINAL_INCOMPLETE_CODE = 'HIDDEN__final_incomplete_code'
+FINAL_INCOMPLETE_CODE = 'HIDDEN__preview_incomplete_code'
 
 OVERWRITE_PARAM_NAME = 'overwrite'
 SAVEAS_PARAM_NAME = 'saveas_filename'
-
-
-Document = namedtuple('Document', ['working_name', 'email_name', 'template_name', 'styles', 'args'])
-
 
 CONTENT_TYPES = {
     '.png': 'image/png',
     '.jpg': 'image/jpeg',
     '.jpeg': 'image/jpeg',
 }
+
+
+# Dealing with documents, in our cache & invented from POST params
+
+
+Document = namedtuple('Document', ['working_name', 'email_name', 'template_name', 'styles', 'args'])
 
 
 RECENT_DOCUMENTS = dict()
@@ -89,6 +91,9 @@ def _extract_document(args=None, working_name=None, email_name=None, template_na
     return Document(working_name, email_name, template_name, styles, result_args)
 
 
+# Dealing with HTML & soup
+
+
 def soup_fragment(html_fragment):
     # http://stackoverflow.com/a/15981476
     soup = bs4.BeautifulSoup(html_fragment)
@@ -110,36 +115,6 @@ def _get_body_content_string(soup, comments=True):
     )
 
 
-def _make_fieldset(names, values=None, friendly_names=None):
-    values = values or dict()
-    friendly_names = friendly_names or dict()
-    result = list()
-    if names:
-        result.append('<fieldset class="generated-fields"><ul>')
-        for name in names:
-            value = values.get(name, '')
-            result.append((
-                '<li><label>{2}: ' +
-                '<input type="text" class="{3}" name="{0}" placeholder="{0}" value="{1}" style="width: 60%" />' +
-                '</label></li>').format(
-                name, value, friendly_names.get(name, name), 'present' if value else 'absent'
-            ))
-        result.append('</ul></fieldset>')
-    return '\n'.join(result)
-
-
-def _make_hidden_fields(*args):
-    result = list()
-    result.append('<div class="generated-hidden">')
-    for values in args:
-        for name, value in values.items():
-            if isinstance(value, Sequence) and not isinstance(value, str):
-                value = ','.join(value)
-            result.append('<input type="hidden" name="{0}" value="{1}"/>'.format(name, value))
-    result.append('</div>')
-    return '\n'.join(result)
-
-
 def _make_actions(actions, excluded=()):
     result = list()
     excluded = set(E.lower() for E in excluded)
@@ -152,6 +127,9 @@ def _make_actions(actions, excluded=()):
     return '\n'.join(result)
 
 
+# Utilities
+
+
 def _list_files_recursively(path, hidden=False):
     result = set()
     for dirpath, _, filenames in os.walk(path):
@@ -162,38 +140,12 @@ def _list_files_recursively(path, hidden=False):
     return sorted(result)
 
 
-def _wrap_body_in_form(html, prefixes=[], postfixes=[], highlight=True):
-    soup = bs4.BeautifulSoup(html)
-    body = soup.find('body')
-    new_form = soup.new_tag('form', **{'method': 'POST'})
-    if highlight:
-        soup.find('head').insert(0, soup_fragment(
-            '<style type="text/css">.absent {border-size: 4px; border-color: #ff4444;}</style>'
-        ))
-    for content in reversed(body.contents):
-        new_form.insert(0, content.extract())
-    for prefix in reversed(prefixes):
-        if prefix.strip():
-            new_form.insert(0, soup_fragment(prefix))
-    for postfix in postfixes:
-        if postfix.strip():
-            new_form.append(soup_fragment(postfix))
-
-    body.append(new_form)
-    return str(soup)
-
-
 def _pop_styles(args):
     styles = args.pop(STYLES_PARAM_NAME, [])
     if isinstance(styles, str):
         styles = styles.split(',')
     styles = [S for S in styles if S.lower().endswith('.css')]
     return styles
-
-
-def _make_subject_line(subject):
-    subject = html.escape(subject) if subject else '<em>&lt;no subject&gt;</em>'
-    return '<h1 class="subject" style="text-align: center">{}</h1>'.format(subject)
 
 
 def _unplaceholder(placeholders):
@@ -205,7 +157,13 @@ def _unplaceholder(placeholders):
     return {K: fix_item(V) for K, V in placeholders.items()}
 
 
+# Editing & rendering
+
+
 class InlineFormReplacer(object):
+    """
+    Reads template files & inserts values to approximate rendered format (or editor-style format)
+    """
     # Group 1: spaces and preceding non-space character: must be returned with replacement
     # Group 2: preceding non-space character (if any)
     # Group 3: replace tag
@@ -306,6 +264,9 @@ class InlineFormReplacer(object):
 
 
 class GenericRenderer(object):
+    """
+    Render directories and simple documents.
+    """
     def __init__(self, settings, resources='resources/gui'):
         self.settings = settings
         self.resources = resources
@@ -321,10 +282,25 @@ class GenericRenderer(object):
     def directory(
             self,
             description, root, path, href,
-            accepts=(lambda path: not os.path.basename(path).startswith('.'))
+            accepts=(lambda path: not os.path.basename(path).startswith('.')),
+            old_filename='',
+            actions=()
     ):
         root_path = os.path.join(root, path)
-        soup = bs4.BeautifulSoup(self.resource('directory.html').format(description))
+        if actions:
+            soup = bs4.BeautifulSoup(
+                self.resource('directory.save.html').format(
+                    title=html.escape(description),
+                    old_filename=old_filename,
+                    actions=_make_actions(actions)
+                )
+            )
+        else:
+            soup = bs4.BeautifulSoup(
+                self.resource('directory.html').format(
+                    title=html.escape(description)
+                )
+            )
         ul = soup.find('ul')
         if path:
             ul.append(soup_fragment('<li><a href="{}">&#8593; <em>Parent Directory</em></a></li>'.format(
@@ -345,17 +321,58 @@ class GenericRenderer(object):
 
     def question(self, title, description, actions):
         return self.resource('question.html').format(
-            title=title,
+            title=html.escape(title),
             description=description,
             actions=_make_actions(actions)
         )
 
 
 class InlineFormRenderer(GenericRenderer):
-    def __init__(self, settings, two_column=False):
+    """
+    Render editors and previews
+    """
+    def __init__(self, settings):
         super().__init__(settings)
         self.settings = settings
-        self._two_column = two_column
+
+    def save(self, email_name, template_name, styles, **args):
+        """
+        Saves email in XML format
+        :param email_name:
+        :param template_name:
+        :param styles:
+        :param args:
+        :return:
+        """
+        replacer, _ = self._make_replacer(args, template_name)
+        xml = replacer.make_xml(template_name, styles)
+
+        fs.save_file(xml, self.settings.source, email_name)
+
+    def render_preview(self, template_name, styles, **args):
+        replacer, _ = self._make_replacer(args, template_name)
+        html = self._render_preview_content(template_name, styles, replacer)
+        if replacer.required or not styles:
+            html = '{} <!-- {} -->'.format(html, FINAL_INCOMPLETE_CODE)
+        return html
+
+    def render(
+            self, template_name, styles=(),
+            actions={},
+            **args
+    ):
+        replacer, html = self._make_replacer(args, template_name)
+
+        edit_column = _get_body_content_string(self._render_editable_content(html)).strip()
+
+        return self.resource("editor.html").format(
+            view_url=actions.get('preview_fragment'),
+            title='Editing {}'.format(template_name),
+            subject=html.escape(args.get('subject', '')),
+            content=edit_column,
+            styles=self._style_list(styles),
+            save_url=actions.get('save')
+        )
 
     def _read_template(self, template_name):
         return fs.read_file(self.settings.templates, template_name)
@@ -388,12 +405,6 @@ class InlineFormRenderer(GenericRenderer):
         html = replacer.replace(template_html)
         return replacer, html
 
-    def save(self, email_name, template_name, styles, **args):
-        replacer, _ = self._make_replacer(args, template_name)
-        xml = replacer.make_xml(template_name, styles)
-
-        fs.save_file(xml, self.settings.source, email_name)
-
     def _insert_image_selectors(self, html, local_dir=None):
         base_url = self.settings.images
         local_dir = local_dir or base_url
@@ -424,116 +435,16 @@ class InlineFormRenderer(GenericRenderer):
     def _render_editable_content(self, html):
         return self._insert_image_selectors(html)
 
-    def _render_editable(
-            self, template_name, styles=(),
-            editing_actions=[],
-            preview_actions=[],
-            internal_actions={},
-            **args
-    ):
-        replacer, html = self._make_replacer(args, template_name)
-        # Some things are missing, show form with stuff still required
-        html = self._render_editable_content(html)
-        return _wrap_body_in_form(
-            html,
-            prefixes=[
-                self._style_list(styles),
-                _make_fieldset(['subject'] + list(replacer.attrs), args),
-                _make_subject_line(args.get('subject'))
-            ],
-            postfixes=[
-                _make_actions(editing_actions)
-            ],
-            highlight=True if preview_actions else False
-        )
-
-    def _render_final_content(self, template_name, styles, replacer):
+    def _render_preview_content(self, template_name, styles, replacer):
         if styles:
             # Use "real" renderer, replace missing values with ???
             placeholders = replacer.placeholders(lambda missing_key: '???')
             return HtmlRenderer(Template(template_name, styles), self.settings, '').render(placeholders)
         else:
-            return '''<html>
-<head><title>Nothing to render</title></head>
-<body>
-<div class="description">{description}</div>
-</body>
-</html>'''.format(description='Styles must be selected to display preview')
+            return self.resource('preview.no.styles.html')
 
-    def _render_final(
-            self, template_name, styles=(),
-            editing_actions=[],
-            preview_actions=[],
-            internal_actions={},
-            **args
-    ):
-        replacer, _ = self._make_replacer(args, template_name)
-        html = self._render_final_content(template_name, styles, replacer)
-        prefixes = [_make_subject_line(args.get('subject'))]
-        if replacer.required or not styles:
-            postfixes = []
-        else:
-            postfixes = [_make_actions(preview_actions)]
-        return _wrap_body_in_form(
-            html,
-            prefixes=prefixes,
-            postfixes=postfixes
-        )
 
-    def render_final(self, template_name, styles, **args):
-        replacer, _ = self._make_replacer(args, template_name)
-        html = self._render_final_content(template_name, styles, replacer)
-        if replacer.required or not styles:
-            html = '{} <!-- {} -->'.format(html, FINAL_INCOMPLETE_CODE)
-        return html
-
-    def _render_two_column(
-            self, template_name, styles=(),
-            editing_actions=[],
-            preview_actions=[],
-            internal_actions={},
-            **args
-    ):
-        replacer, html = self._make_replacer(args, template_name)
-
-        edit_column = _get_body_content_string(self._render_editable_content(html)).strip()
-
-        is_view_ready = preview_actions and styles and not replacer.required
-        actions = list(editing_actions)
-        if is_view_ready:
-            actions += preview_actions
-
-        html = self.resource("editor.html").format(
-            view_url=internal_actions.get('final_fragment'),
-            title='Editing {}'.format(template_name),
-            subject=_make_fieldset(['subject'], args),
-            content=edit_column,
-            styles=self._style_list(styles),
-            save_url=internal_actions.get('save')
-        )
-
-        return html
-
-    def render_preview_content(self, template_name, styles=(), **args):
-        replacer, _ = self._make_replacer(args, template_name)
-        html = self._render_final_content(template_name, styles, replacer)
-        return str(bs4.BeautifulSoup(html).body)
-
-    def render(self, template_name, styles=(),
-               editing_actions=[],
-               preview_actions=[],
-               internal_actions={},
-               **args
-               ):
-        replacer, _ = self._make_replacer(args, template_name)
-        force_edit = not preview_actions or not styles
-        if self._two_column:
-            render = self._render_two_column
-        elif force_edit or replacer.required:
-            render = self._render_editable
-        else:
-            render = self._render_final
-        return render(template_name, styles, editing_actions, preview_actions, internal_actions, **args)
+# Server
 
 
 class Server(object):
@@ -542,14 +453,13 @@ class Server(object):
         self.renderer = renderer
 
     @classmethod
-    def _internal_actions(cls, document, **args):
+    def _actions(cls, document, **args):
         qargs = '?' + urllib.parse.urlencode(args) if args else ''
         return {
-            'final': '/final/{}{}'.format(document.working_name, qargs),
             'preview': '/preview/{}{}'.format(document.working_name, qargs),
             'save': '{}{}'.format(cls._make_save_url(document), qargs),
             'edit': '/edit/{}{}'.format(document.working_name, qargs),
-            'final_fragment': '/final_fragment/{}{}'.format(document.working_name, qargs),
+            'preview_fragment': '/preview_fragment/{}{}'.format(document.working_name, qargs),
         }
 
     @cherrypy.expose
@@ -613,22 +523,8 @@ class Server(object):
             return self.renderer.render(
                 document.template_name,
                 document.styles,
-                editing_actions=[
-                    ['Preview', '/preview/{}'.format(document.working_name)],
-                ],
-                preview_actions=[
-                    ['Save', '/save/{}'.format(document.working_name)],
-                    ['Edit', '/edit/{}'.format(document.working_name)],
-                ],
-                internal_actions=self._internal_actions(document, **{TEMPLATE_PARAM_NAME: template_name}),
+                actions=self._actions(document, **{TEMPLATE_PARAM_NAME: template_name}),
             )
-
-    @classmethod
-    def _make_save_url(cls, document):
-        if document.email_name:
-            return '/save/{}/{}'.format(document.working_name, document.email_name)
-        else:
-            return '/save/{}'.format(document.working_name)
 
     @cherrypy.expose
     def preview(self, working_name, **args):
@@ -637,45 +533,20 @@ class Server(object):
         if not document.template_name:
             raise cherrypy.HTTPRedirect('/timeout')
 
-        preview_actions = [
-            ['Save', self._make_save_url(document)],
-            ['Edit', '/edit/{}'.format(document.working_name)],
-        ]
-        if document.email_name:
-            preview_actions.append(['Reset', '/email/{}'.format(document.email_name)])
-
-        return self.renderer.render(
-            document.template_name,
-            document.styles,
-            editing_actions= [
-                ['Preview', '/preview/{}'.format(document.working_name)],
-            ],
-            preview_actions=preview_actions,
-            internal_actions=self._internal_actions(document),
-            **document.args
-        )
-
-    @cherrypy.expose
-    def final(self, working_name, **args):
-        document = _extract_document(args, working_name)
-        print(document)
-        if not document.template_name:
-            raise cherrypy.HTTPRedirect('/timeout')
-
-        return self.renderer.render_final(
+        return self.renderer.render_preview(
             document.template_name,
             document.styles,
             **document.args
         )
 
     @cherrypy.expose
-    def final_fragment(self, working_name, **args):
+    def preview_fragment(self, working_name, **args):
         document = _extract_document(args, working_name)
         print(document)
         if not document.template_name:
             raise cherrypy.HTTPRedirect('/timeout')
 
-        return _get_body_content_string(self.renderer.render_final(
+        return _get_body_content_string(self.renderer.render_preview(
             document.template_name,
             document.styles,
             **document.args
@@ -690,10 +561,7 @@ class Server(object):
         return self.renderer.render(
             document.template_name,
             document.styles,
-            editing_actions=[
-                ['Preview', '/preview/{}'.format(document.working_name)],
-            ],
-            internal_actions=self._internal_actions(document),
+            actions=self._actions(document),
             **document.args
         )
 
@@ -712,15 +580,11 @@ class Server(object):
             args = _unplaceholder(placeholders)
 
             html = HtmlRenderer(template, self.settings, '').render(placeholders)
-            return _wrap_body_in_form(
-                html,
-                prefixes=[
-                    _make_subject_line(args.get('subject'))
-                ],
-                postfixes=[
-                    _make_actions([
-                            ['Edit', '/alter/{}'.format(email_name)],
-                    ])
+            return self.renderer.question(
+                title=html.escape(args.get('subject')),
+                description=_get_body_content_string(html),
+                actions=[
+                    ['Edit', '/alter/{}'.format(email_name)],
                 ]
             )
 
@@ -739,14 +603,9 @@ class Server(object):
         return self.renderer.render(
             document.template_name,
             document.styles,
-            editing_actions=[
-                ['Preview', '/preview/{}'.format(document.working_name)],
-            ],
-            internal_actions=self._internal_actions(document, **{EMAIL_PARAM_NAME: email_name}),
+            actions=self._actions(document, **{EMAIL_PARAM_NAME: email_name}),
             **document.args
         )
-
-        # raise cherrypy.HTTPRedirect('/edit/{}'.format(document.working_name))
 
     @cherrypy.expose
     def saveas(self, working_name, *email_paths, **args):
@@ -757,59 +616,60 @@ class Server(object):
         raise cherrypy.HTTPRedirect('/save/{0}/{1}'.format(working_name, email_name))
 
     @cherrypy.expose
-    def save(self, working_name, *email_paths, **args):
-        email_name = '/'.join(email_paths)
-        email_path = os.path.join(self.settings.source, email_name)
-        document = _extract_document({}, working_name, email_name=email_name)
+    def save(self, working_name, *paths, **args):
+        rel_path = '/'.join(paths)
+        full_path = os.path.join(self.settings.source, rel_path)
+        document = _extract_document({}, working_name)
         if not document.template_name:
             raise cherrypy.HTTPRedirect('/timeout')
 
         overwrite = args.pop(OVERWRITE_PARAM_NAME, False)
-        if overwrite or not os.path.exists(email_path):
+        if overwrite or not os.path.exists(full_path):
             # Create and save
-            self.renderer.save(email_name, document.template_name, document.styles, **document.args)
-            raise cherrypy.HTTPRedirect('/email/{}'.format(email_name))
-        elif os.path.isdir(email_path):
+            self.renderer.save(rel_path, document.template_name, document.styles, **document.args)
+            raise cherrypy.HTTPRedirect('/email/{}'.format(rel_path))
+        elif os.path.isdir(full_path):
             # Show directory or allow user to create new file
             html = self.renderer.directory(
-                'Select save name/directory: ' + email_name,
-                self.settings.source, email_name,
-                (lambda path: '/save/{0}/{1}'.format(working_name, path))
-            )
-            html = _wrap_body_in_form(
-                html,
-                [],
-                [
-                  _make_fieldset([SAVEAS_PARAM_NAME], {}, {SAVEAS_PARAM_NAME: 'New filename'}),
-                  _make_actions([
-                      ['Save', '/saveas/{0}/{1}'.format(working_name, email_name)],
-                      ['Return to Preview', '/preview/{}'.format(working_name)]
-                  ])
+                'Select save name/directory: ' + rel_path,
+                self.settings.source, rel_path,
+                (lambda path: '/save/{0}/{1}'.format(working_name, path)),
+                old_filename=os.path.split(document.email_name)[-1] if document.email_name else '',
+                actions=[
+                    ['Save', '/saveas/{0}/{1}'.format(working_name, rel_path)],
+                    ['Return to Edit', '/edit/{}'.format(working_name)],
                 ]
             )
             return html
         else:
             # File already exists: overwrite?
             return self.renderer.question(
-                'Overwriting ' + email_name,
-                'Are you sure you want to overwrite the existing email <code>{}</code>?'.format(email_name),
+                'Overwriting ' + rel_path,
+                'Are you sure you want to overwrite the existing email <code>{}</code>?'.format(rel_path),
                 [
                         ['No, save as a new file',
                          '/save/{0}/{1}'.format(
-                             working_name, os.path.dirname(email_name)
+                             working_name, os.path.dirname(rel_path)
                          )],
                         ['Yes, how dare you question me!',
                          '/save/{0}/{1}?{2}=1'.format(
-                             working_name, email_name, OVERWRITE_PARAM_NAME
+                             working_name, rel_path, OVERWRITE_PARAM_NAME
                          )],
                 ]
             )
+
+    @classmethod
+    def _make_save_url(cls, document):
+        if document.email_name:
+            return '/save/{}/{}'.format(document.working_name, document.email_name)
+        else:
+            return '/save/{}'.format(document.working_name)
 
 
 def serve(args):
     from ..cmd import read_settings
     settings = read_settings(args)
 
-    renderer = InlineFormRenderer(settings, two_column=True)
+    renderer = InlineFormRenderer(settings)
     cherrypy.config.update({'server.socket_port': args.port or 8080})
     cherrypy.quickstart(Server(settings, renderer), '/')

@@ -1,0 +1,25 @@
+<html>
+    <head>
+        <title>{title}</title>
+        <style type="text/css">
+            input.absent {{border-size: 4px; border-color: #ff4444;}}
+        </style>
+    </head>
+    <body>
+        <form action="POST">
+            <h1>{title}</h1>
+            <ul></ul>
+            <fieldset class="gui-save-fields">
+                <label>New filename:
+                    <input type="text" class="absent"
+                           name="saveas_filename"
+                           placeholder="New filename"
+                           value="{old_filename}"
+                           style="width: 60%"
+                    />
+                </label>
+            </fieldset>
+            {actions}
+        </form>
+    </body>
+</html>
