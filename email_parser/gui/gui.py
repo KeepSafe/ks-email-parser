@@ -95,17 +95,6 @@ def _extract_document(args=None, working_name=None, email_name=None, template_na
 # Dealing with HTML & soup
 
 
-def soup_fragment(html_fragment):
-    # http://stackoverflow.com/a/15981476
-    soup = bs4.BeautifulSoup(html_fragment, HTML_PARSER)
-    if soup.body:
-        return soup.body.next
-    elif soup.html:
-        return soup.html.next
-    else:
-        return soup
-
-
 def _get_body_content_string(soup, comments=True):
     if not isinstance(soup, bs4.BeautifulSoup):
         soup = bs4.BeautifulSoup(soup, HTML_PARSER)
@@ -119,13 +108,16 @@ def _get_body_content_string(soup, comments=True):
 # Utilities
 
 
-def _list_files_recursively(path, hidden=False):
+def _list_files_recursively(path, hidden=False, relative_to_path=False):
     result = set()
     for dirpath, _, filenames in os.walk(path):
         if hidden or not dirpath.startswith('.'):
             for filename in filenames:
                 if hidden or not filename.startswith('.'):
-                    result.add(os.path.join(dirpath, filename))
+                    name = os.path.join(dirpath, filename)
+                    if relative_to_path:
+                        name = os.path.relpath(name, path)
+                    result.add(name)
     return sorted(result)
 
 
@@ -331,7 +323,12 @@ class InlineFormRenderer(GenericRenderer):
 
     def render_preview(self, template_name, styles, **args):
         replacer, _ = self._make_replacer(args, template_name)
-        html = self._render_preview_content(template_name, styles, replacer)
+        if styles:
+            # Use "real" renderer, replace missing values with ???
+            placeholders = replacer.placeholders(lambda missing_key: '???')
+            html = HtmlRenderer(Template(template_name, styles), self.settings, '').render(placeholders)
+        else:
+            html = self.resource('preview.no.styles.html')
         return html, (styles and not replacer.required)
 
     def render(
@@ -341,7 +338,10 @@ class InlineFormRenderer(GenericRenderer):
     ):
         replacer, html = self._make_replacer(args, template_name)
 
-        edit_column = _get_body_content_string(self._render_editable_content(html)).strip()
+        edit_html = html
+        edit_column = _get_body_content_string(edit_html).strip()
+        image_attrs = self._find_image_attrs(edit_html)
+        image_filenames = self._find_images()
 
         return self.gui_template(
             "editor.html.jinja2",
@@ -354,6 +354,7 @@ class InlineFormRenderer(GenericRenderer):
             save_url=actions.get('save'),
             attrs=replacer.attrs,
             values=args,
+            dropdowns={A: image_filenames for A in image_attrs},
         )
 
     def _read_template(self, template_name):
@@ -362,21 +363,17 @@ class InlineFormRenderer(GenericRenderer):
     def _find_styles(self, path_glob='*.css'):
         return list(fnmatch.filter(os.listdir(self.settings.templates), path_glob))
 
-    def _make_replacer(self, args, template_name):
-        replacer = InlineFormReplacer({'base_url': self.settings.images}, args)
-        replacer.require('subject')
-        # Generate our filled-in template
-        template_html = self._read_template(template_name)
-        html = replacer.replace(template_html)
-        return replacer, html
+    def _find_images(self, local_dir=None):
+        if local_dir is None:
+            local_dir = os.path.join(self.settings.templates, 'img')
+        return _list_files_recursively(local_dir, relative_to_path=True)
 
-    def _insert_image_selectors(self, html, local_dir=None):
+    def _find_image_attrs(self, html):
         base_url = self.settings.images
-        local_dir = local_dir or base_url
-        if not os.path.isdir(local_dir):
-            return html
         soup = bs4.BeautifulSoup(html, HTML_PARSER)
-        pattern = re.compile('^.*\{\{.*\}\}.*$')
+        pattern = re.compile('^.*\{\{(.*)\}\}.*$')
+
+        attrs = set()
         for image in soup.find_all(
                 'img',
                 attrs={
@@ -384,29 +381,17 @@ class InlineFormRenderer(GenericRenderer):
                 }
         ):
             src = image.get('src')
-            parent = image.parent
-            index = parent.index(image)
-            image.extract()
+            attr = pattern.match(src).group(1).strip()
+            attrs.add(attr)
+        return attrs
 
-            selector = list()
-            selector.append('<select>')
-            for item in _list_files_recursively(local_dir):
-                selector.append('<option value="{0}">{0}</option>'.format(item))
-            selector.append('</select>')
-
-            parent.insert(index, soup_fragment('\n'.join(selector)))
-        return str(soup)
-
-    def _render_editable_content(self, html):
-        return self._insert_image_selectors(html)
-
-    def _render_preview_content(self, template_name, styles, replacer):
-        if styles:
-            # Use "real" renderer, replace missing values with ???
-            placeholders = replacer.placeholders(lambda missing_key: '???')
-            return HtmlRenderer(Template(template_name, styles), self.settings, '').render(placeholders)
-        else:
-            return self.resource('preview.no.styles.html')
+    def _make_replacer(self, args, template_name):
+        replacer = InlineFormReplacer({'base_url': self.settings.images}, args)
+        replacer.require('subject')
+        # Generate our filled-in template
+        template_html = self._read_template(template_name)
+        html = replacer.replace(template_html)
+        return replacer, html
 
 
 # Server
@@ -519,6 +504,7 @@ class Server(object):
         )
         fragment = _get_body_content_string(html).strip()
         if not is_complete:
+            # Hack so client can tell from result that it's incomplete
             fragment += ' <!-- {} -->'.format(FINAL_INCOMPLETE_CODE)
         return fragment
 
@@ -605,7 +591,7 @@ class Server(object):
                 'Select save name/directory: ' + rel_path,
                 self.settings.source, rel_path,
                 (lambda path: '/save/{0}/{1}'.format(working_name, path)),
-                old_filename=os.path.split(document.email_name)[-1] if document.email_name else '',
+                old_filename=os.path.basename(document.email_name) if document.email_name else '',
                 actions=[
                     ['Save', '/saveas/{0}/{1}'.format(working_name, rel_path)],
                     ['Return to Edit', '/edit/{}'.format(working_name)],

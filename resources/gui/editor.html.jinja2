@@ -68,11 +68,26 @@
                         <div id="gui-edit-content">{{ content }}</div>
                     {%  if attrs %}
                         <fieldset class="generated-fields"><ul>
-                        {%  for attr in attrs %}
-                            <li><label>{{ attr }}: <input type="text"
-                                                          class="{{ 'present' if attr in values else 'absent' }}"
-                                                          name="{{ attr }}" placeholder="{{ attr }}"
-                                                          value="{{ values[attr] }}" style="width: 60%" />
+                        {% for attr in attrs %}
+                            <li><label>{{ attr }}:
+                            {% if dropdowns and attr in dropdowns %}
+                                <select name="{{ attr }}"
+                                        class="{{ 'present' if attr in values else 'absent' }}"
+                                        style="width: 60%" >
+                                {% for option in dropdowns[attr] %}
+                                    <option value="{{ option }}"
+                                        {% if values[attr] == option %} selected="selected" {% endif %}
+                                        >{{ option }}</option>
+                                {% endfor %}
+                                </select>
+                            {% else %}
+                                 <input name="{{ attr }}" type="text"
+                                        class="{{ 'present' if attr in values else 'absent' }}"
+                                        placeholder="{{ attr }}"
+                                        value="{{ values[attr] }}"
+                                        style="width: 60%"
+                                 />
+                            {% endif %}
                             </label></li>
                         {% endfor %}
                         </ul></fieldset>
