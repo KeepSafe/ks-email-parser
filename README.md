@@ -1,4 +1,4 @@
-# ks-email-parser
+# ks-email-parser [![Build Status](https://travis-ci.org/KeepSafe/ks-email-parser.svg?branch=master)](https://travis-ci.org/KeepSafe/ks-email-parser)
 
 A command line tool name `ks-email-parser` to render HTML and text emails of markdown content.
 

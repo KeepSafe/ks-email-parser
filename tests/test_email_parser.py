@@ -15,7 +15,7 @@ def read_fixture(filename):
 class TestParser(TestCase):
     def setUp(self):
         self.dest = tempfile.mkdtemp()
-        settings = vars(cmd.default_settings())
+        settings = cmd.default_settings()._asdict()
         settings['destination'] = self.dest
         settings['source'] = 'tests'
         settings['templates'] = 'tests/templates_html'
@@ -43,7 +43,7 @@ class TestParser(TestCase):
         self._run_and_assert('email.html')
 
     def test_rtl(self):
-        settings = vars(self.settings)
+        settings = self.settings._asdict()
         settings['right_to_left'] = ['en']
         self.settings = cmd.Settings(**settings)
         self._run_and_assert('email.html', 'email.rtl.html')

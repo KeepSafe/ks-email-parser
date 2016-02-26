@@ -6,7 +6,6 @@ from ..renderer import HtmlRenderer
 from ..reader import Template, read as reader_read
 import fnmatch
 import cherrypy
-from collections.abc import Sequence
 from functools import lru_cache
 from collections import namedtuple
 import random, string
@@ -17,6 +16,7 @@ import html
 
 DOCUMENT_TIMEOUT = 24 * 60 * 60  # 24 hours
 
+HTML_PARSER = 'lxml'
 
 STYLES_PARAM_NAME = 'HIDDEN__styles'
 TEMPLATE_PARAM_NAME = 'HIDDEN__template'
@@ -96,7 +96,7 @@ def _extract_document(args=None, working_name=None, email_name=None, template_na
 
 def soup_fragment(html_fragment):
     # http://stackoverflow.com/a/15981476
-    soup = bs4.BeautifulSoup(html_fragment)
+    soup = bs4.BeautifulSoup(html_fragment, HTML_PARSER)
     if soup.body:
         return soup.body.next
     elif soup.html:
@@ -107,7 +107,7 @@ def soup_fragment(html_fragment):
 
 def _get_body_content_string(soup, comments=True):
     if not isinstance(soup, bs4.BeautifulSoup):
-        soup = bs4.BeautifulSoup(soup)
+        soup = bs4.BeautifulSoup(soup, HTML_PARSER)
     return ''.join(
         ('<!--{}-->'.format(C) if comments else '') if isinstance(C, bs4.Comment)
         else str(C)
@@ -293,13 +293,13 @@ class GenericRenderer(object):
                     title=html.escape(description),
                     old_filename=old_filename,
                     actions=_make_actions(actions)
-                )
+                ), HTML_PARSER
             )
         else:
             soup = bs4.BeautifulSoup(
                 self.resource('directory.html').format(
                     title=html.escape(description)
-                )
+                ), HTML_PARSER
             )
         ul = soup.find('ul')
         if path:
@@ -410,7 +410,7 @@ class InlineFormRenderer(GenericRenderer):
         local_dir = local_dir or base_url
         if not os.path.isdir(local_dir):
             return html
-        soup = bs4.BeautifulSoup(html)
+        soup = bs4.BeautifulSoup(html, HTML_PARSER)
         pattern = re.compile('^.*\{\{.*\}\}.*$')
         for image in soup.find_all(
                 'img',

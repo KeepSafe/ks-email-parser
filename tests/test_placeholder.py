@@ -8,7 +8,7 @@ from email_parser import placeholder, fs, cmd
 class TestGenerator(TestCase):
 
     def setUp(self):
-        settings = vars(cmd.default_settings())
+        settings = cmd.default_settings()._asdict()
         settings['source'] = 'test_src'
         settings['pattern'] = 'test_pattern'
         self.settings = cmd.Settings(**settings)

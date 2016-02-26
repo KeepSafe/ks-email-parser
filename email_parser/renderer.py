@@ -13,7 +13,7 @@ from collections import OrderedDict
 from . import markdown_ext, errors, fs, link_shortener
 
 TEXT_EMAIL_PLACEHOLDER_SEPARATOR = '\n\n'
-
+HTML_PARSER = 'lxml'
 
 def _md_to_html(text, base_url=None):
     extensions = [markdown_ext.inline_text()]
@@ -116,7 +116,7 @@ class TextRenderer(object):
         self.shortener = link_shortener.shortener(shortener_config)
 
     def _html_to_text(self, html):
-        soup = bs4.BeautifulSoup(html)
+        soup = bs4.BeautifulSoup(html, HTML_PARSER)
 
         # replace the value in <a> with the href because soup.get_text() takes the value inside <a> instead or href
         anchors = soup.find_all('a')

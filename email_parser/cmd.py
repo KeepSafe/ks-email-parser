@@ -85,7 +85,7 @@ def read_args(argsargs=argparse.ArgumentParser):
 
 def read_settings(args):
     args = vars(args)
-    settings = vars(default_settings())
+    settings = default_settings()._asdict()
     for k in settings:
         if k in args and args[k] is not None:
             settings[k] = args[k]

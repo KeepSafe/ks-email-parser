@@ -16,7 +16,7 @@ class TestParser(TestCase):
 
     def setUp(self):
         self.dest = tempfile.mkdtemp()
-        settings = vars(cmd.default_settings())
+        settings = cmd.default_settings()._asdict()
         settings['destination'] = self.dest
         settings['source'] = 'tests'
         settings['templates'] = 'tests/templates_html'
