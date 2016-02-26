@@ -17,6 +17,7 @@
                     var this_serialized = $("#gui-form").serialize();
                     if (this_serialized != last_serialized) {
                         $.post('{{ view_url }}', this_serialized, function (data) {
+                            console.log(data);
                             if (data.indexOf(FINAL_INCOMPLETE_CODE) >= 0) {
                                 $("#gui-submit-save").attr('disabled', 'disabled');
                             } else {
@@ -63,10 +64,23 @@
                     <td id="gui-view-subject"><h1 class="subject" style="text-align: center">{{ subject|e }}</h1></td>
                 </tr>
                 <tr>
-                    <td id="gui-edit-content" valign="top" rowspan="2">{{ content }}</td>
+                    <td id="gui-edit-content" valign="top">{{ content }}</td>
                     <td id="gui-view-content" valign="top"></td>
                 </tr>
                 <tr>
+                    <td id="gui-attrs" valign="top">
+                    {%  if attrs %}
+                        <fieldset class="generated-fields"><ul>
+                        {%  for attr in attrs %}
+                            <li><label>{{ attr }}: <input type="text"
+                                                          class="{{ 'present' if attr in values else 'absent' }}"
+                                                          name="{{ attr }}" placeholder="{{ attr }}"
+                                                          value="{{ values[attr] }}" style="width: 60%" />
+                            </label></li>
+                        {% endfor %}
+                        </ul></fieldset>
+                    {% endif %}
+                    </td>
                     <td id="gui-actions" valign="top">
                         <fieldset class="gui-template-actions" style="text-align: center; border-style: none">
                             <input type="reset" value="Reset" style="font-size: large" />

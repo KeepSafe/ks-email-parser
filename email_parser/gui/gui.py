@@ -332,9 +332,7 @@ class InlineFormRenderer(GenericRenderer):
     def render_preview(self, template_name, styles, **args):
         replacer, _ = self._make_replacer(args, template_name)
         html = self._render_preview_content(template_name, styles, replacer)
-        if replacer.required or not styles:
-            html = '{} <!-- {} -->'.format(html, FINAL_INCOMPLETE_CODE)
-        return html
+        return html, (styles and not replacer.required)
 
     def render(
             self, template_name, styles=(),
@@ -353,7 +351,9 @@ class InlineFormRenderer(GenericRenderer):
             content=edit_column,
             all_styles=self._find_styles(),
             styles=styles,
-            save_url=actions.get('save')
+            save_url=actions.get('save'),
+            attrs=replacer.attrs,
+            values=args,
         )
 
     def _read_template(self, template_name):
@@ -361,26 +361,6 @@ class InlineFormRenderer(GenericRenderer):
 
     def _find_styles(self, path_glob='*.css'):
         return list(fnmatch.filter(os.listdir(self.settings.templates), path_glob))
-
-    def _style_list(self, styles=(), path_glob='*.css'):
-        result = list()
-        styles_found = 0
-        for path in fnmatch.filter(os.listdir(self.settings.templates), path_glob):
-            if path in styles:
-                styles_found += 1
-            result.append(
-                '    <option {1} value="{0}">{0}</option>'.format(
-                    path, 'selected' if path in styles else ''
-                )
-            )
-        result.insert(0, '<fieldset><select multiple class="{1}" name="{0}">'
-                      .format(STYLES_PARAM_NAME, 'present' if styles_found else 'absent')
-                      )
-        result.append('</select></fieldset>')
-        if len(result) > 2:
-            return '\n'.join(result)
-        else:
-            return ''
 
     def _make_replacer(self, args, template_name):
         replacer = InlineFormReplacer({'base_url': self.settings.images}, args)
@@ -518,11 +498,12 @@ class Server(object):
         if not document.template_name:
             raise cherrypy.HTTPRedirect('/timeout')
 
-        return self.renderer.render_preview(
+        html, _ = self.renderer.render_preview(
             document.template_name,
             document.styles,
             **document.args
         )
+        return html
 
     @cherrypy.expose
     def preview_fragment(self, working_name, **args):
@@ -531,11 +512,15 @@ class Server(object):
         if not document.template_name:
             raise cherrypy.HTTPRedirect('/timeout')
 
-        return _get_body_content_string(self.renderer.render_preview(
+        html, is_complete = self.renderer.render_preview(
             document.template_name,
             document.styles,
             **document.args
-        )).strip()
+        )
+        fragment = _get_body_content_string(html).strip()
+        if not is_complete:
+            fragment += ' <!-- {} -->'.format(FINAL_INCOMPLETE_CODE)
+        return fragment
 
     @cherrypy.expose
     def edit(self, working_name, **args):
