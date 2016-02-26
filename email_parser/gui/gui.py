@@ -13,6 +13,10 @@ import urllib.parse
 import time
 from html import escape as html_escape
 import jinja2
+import pkgutil
+
+
+RESOURCE_PACKAGE = 'email_parser.resources.gui'
 
 
 DOCUMENT_TIMEOUT = 24 * 60 * 60  # 24 hours
@@ -236,15 +240,15 @@ class GenericRenderer(object):
     """
     Render directories and simple documents.
     """
-    def __init__(self, settings, resources='resources/gui'):
+    def __init__(self, settings):
         self.settings = settings
-        self.resources = resources
         self._resource_cache = dict()
 
     def resource(self, resource_name):
         resource = self._resource_cache.get(resource_name)
         if resource is None:
-            resource = fs.read_file(self.resources, resource_name)
+            resource = pkgutil.get_data(RESOURCE_PACKAGE, resource_name).decode('utf-8')
+            # resource = fs.read_file(self.resources, resource_name)
             self._resource_cache[resource_name] = resource
         return resource
 
