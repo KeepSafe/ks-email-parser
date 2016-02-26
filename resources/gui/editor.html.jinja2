@@ -64,11 +64,8 @@
                     <td id="gui-view-subject"><h1 class="subject" style="text-align: center">{{ subject|e }}</h1></td>
                 </tr>
                 <tr>
-                    <td id="gui-edit-content" valign="top">{{ content }}</td>
-                    <td id="gui-view-content" valign="top"></td>
-                </tr>
-                <tr>
-                    <td id="gui-attrs" valign="top">
+                    <td id="gui-editor" valign="top">
+                        <div id="gui-edit-content">{{ content }}</div>
                     {%  if attrs %}
                         <fieldset class="generated-fields"><ul>
                         {%  for attr in attrs %}
@@ -81,7 +78,8 @@
                         </ul></fieldset>
                     {% endif %}
                     </td>
-                    <td id="gui-actions" valign="top">
+                    <td id="gui-viewer" valign="top">
+                        <div id="gui-view-content"></div>
                         <fieldset class="gui-template-actions" style="text-align: center; border-style: none">
                             <input type="reset" value="Reset" style="font-size: large" />
                             <input id="gui-submit-save" type="submit" value="Save" formaction="{{ save_url|e }}"
