@@ -12,9 +12,14 @@ import logging
 import sys
 import shutil
 import asyncio
+import concurrent.futures
+from itertools import islice
+from functools import reduce
 from . import cmd, fs, reader, renderer, clients, placeholder, utils
 
 logger = logging.getLogger()
+loop = asyncio.get_event_loop()
+loop.set_debug(False)
 
 def _render_email(email, settings, fallback_locale=None):
     if not placeholder.validate_email(email, settings.source) and not settings.force:
@@ -28,15 +33,7 @@ def _render_email(email, settings, fallback_locale=None):
     else:
         return False
 
-@asyncio.coroutine
-def _parse_emails_batch(future, emails, settings, logger):
-    result = True
-    for email in emails:
-        if not _parse_email(email, settings, logger):
-            result = False
-    future.set_result(result)
-
-def _parse_email(email, settings, logger):
+def _parse_email(email, settings):
     if _render_email(email, settings):
         logging.info('.', extra={'same_line': True})
         return True
@@ -49,36 +46,35 @@ def _parse_email(email, settings, logger):
             logging.info('F', extra={'same_line': True})
         return False
 
+def _parse_emails(emails, settings):
+    result = True
+    for email in emails:
+        if not _parse_email(email, settings):
+            result = False
+    return result
+
+@asyncio.coroutine
+def _emails_worker(executor, emails, settings):
+    result = yield from loop.run_in_executor(executor, _parse_emails, emails, settings)
+    return result
+
 def parse_emails(settings):
     result = True
 
     if not settings.exclusive:
         shutil.rmtree(settings.destination, ignore_errors=True)
 
-    emails = fs.emails(settings.source, settings.pattern, settings.exclusive)
-    if settings.thread_pool > 1:
-        loop = asyncio.get_event_loop()
-        loop.set_debug(False)
-        tasks = []
-        futures = []
+    emails = iter(fs.emails(settings.source, settings.pattern, settings.exclusive))
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=settings.workers_pool)
+    tasks = []
 
-        emails = list(emails)
-        for chunk in [emails[i:i+settings.thread_pool] for i in range(0, len(emails), settings.thread_pool)]:
-            f = asyncio.Future()
-            tasks.append(_parse_emails_batch(f, chunk, settings, logger))
-            futures.append(f)
-
-
-        loop.run_until_complete(asyncio.wait(tasks))
-        for f in futures:
-            if not f.result() == True:
-                result = False
-        loop.close()
-
-    else:
-        for email in emails:
-            _parse_email(email, settings, logger)
-
+    emails_batch = list(islice(emails, settings.workers_pool))
+    while emails_batch:
+        task = _emails_worker(executor, emails_batch, settings)
+        tasks.append(task)
+        emails_batch = list(islice(emails, settings.workers_pool))
+    results = yield from asyncio.gather(*tasks)
+    result = reduce(lambda acc, result: True if acc and result else False, results)
     return result
 
 
@@ -105,7 +101,7 @@ def main():
     else:
         settings = cmd.read_settings(args)
         init_log(settings.verbose)
-        result = parse_emails(settings)
+        result = loop.run_until_complete(parse_emails(settings))
     logger.info('All done', extra={'flush_errors': True})
     sys.exit(0) if result else sys.exit(1)
 
