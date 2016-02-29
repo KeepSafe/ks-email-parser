@@ -1,0 +1,38 @@
+<html>
+    <head>
+        <title>{{ title|e }}</title>
+        <style type="text/css">
+            input.absent {border-size: 4px; border-color: #ff4444;}
+        </style>
+    </head>
+    <body>
+        <form action="POST">
+            <h1>{{ title|e }}</h1>
+            <ul>
+            {%  if parent %}
+                <li><a href="{{ parent|e }}">&#8593; <em>Parent Directory</em></a></li>
+            {% endif %}
+            {%  for file in files %}
+                <li><a href="{{ file[0]|e }}">{{ file[1]|e }} <code>{{ file[2]|e }}</code></a></li>
+            {%  endfor %}
+            </ul>
+            {% if actions %}
+            <fieldset class="gui-save-fields">
+                <label>New filename:
+                    <input type="text" class="absent"
+                           name="saveas_filename"
+                           placeholder="New filename"
+                           value="{{ old_filename|e }}"
+                           style="width: 60%"
+                    />
+                </label>
+            </fieldset>
+            <fieldset class="gui-actions" style="text-align: center; padding-bottom: 200px">
+            {% for action in actions %}
+                <input type="submit" value="{{ action[0]|e }}" formaction="{{ action[1]|e }}" style="font-size: large" />
+            {% endfor %}
+            </fieldset>
+            {% endif %}
+        </form>
+    </body>
+</html>

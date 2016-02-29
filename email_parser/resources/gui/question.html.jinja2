@@ -1,0 +1,16 @@
+<html>
+    <head><title>{{ title }}</title></head>
+    <body>
+        <form method="POST">
+            <h1 class="text-align: center;">{{ title|e }}</h1>
+            <div class="gui-description">{{ description }}</div>
+            {% if actions %}
+            <fieldset class="gui-actions" style="text-align: center; padding-bottom: 200px">
+            {% for action in actions %}
+                <input type="submit" value="{{ action[0]|e }}" formaction="{{ action[1]|e }}" style="font-size: large" />
+            {% endfor %}
+            </fieldset>
+            {% endif %}
+        </form>
+    </body>
+</html>
