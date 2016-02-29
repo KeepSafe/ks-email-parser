@@ -57,6 +57,13 @@ class TestParser(TestCase):
         with self.assertRaises(FileNotFoundError):
             fs.read_file(self.dest, 'en', 'missing_placeholder.html')
 
+    def test_template_fallback(self):
+        email_parser.parse_emails(self.settings)
+        expected = fs.read_file(self.dest, 'en', 'fallback.html').strip()
+        actual = fs.read_file(self.dest, 'fr', 'fallback.html').strip()
+        self.assertEqual(expected, actual)
+
+
     def remove_dest_folder_before_parsing(self):
         _, filepath = tempfile.mkstemp(dir=self.dest, text='dummy')
         self.assertTrue(os.path.exists(filepath))
