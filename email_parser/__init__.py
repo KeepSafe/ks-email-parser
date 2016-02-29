@@ -46,26 +46,22 @@ def _parse_email(email, settings):
             logging.info('F', extra={'same_line': True})
         return False
 
-def _parse_emails(emails, settings):
-    result = True
-    for email in emails:
-        if not _parse_email(email, settings):
-            result = False
+def _parse_emails_batch(emails, settings):
+    results = [_parse_email(email, settings) for email in emails]
+    result = reduce(lambda acc, res: acc and res, results)
     return result
 
 @asyncio.coroutine
 def _emails_worker(executor, emails, settings):
-    result = yield from loop.run_in_executor(executor, _parse_emails, emails, settings)
+    result = yield from loop.run_in_executor(executor, _parse_emails_batch, emails, settings)
     return result
 
-def parse_emails(settings):
-    result = True
-
+def _parse_emails(settings):
     if not settings.exclusive:
         shutil.rmtree(settings.destination, ignore_errors=True)
 
     emails = iter(fs.emails(settings.source, settings.pattern, settings.exclusive))
-    executor = concurrent.futures.ThreadPoolExecutor(max_workers=settings.workers_pool)
+    executor = concurrent.futures.ProcessPoolExecutor(max_workers=settings.workers_pool)
     tasks = []
 
     emails_batch = list(islice(emails, settings.workers_pool))
@@ -75,6 +71,10 @@ def parse_emails(settings):
         emails_batch = list(islice(emails, settings.workers_pool))
     results = yield from asyncio.gather(*tasks)
     result = reduce(lambda acc, result: True if acc and result else False, results)
+    return result
+
+def parse_emails(settings):
+    result = loop.run_until_complete(_parse_emails(settings))
     return result
 
 
@@ -101,7 +101,7 @@ def main():
     else:
         settings = cmd.read_settings(args)
         init_log(settings.verbose)
-        result = loop.run_until_complete(parse_emails(settings))
+        result = parse_emails(settings)
     logger.info('All done', extra={'flush_errors': True})
     sys.exit(0) if result else sys.exit(1)
 
