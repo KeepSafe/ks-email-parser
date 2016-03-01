@@ -15,6 +15,7 @@ import asyncio
 import concurrent.futures
 from itertools import islice
 from functools import reduce
+from multiprocessing import Manager, Queue
 from . import cmd, fs, reader, renderer, clients, placeholder, utils
 
 logger = logging.getLogger()
@@ -80,7 +81,9 @@ def parse_emails(settings):
 
 def init_log(verbose):
     log_level = logging.DEBUG if verbose else logging.INFO
-    handler = utils.ProgressConsoleHandler(stream=sys.stdout)
+    error_msgs_queue = Manager().Queue()
+    warning_msgs_queue = Manager().Queue()
+    handler = utils.ProgressConsoleHandler(error_msgs_queue, warning_msgs_queue, stream=sys.stdout)
     logger.setLevel(log_level)
     logger.addHandler(handler)
 
