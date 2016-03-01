@@ -2,18 +2,30 @@ import logging
 
 
 class ProgressConsoleHandler(logging.StreamHandler):
-    error_msgs = []
-    warning_msgs = []
     store_msg_loglevels = (logging.ERROR, logging.WARN)
 
     on_same_line = False
     flush_errors = False
 
+    def __init__(self, err_queue, warn_queue, *args, **kwargs):
+        self.err_msgs_queue = err_queue
+        self.warn_msgs_queue = warn_queue
+        super(ProgressConsoleHandler, self).__init__(*args, **kwargs)
+
     def _store_msg(self, msg, loglevel):
         if loglevel == logging.ERROR:
-            self.error_msgs.append(msg)
+            self.err_msgs_queue.put(msg)
         if loglevel == logging.WARN:
-            self.warning_msgs.append(msg)
+            self.warn_msgs_queue.put(msg)
+
+    def error_msgs(self):
+        while not self.err_msgs_queue.empty():
+            yield self.err_msgs_queue.get()
+
+    def warning_msgs(self):
+        while not self.warn_msgs_queue.empty():
+            yield self.warn_msgs_queue.get()
+
 
     def _print_msg(self, stream, msg, record):
         same_line = hasattr(record, 'same_line')
@@ -36,10 +48,10 @@ class ProgressConsoleHandler(logging.StreamHandler):
             stream.write(self.terminator)
 
     def _flush_errors(self, stream):
-        if self.error_msgs:
-            self._flush_store(stream, self.error_msgs, 'ERRORS:')
-        if self.warning_msgs:
-            self._flush_store(stream, self.warning_msgs, 'WARNINGS:')
+        if not self.err_msgs_queue.empty():
+            self._flush_store(stream, self.error_msgs(), 'ERRORS:')
+        if not self.warn_msgs_queue.empty():
+            self._flush_store(stream, self.warning_msgs(), 'WARNINGS:')
 
     def _write_msg(self, stream, msg, record):
         flush_errors = hasattr(record, 'flush_errors')

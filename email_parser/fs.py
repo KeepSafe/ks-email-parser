@@ -29,12 +29,18 @@ def _parse_params(pattern):
             '{{name}} is a required parameter in the pattern but it is not present in {}'.format(pattern))
     return params
 
-def _emails(src_dir, pattern, params):
+def _emails(src_dir, pattern, params, exclusive_path=None):
     wildcard_params = {k: '*' for k in params}
     wildcard_pattern = pattern.format(**wildcard_params)
     parser = parse.compile(pattern)
-    for path in sorted(Path(src_dir).glob(wildcard_pattern), key=lambda path: str(path)):
-        if not path.is_dir():
+
+    if exclusive_path:
+        glob_path = Path('.').glob(exclusive_path)
+    else:
+        glob_path = Path(src_dir).glob(wildcard_pattern)
+
+    for path in sorted(glob_path, key=lambda path: str(path)):
+        if not path.is_dir() and (not exclusive_path or _has_correct_ext(path, pattern)):
             str_path = str(path.relative_to(src_dir))
             result = parser.parse(str_path)
             result.named['path'] = str_path
@@ -42,35 +48,44 @@ def _emails(src_dir, pattern, params):
             logging.debug('loading email %s', result.named['full_path'])
             yield result
 
-def emails(src_dir, pattern):
+def _has_correct_ext(path, pattern):
+    return os.path.splitext(str(path))[1] == os.path.splitext(pattern)[1]
+
+def emails(src_dir, pattern, exclusive_path=None):
     """
     Resolves a pattern to a collection of emails. The pattern needs to have 'name' and 'locale' as this is used later
     to produce the results.
 
     :param src_dir: base dir for the search
     :param pattern: search pattern
+    :exclusive_path: single email path, glob path for emails subset or None to not affect emails set 
 
     :returns: generator for the emails matching the pattern
     """
     params = _parse_params(pattern)
-    for result in _emails(src_dir, pattern, params):
+    for result in _emails(src_dir, pattern, params, exclusive_path):
         yield Email(**result.named)
 
 
-def email(src_dir, pattern, email_name):
+def email(src_dir, pattern, email_name, locale=None):
     """
     Gets an email by name. Used for clients which should produce a single file for all locales.
 
     :param src_dir: base dir for the search
     :param pattern: search pattern
-    :param email_name: email name for all locales
+    :param email_name: email name
+    :param locale: locale name or None for all locales
 
     :returns: generator for the emails with email_name
     """
     single_email_pattern = pattern.replace('{name}', email_name)
+    if locale:
+        single_email_pattern = single_email_pattern.replace('{locale}', locale)
     params = _parse_params(pattern)
     for result in _emails(src_dir, single_email_pattern, params):
         result.named['name'] = email_name
+        if locale:
+            result.named['locale'] = locale
         yield Email(**result.named)
 
 
@@ -93,7 +108,7 @@ def save_file(content, *path_parts):
         return fp.write(content)
 
 
-def save(email, subject, text, html, dest_dir):
+def save(email, subject, text, html, dest_dir, fallback_locale=None):
     """
     Saves an email. The locale and name are taken from email tuple.
 
@@ -103,7 +118,9 @@ def save(email, subject, text, html, dest_dir):
     :param html: email's body as html
     :param dest_dir: root destination directory
     """
-    os.makedirs(os.path.join(dest_dir, email.locale), exist_ok=True)
-    save_file(subject, dest_dir, email.locale, email.name + SUBJECT_EXTENSION)
-    save_file(text, dest_dir, email.locale, email.name + TEXT_EXTENSION)
-    save_file(html, dest_dir, email.locale, email.name + HTML_EXTENSION)
+    locale = fallback_locale if fallback_locale else email.locale
+
+    os.makedirs(os.path.join(dest_dir, locale), exist_ok=True)
+    save_file(subject, dest_dir, locale, email.name + SUBJECT_EXTENSION)
+    save_file(text, dest_dir, locale, email.name + TEXT_EXTENSION)
+    save_file(html, dest_dir, locale, email.name + HTML_EXTENSION)
