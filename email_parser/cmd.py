@@ -26,6 +26,9 @@ Settings = namedtuple('Settings', [
     'force',
     'verbose',
     'shortener',
+    'exclusive',
+    'default_locale',
+    'workers_pool',
     'local_images'
 ])
 
@@ -42,6 +45,9 @@ def default_settings():
         right_to_left=['ar', 'he'],
         pattern='{locale}/{name}.xml',
         shortener={},
+        exclusive=None,
+        default_locale='en',
+        workers_pool=10,
         local_images='templates_html/img'
     )
 
@@ -52,6 +58,8 @@ def read_args(argsargs=argparse.ArgumentParser):
     args = argsargs(epilog='Brought to you by KeepSafe - www.getkeepsafe.com')
 
     args.add_argument('-s', '--source', help='args\'s source folder, default: %s' % settings.source)
+    args.add_argument(
+        '-e', '--exclusive', help='Exclusive path of subset emails to compile, default: %s' % settings.exclusive)
     args.add_argument('-d', '--destination',
                       help='args\'s destination folder, default: %s' % settings.destination)
     args.add_argument('-t', '--templates', help='Templates folder, default: %s' % settings.templates)
@@ -64,6 +72,8 @@ def read_args(argsargs=argparse.ArgumentParser):
                       help='Disable strict mode, allow templates with unfilled parameters',
                       action='store_false')
     args.add_argument('-f', '--force', help='Generate emails despite errors', action='store_true')
+    args.add_argument('-wp', '--workers-pool',
+                      help='Number of workers, default: %s' % settings.workers_pool, type=int)
     args.add_argument('-vv', '--verbose', help='Generate emails despite errors', action='store_true')
     args.add_argument('-v', '--version', help='Show version', action='store_true')
 
