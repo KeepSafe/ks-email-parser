@@ -22,6 +22,7 @@ logger = logging.getLogger()
 loop = asyncio.get_event_loop()
 loop.set_debug(False)
 
+
 def _render_email(email, settings, fallback_locale=None):
     if not placeholder.validate_email(email, settings.source) and not settings.force:
         return False
@@ -34,28 +35,34 @@ def _render_email(email, settings, fallback_locale=None):
     else:
         return False
 
+
 def _parse_email(email, settings):
     if _render_email(email, settings):
         logging.info('.', extra={'same_line': True})
         return True
     else:
-        default_locale_email = next(fs.email(settings.source, settings.pattern, email.name, settings.default_locale), None)
+        default_locale_email = next(
+            fs.email(settings.source, settings.pattern, email.name, settings.default_locale), None)
         if default_locale_email and _render_email(default_locale_email, settings, email.locale):
-            logging.info('!', extra={'same_line': True})
-            logging.warn("Email %s/%s substituted by %s/%s" % (email.locale, email.name, default_locale_email.locale, default_locale_email.name))
-        else:
             logging.info('F', extra={'same_line': True})
+            logging.warn('Email %s/%s substituted by %s/%s' %
+                         (email.locale, email.name, default_locale_email.locale, default_locale_email.name))
+        else:
+            logging.info('E', extra={'same_line': True})
         return False
+
 
 def _parse_emails_batch(emails, settings):
     results = [_parse_email(email, settings) for email in emails]
     result = reduce(lambda acc, res: acc and res, results)
     return result
 
+
 @asyncio.coroutine
 def _emails_worker(executor, emails, settings):
     result = yield from loop.run_in_executor(executor, _parse_emails_batch, emails, settings)
     return result
+
 
 def _parse_emails(settings):
     if not settings.exclusive:
@@ -67,12 +74,13 @@ def _parse_emails(settings):
 
     emails_batch = list(islice(emails, settings.workers_pool))
     while emails_batch:
-        task = _emails_worker(executor, emails_batch, settings)
+        task = loop.run_in_executor(executor, _parse_emails_batch, emails_batch, settings)
         tasks.append(task)
         emails_batch = list(islice(emails, settings.workers_pool))
     results = yield from asyncio.gather(*tasks)
     result = reduce(lambda acc, result: True if acc and result else False, results)
     return result
+
 
 def parse_emails(settings):
     result = loop.run_until_complete(_parse_emails(settings))
@@ -88,13 +96,6 @@ def init_log(verbose):
     logger.addHandler(handler)
 
 
-# def handle_client_command(options):
-#     client_name = options[consts.CMD_CLIENT]
-#     client = clients.client(client_name)
-#     logger.infp('parsing for client %s with options %s', client_name, options)
-#     return client.parse(options)
-
-
 def main():
     args = cmd.read_args()
     if args.version:
@@ -105,7 +106,7 @@ def main():
         settings = cmd.read_settings(args)
         init_log(settings.verbose)
         result = parse_emails(settings)
-    logger.info('All done', extra={'flush_errors': True})
+    logger.info('\nAll done', extra={'flush_errors': True})
     sys.exit(0) if result else sys.exit(1)
 
 

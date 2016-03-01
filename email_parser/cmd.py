@@ -56,7 +56,8 @@ def read_args(argsargs=argparse.ArgumentParser):
     args = argsargs(epilog='Brought to you by KeepSafe - www.getkeepsafe.com')
 
     args.add_argument('-s', '--source', help='args\'s source folder, default: %s' % settings.source)
-    args.add_argument('-e', '--exclusive', help='Exclusive path of subset emails to compile, default: %s' % settings.exclusive)
+    args.add_argument(
+        '-e', '--exclusive', help='Exclusive path of subset emails to compile, default: %s' % settings.exclusive)
     args.add_argument('-d', '--destination',
                       help='args\'s destination folder, default: %s' % settings.destination)
     args.add_argument('-t', '--templates', help='Templates folder, default: %s' % settings.templates)
