@@ -25,7 +25,8 @@ Settings = namedtuple('Settings', [
     'strict',
     'force',
     'verbose',
-    'shortener'
+    'shortener',
+    'local_images'
 ])
 
 
@@ -40,7 +41,8 @@ def default_settings():
         images='http://www.getkeepsafe.com/emails/img',
         right_to_left=['ar', 'he'],
         pattern='{locale}/{name}.xml',
-        shortener={}
+        shortener={},
+        local_images='templates_html/img'
     )
 
 
@@ -78,7 +80,7 @@ def read_args(argsargs=argparse.ArgumentParser):
     gui_parser = subparsers.add_parser('gui')
     gui_parser.add_argument('-P', '--port', type=int, help='Port to serve on', default=8080)
     gui_parser.add_argument('-I', '--local-images', type=str, help='Server image directory',
-                            default='templates_html/img')
+                            default=settings.local_images)
 
     return args.parse_args()
 
