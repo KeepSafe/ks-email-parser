@@ -17,6 +17,7 @@ import pkgutil
 import requests
 import threading
 from ..cmd import Settings
+import subprocess
 
 
 RESOURCE_PACKAGE = 'email_parser.resources.gui'
@@ -306,6 +307,14 @@ class GenericRenderer(object):
             actions=actions,
         )
 
+    def error(self, title, description, actions):
+        return self.gui_template(
+            'error.html.jinja2',
+            title=title,
+            description=description,
+            actions=actions,
+        )
+
 
 class InlineFormRenderer(GenericRenderer):
     """
@@ -338,6 +347,12 @@ class InlineFormRenderer(GenericRenderer):
         )
 
         fs.save_file(xml, self.settings.source, email_name)
+
+        if self.settings.save:
+            abspath = os.path.abspath(os.path.join(self.settings.source, email_name))
+            return subprocess.check_output([self.settings.save, abspath], stderr=subprocess.STDOUT)
+        else:
+            return None
 
     def render_preview(self, template_name, styles, **args):
         replacer = InlineFormReplacer.make(self.settings, args, template_name)
@@ -620,7 +635,29 @@ class Server(object):
         overwrite = args.pop(OVERWRITE_PARAM_NAME, False)
         if overwrite or not os.path.exists(full_path):
             # Create and save
-            self.final_renderer.save(rel_path, document.template_name, document.styles, **document.args)
+            try:
+                output = self.renderer.save(rel_path, document.template_name, document.styles, **document.args)
+                if output:
+                    output = str(output, 'utf-8')
+                    return self.final_renderer.question(
+                        title='Saved & postprocessed email: {}'.format(rel_path),
+                        description=html_escape(output),
+                        actions=[
+                            ['View', '/email/{}'.format(rel_path), 2000],
+                        ]
+                    )
+
+            except subprocess.CalledProcessError as err:
+                output = str(err.output, 'utf-8') if err.output else 'Error #{}'.format(err.returncode)
+                return self.final_renderer.error(
+                    title='Postprocessing failed for email: {}'.format(rel_path),
+                    description=html_escape(output),
+                    actions=[
+                        ['View', '/email/{}'.format(rel_path)],
+                    ]
+                )
+
+            # No postprocessing performed/requested
             raise cherrypy.HTTPRedirect('/email/{}'.format(rel_path))
         elif os.path.isdir(full_path):
             # Show directory or allow user to create new file
