@@ -29,6 +29,7 @@ Settings = namedtuple('Settings', [
     'exclusive',
     'default_locale',
     'workers_pool',
+    'local_images',
     'save'  # Shell script to be called on save from gui
 ])
 
@@ -48,6 +49,7 @@ def default_settings():
         exclusive=None,
         default_locale='en',
         workers_pool=10,
+        local_images='templates_html/img',
         save=None
     )
 
