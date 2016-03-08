@@ -636,7 +636,7 @@ class Server(object):
         if overwrite or not os.path.exists(full_path):
             # Create and save
             try:
-                output = self.renderer.save(rel_path, document.template_name, document.styles, **document.args)
+                output = self.final_renderer.save(rel_path, document.template_name, document.styles, **document.args)
                 if output:
                     output = str(output, 'utf-8')
                     return self.final_renderer.question(
