@@ -1,6 +1,8 @@
 import re
 import bs4
 import os, os.path
+import asyncio
+from . import service
 from .. import fs
 from ..renderer import HtmlRenderer
 from ..reader import Template, read as reader_read
@@ -443,6 +445,66 @@ class Server(object):
         )
 
     @cherrypy.expose
+    def push(self, *paths, **_ignored):
+        email_name = '/'.join(paths)
+        email_path = os.path.join(self.settings.source, email_name)
+
+        match = re.match(r'([^/]+)/([^/]+).xml', email_name)
+        if match:
+            locale, name = match.group(1,2)
+            try:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                client = service.Client(loop)
+                req = client.push_template(locale, name, email_path)
+                res = loop.run_until_complete(req)
+                messages = ['SUCCES', res]
+            except service.TimeoutError as e:
+                messages = ['ERROR', str(e)]
+            except service.ServiceError as e:
+                messages = ['ERROR', 'Service respond with: %s \n%s' % (e.status, e.text)]
+        else:
+            messages = ['ERROR', 'Template path format (%s) not compatible with service' % email_name]
+
+        return self.renderer.question(
+            *messages,
+            [
+                    ['Go back',  '/email/{}'.format(email_name)],
+            ]
+        )
+
+
+    @cherrypy.expose
+    def pull(self, *paths, **_ignored):
+        email_name = '/'.join(paths)
+        email_path = os.path.join(self.settings.source, email_name)
+
+        match = re.match(r'([^/]+)/([^/]+).xml', email_name)
+        if match:
+            locale, name = match.group(1,2)
+            try:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                client = service.Client(loop)
+                req = client.get_template(locale, name)
+                res = loop.run_until_complete(req)
+                fs.save_file(res, self.settings.source, email_name)
+                messages = ['SUCCES', '']
+            except service.TimeoutError as e:
+                messages = ['ERROR', str(e)]
+            except service.ServiceError as e:
+                messages = ['ERROR', 'Service respond with: %s \n%s' % (e.status, e.text)]
+        else:
+            messages = ['ERROR', 'Template path format (%s) not compatible with service' % email_name]
+
+        return self.renderer.question(
+            *messages,
+            [
+                    ['Go back',  '/email/{}'.format(email_name)],
+            ]
+        )
+
+    @cherrypy.expose
     def timeout(self, *_ignored, **_also_ignored):
         return self.renderer.question(
             '\U0001f62d SORRY \U0001f62d',
@@ -539,6 +601,8 @@ class Server(object):
                 description=_get_body_content_string(html),
                 actions=[
                     ['Edit', '/alter/{}'.format(email_name)],
+                    ['Push to repository', '/push/{}'.format(email_name)],
+                    ['Update from repository', '/pull/{}'.format(email_name)],
                 ]
             )
 

@@ -9,3 +9,4 @@ pystache==0.5.4
 parse==1.6.6
 requests==2.7.0
 jinja2==2.8
+aiohttp==0.21.2
