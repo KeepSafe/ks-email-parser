@@ -3,7 +3,7 @@ import bs4
 import os, os.path
 import asyncio
 from . import service
-from .. import fs
+from .. import fs, placeholder as place_holders
 from ..renderer import HtmlRenderer
 from ..reader import Template, read as reader_read
 import fnmatch
@@ -142,6 +142,30 @@ def _unplaceholder(placeholders):
         else:
             return item
     return {K: fix_item(V) for K, V in placeholders.items()}
+
+
+def _get_email_locale_n_name(email_name):
+    match = re.match(r'([^/]+)/([^/]+).xml', email_name)
+    return match.group(1, 2)
+
+
+def _get_email_from_cms_service(email_name):
+    locale, name = _get_email_locale_n_name(email_name)
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    client = service.Client(loop)
+    req = client.get_template(locale, name)
+    res = loop.run_until_complete(req)
+    return res
+
+def _push_email_to_cms_service(email_name, email_path):
+    locale, name = _get_email_locale_n_name(email_name)
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    client = service.Client(loop)
+    req = client.push_template(locale, name, email_path)
+    res = loop.run_until_complete(req)
+    return res
 
 
 # Editing & rendering
@@ -310,6 +334,13 @@ class InlineFormRenderer(GenericRenderer):
         :param args:
         :return:
         """
+        xml = self.content_to_save(email_name, template_name, styles, **args)
+
+        fs.save_file(xml, self.settings.source, email_name)
+        place_holders.generate_config(self.settings)
+        place_holders._read_placeholders_file.cache_clear()
+
+    def content_to_save(self, email_name, template_name, styles, **args):
         replacer, _ = self._make_replacer(args, template_name)
         xml = self.gui_template(
             'email.xml.jinja2',
@@ -318,8 +349,9 @@ class InlineFormRenderer(GenericRenderer):
             attrs=replacer.attrs,
             values=replacer.make_value_list(),
         )
+        return xml
 
-        fs.save_file(xml, self.settings.source, email_name)
+
 
     def render_preview(self, template_name, styles, **args):
         replacer, _ = self._make_replacer(args, template_name)
@@ -449,22 +481,13 @@ class Server(object):
         email_name = '/'.join(paths)
         email_path = os.path.join(self.settings.source, email_name)
 
-        match = re.match(r'([^/]+)/([^/]+).xml', email_name)
-        if match:
-            locale, name = match.group(1,2)
-            try:
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                client = service.Client(loop)
-                req = client.push_template(locale, name, email_path)
-                res = loop.run_until_complete(req)
-                messages = ['SUCCES', res]
-            except service.TimeoutError as e:
-                messages = ['ERROR', str(e)]
-            except service.ServiceError as e:
-                messages = ['ERROR', 'Service respond with: %s \n%s' % (e.status, e.text)]
-        else:
-            messages = ['ERROR', 'Template path format (%s) not compatible with service' % email_name]
+        try:
+            res = _push_email_to_cms_service(email_name, email_path)
+            messages = ['SUCCES', res]
+        except service.TimeoutError as e:
+            messages = ['ERROR', str(e)]
+        except service.ServiceError as e:
+            messages = ['ERROR', 'Service respond with: <code>%s</code><br/><code>%s</code>' % (e.status, e.text)]
 
         return self.renderer.question(
             *messages,
@@ -479,23 +502,16 @@ class Server(object):
         email_name = '/'.join(paths)
         email_path = os.path.join(self.settings.source, email_name)
 
-        match = re.match(r'([^/]+)/([^/]+).xml', email_name)
-        if match:
-            locale, name = match.group(1,2)
-            try:
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                client = service.Client(loop)
-                req = client.get_template(locale, name)
-                res = loop.run_until_complete(req)
-                fs.save_file(res, self.settings.source, email_name)
-                messages = ['SUCCES', '']
-            except service.TimeoutError as e:
-                messages = ['ERROR', str(e)]
-            except service.ServiceError as e:
-                messages = ['ERROR', 'Service respond with: %s \n%s' % (e.status, e.text)]
-        else:
-            messages = ['ERROR', 'Template path format (%s) not compatible with service' % email_name]
+        try:
+            res = _get_email_from_cms_service(email_name)
+            fs.save_file(res, self.settings.source, email_name)
+            place_holders.generate_config(self.settings)
+            place_holders._read_placeholders_file.cache_clear()
+            messages = ['SUCCES', '']
+        except service.TimeoutError as e:
+            messages = ['ERROR', str(e)]
+        except service.ServiceError as e:
+            messages = ['ERROR', 'Service respond with: <code>%s</code><br/><code>%s</code>' % (e.status, e.text)]
 
         return self.renderer.question(
             *messages,
@@ -643,6 +659,13 @@ class Server(object):
             raise cherrypy.HTTPRedirect('/timeout')
 
         overwrite = args.pop(OVERWRITE_PARAM_NAME, False)
+        placeholders_change = False
+        # new file
+        if os.path.exists(full_path) and not os.path.isdir(full_path):
+            content = self.renderer.content_to_save(rel_path, document.template_name, document.styles, **document.args)
+            locale, name = _get_email_locale_n_name(rel_path)
+            placeholders_change = not place_holders.validate_email_content(locale, name, content, self.settings.source)
+
         if overwrite or not os.path.exists(full_path):
             # Create and save
             self.renderer.save(rel_path, document.template_name, document.styles, **document.args)
@@ -661,10 +684,15 @@ class Server(object):
             )
             return html
         else:
-            # File already exists: overwrite?
+            # File already exists or placeholders change: overwrite?
+            question_str = 'Are you sure you want to overwrite the existing email <code>{}</code>?'.format(rel_path)
+            if placeholders_change:
+                question_str = 'Are you sure you want to overwrite the existing email <code>{}</code>?\
+                                <br/><b>WARNING</b> There are missing or extra placholders'.format(rel_path)
+
             return self.renderer.question(
                 'Overwriting ' + rel_path,
-                'Are you sure you want to overwrite the existing email <code>{}</code>?'.format(rel_path),
+                question_str,
                 [
                     ['No, save as a new file',
                      '/save/{0}/{1}'.format(

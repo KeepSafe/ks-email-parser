@@ -24,11 +24,12 @@ def _save_placeholders_file(placeholders, src_dir, indent=4):
 def _read_email_placeholders(email_name, src_dir):
     return _read_placeholders_file(src_dir).get(email_name, {})
 
-
 def _parse_email_placeholders(email_path):
     content = fs.read_file(email_path)
-    return Counter(m.group(1) for m in re.finditer(r'\{\{(\w+)\}\}', content))
+    return _parse_string_placeholders(content)
 
+def _parse_string_placeholders(content):
+    return Counter(m.group(1) for m in re.finditer(r'\{\{(\w+)\}\}', content))
 
 def _validate_email_placeholders(email_name, email_locale, email_placeholders, all_placeholders):
     missing_placeholders = set(all_placeholders) - set(email_placeholders)
@@ -102,6 +103,15 @@ def validate_email(email, src_dir=''):
         email_placeholders = _parse_email_placeholders(email.full_path)
         logger.debug('validating placeholders for %s', email.path)
         return _validate_email_placeholders(email.name, email.locale, email_placeholders, all_placeholders)
+    except FileNotFoundError:
+        # If the file does not exist skip validation
+        return True
+
+def validate_email_content(locale, name, content, src_dir=''):
+    try:
+        all_placeholders = _read_email_placeholders(name, src_dir)
+        email_placeholders = _parse_string_placeholders(content)
+        return _validate_email_placeholders(name, locale, email_placeholders, all_placeholders)
     except FileNotFoundError:
         # If the file does not exist skip validation
         return True
