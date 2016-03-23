@@ -545,7 +545,8 @@ class Server(object):
             messages = ['ERROR', 'Service respond with: <code>%s</code><br/><code>%s</code>' % (e.status, e.text)]
 
         return self.renderer.question(
-            *messages,
+            messages[0],
+            messages[1],
             [
                     ['Go back',  '/email/{}'.format(email_name)],
             ]
@@ -569,7 +570,8 @@ class Server(object):
             messages = ['ERROR', 'Service respond with: <code>%s</code><br/><code>%s</code>' % (e.status, e.text)]
 
         return self.renderer.question(
-            *messages,
+            messages[0],
+            messages[1],
             [
                     ['Go back',  '/email/{}'.format(email_name)],
             ]
