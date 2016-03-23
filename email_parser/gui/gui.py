@@ -716,9 +716,9 @@ class Server(object):
 
         overwrite = args.pop(OVERWRITE_PARAM_NAME, False)
         placeholders_change = False
-        # new file
+
         if os.path.exists(full_path) and not os.path.isdir(full_path):
-            content = self.renderer.content_to_save(rel_path, document.template_name, document.styles, **document.args)
+            content = self.final_renderer.content_to_save(rel_path, document.template_name, document.styles, **document.args)
             locale, name = _get_email_locale_n_name(rel_path)
             placeholders_change = not place_holders.validate_email_content(locale, name, content, self.settings.source)
 
