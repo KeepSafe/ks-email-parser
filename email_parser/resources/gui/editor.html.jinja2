@@ -77,7 +77,10 @@
                                 {% for option in dropdowns[attr] %}
                                     <option value="{{ option }}"
                                         {% if values[attr] == option %} selected="selected" {% endif %}
-                                        >{{ option }}</option>
+                                        >{% if verified_dropdowns
+                                        and verified_dropdowns[attr]
+                                        and option not in verified_dropdowns[attr] %}&#x26a0; {%  endif
+                                            %}{{ option }}</option>
                                 {% endfor %}
                                 </select>
                             {% else %}

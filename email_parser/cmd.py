@@ -28,7 +28,9 @@ Settings = namedtuple('Settings', [
     'shortener',
     'exclusive',
     'default_locale',
-    'workers_pool'
+    'workers_pool',
+    'local_images',
+    'save'  # Shell script to be called on save from gui
 ])
 
 
@@ -46,7 +48,9 @@ def default_settings():
         shortener={},
         exclusive=None,
         default_locale='en',
-        workers_pool=10
+        workers_pool=10,
+        local_images='templates_html/img',
+        save=None
     )
 
 
@@ -89,6 +93,7 @@ def read_args(argsargs=argparse.ArgumentParser):
     gui_parser.add_argument('-P', '--port', type=int, help='Port to serve on', default=8080)
     gui_parser.add_argument('-I', '--local-images', type=str, help='Server image directory',
                             default='templates_html/img')
+    gui_parser.add_argument('--save', type=str, help='Shell script to call after save action', default=None)
 
     return args.parse_args()
 

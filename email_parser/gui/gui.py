@@ -16,6 +16,10 @@ import time
 from html import escape as html_escape
 import jinja2
 import pkgutil
+import requests
+import threading
+from ..cmd import Settings
+import subprocess
 
 
 RESOURCE_PACKAGE = 'email_parser.resources.gui'
@@ -114,6 +118,10 @@ def _get_body_content_string(soup, comments=True):
 # Utilities
 
 
+def _read_template(settings, template_name):
+    return fs.read_file(settings.templates, template_name)
+
+
 def _list_files_recursively(path, hidden=False, relative_to_path=False):
     result = set()
     for dirpath, _, filenames in os.walk(path):
@@ -187,6 +195,18 @@ class InlineFormReplacer(object):
         self.names = list()
         self.attrs = list()
         self.required = list()  # Only valid after we've done a replacement on a template
+        self.html = None
+
+    @classmethod
+    def make(cls, settings, args, template_name):
+        print(settings.images)
+        replacer = cls({'base_url': settings.images}, args)
+        replacer.require('subject')
+        # Generate our filled-in template
+        template_html = _read_template(settings, template_name)
+        # We have to run replacer to populate its attrs
+        replacer.replace(template_html)
+        return replacer
 
     def require(self, name):
         if name not in self.names:
@@ -221,7 +241,8 @@ class InlineFormReplacer(object):
                 ).format(name, value, 'present' if value else 'absent')
 
     def replace(self, template_html):
-        return self.CONTENT_REGEX.sub(self._sub, template_html)
+        self.html = self.CONTENT_REGEX.sub(self._sub, template_html)
+        return self.html
 
     def _should_make_placeholder(self, key):
         return key in self.names and key not in self.builtins
@@ -271,11 +292,7 @@ class GenericRenderer(object):
         self._resource_cache = dict()
 
     def resource(self, resource_name):
-        resource = self._resource_cache.get(resource_name)
-        if resource is None:
-            resource = pkgutil.get_data(RESOURCE_PACKAGE, resource_name).decode('utf-8')
-            # resource = fs.read_file(self.resources, resource_name)
-            self._resource_cache[resource_name] = resource
+        resource = pkgutil.get_data(RESOURCE_PACKAGE, resource_name).decode('utf-8')
         return resource
 
     def gui_template(self, template_name, **args):
@@ -316,14 +333,26 @@ class GenericRenderer(object):
             actions=actions,
         )
 
+    def error(self, title, description, actions):
+        return self.gui_template(
+            'error.html.jinja2',
+            title=title,
+            description=description,
+            actions=actions,
+        )
+
 
 class InlineFormRenderer(GenericRenderer):
     """
     Render editors and previews
     """
-    def __init__(self, settings):
+    def __init__(self, settings, verify_image_url=None):
         super().__init__(settings)
         self.settings = settings
+        self._verified_images = set()
+
+        verify_image_url = verify_image_url or self.settings.images
+        threading.Thread(target=self._prepare_verified_images, args=(verify_image_url,)).start()
 
     def save(self, email_name, template_name, styles, **args):
         """
@@ -341,7 +370,7 @@ class InlineFormRenderer(GenericRenderer):
         place_holders._read_placeholders_file.cache_clear()
 
     def content_to_save(self, email_name, template_name, styles, **args):
-        replacer, _ = self._make_replacer(args, template_name)
+        replacer = InlineFormReplacer.make(self.settings, args, template_name)
         xml = self.gui_template(
             'email.xml.jinja2',
             template=template_name,
@@ -353,8 +382,14 @@ class InlineFormRenderer(GenericRenderer):
 
 
 
+        if self.settings.save:
+            abspath = os.path.abspath(os.path.join(self.settings.source, email_name))
+            return subprocess.check_output([self.settings.save, abspath], stderr=subprocess.STDOUT)
+        else:
+            return None
+
     def render_preview(self, template_name, styles, **args):
-        replacer, _ = self._make_replacer(args, template_name)
+        replacer = InlineFormReplacer.make(self.settings, args, template_name)
         if styles:
             # Use "real" renderer, replace missing values with ???
             placeholders = replacer.placeholders(lambda missing_key: '???')
@@ -363,17 +398,22 @@ class InlineFormRenderer(GenericRenderer):
             html = self.resource('preview.no.styles.html')
         return html, (styles and not replacer.required)
 
-    def render(
-            self, template_name, styles=(),
+    def render_editor(
+            self, template_name,
+            styles=(),
             actions={},
             **args
     ):
-        replacer, html = self._make_replacer(args, template_name)
+        replacer = InlineFormReplacer.make(self.settings, args, template_name)
 
-        edit_html = html
+        edit_html = replacer.html
         edit_column = _get_body_content_string(edit_html).strip()
         image_attrs = self._find_image_attrs(edit_html)
         image_filenames = self._find_images()
+
+        print(image_attrs)
+        print(image_filenames)
+        print(self._verified_images)
 
         return self.gui_template(
             "editor.html.jinja2",
@@ -387,18 +427,40 @@ class InlineFormRenderer(GenericRenderer):
             attrs=replacer.attrs,
             values=args,
             dropdowns={A: image_filenames for A in image_attrs},
+            verified_dropdowns={A: self._verified_images for A in image_attrs}
         )
 
-    def _read_template(self, template_name):
-        return fs.read_file(self.settings.templates, template_name)
+    def render_email(self, email_path):
+        template, placeholders, _ = reader_read(email_path)
+        args = _unplaceholder(placeholders)
+
+        html = HtmlRenderer(template, self.settings, '').render(placeholders)
+        return html, args.get('subject')
 
     def _find_styles(self, path_glob='*.css'):
         return list(fnmatch.filter(os.listdir(self.settings.templates), path_glob))
 
     def _find_images(self, local_dir=None):
         if local_dir is None:
-            local_dir = os.path.join(self.settings.templates, 'img')
+            local_dir = self.settings.local_images
         return _list_files_recursively(local_dir, relative_to_path=True)
+
+    def _verify_images(self, image_path_list, verify_image_url):
+        if not verify_image_url or not verify_image_url.startswith('http'):
+            return image_path_list
+        verified = set()
+        image_url = verify_image_url.rstrip('/') + '/'
+        for image_path in image_path_list:
+            url = urllib.parse.urljoin(image_url, image_path)
+            print('Verifying {}'.format(url))
+            r = requests.head(url)
+            if r.status_code == 200:
+                verified.add(image_path)
+        return verified
+
+    def _prepare_verified_images(self, verify_image_url):
+        self._verified_images = self._verify_images(self._find_images(), verify_image_url)
+        print(self._verified_images)
 
     def _find_image_attrs(self, html):
         base_url = self.settings.images
@@ -417,22 +479,15 @@ class InlineFormRenderer(GenericRenderer):
             attrs.add(attr)
         return attrs
 
-    def _make_replacer(self, args, template_name):
-        replacer = InlineFormReplacer({'base_url': self.settings.images}, args)
-        replacer.require('subject')
-        # Generate our filled-in template
-        template_html = self._read_template(template_name)
-        html = replacer.replace(template_html)
-        return replacer, html
-
 
 # Server
 
 
 class Server(object):
-    def __init__(self, settings, renderer):
+    def __init__(self, settings, edit_renderer, final_renderer):
         self.settings = settings
-        self.renderer = renderer
+        self.edit_renderer = edit_renderer
+        self.final_renderer = final_renderer
 
     @classmethod
     def _actions(cls, document, **args):
@@ -447,11 +502,11 @@ class Server(object):
     @cherrypy.expose
     def img(self, *path):
         img_name = os.path.join(*path) if path else ''
-        img_path = os.path.join(self.settings.images, *path)
+        img_path = os.path.join(self.settings.local_images, *path)
         if os.path.isdir(img_path):
-            return self.renderer.directory(
+            return self.edit_renderer.directory(
                 'Contents of ' + (img_name or 'image directory'),
-                self.settings.images, img_name,
+                self.settings.local_images, img_name,
                 '/img/{}'.format,
             )
         else:
@@ -461,13 +516,13 @@ class Server(object):
                 'image/{}'.format(ext[1:].lower())
             )
 
-            data = fs.read_file(self.settings.images, *path, mode='rb')
+            data = fs.read_file(self.settings.local_images, *path, mode='rb')
             cherrypy.response.headers['Content-Type'] = content_type
             return data
 
     @cherrypy.expose
     def index(self):
-        return self.renderer.question(
+        return self.edit_renderer.question(
             'KS-Email-Parser GUI',
             'Do you want to create a new email from a template, or edit an existing email?',
             [
@@ -522,7 +577,7 @@ class Server(object):
 
     @cherrypy.expose
     def timeout(self, *_ignored, **_also_ignored):
-        return self.renderer.question(
+        return self.edit_renderer.question(
             '\U0001f62d SORRY \U0001f62d',
             'Your session has timed out! Do you want to create a new email from a template, or edit an existing email?',
             [
@@ -536,7 +591,7 @@ class Server(object):
         template_name = '/'.join(paths)
         template_path = os.path.join(self.settings.templates, template_name)
         if os.path.isdir(template_path):
-            return self.renderer.directory(
+            return self.edit_renderer.directory(
                 'Contents of ' + (template_name or 'template directory'),
                 self.settings.templates, template_name,
                 '/template/{}'.format,
@@ -546,7 +601,7 @@ class Server(object):
             document = _extract_document({}, template_name=template_name)
             if not document.template_name:
                 raise cherrypy.HTTPRedirect('/timeout')
-            return self.renderer.render(
+            return self.edit_renderer.render_editor(
                 document.template_name,
                 document.styles,
                 actions=self._actions(document, **{TEMPLATE_PARAM_NAME: template_name}),
@@ -559,7 +614,8 @@ class Server(object):
         if not document.template_name:
             raise cherrypy.HTTPRedirect('/timeout')
 
-        html, _ = self.renderer.render_preview(
+        #  Could use `edit_renderer` here to serve images from local host
+        html, _ = self.final_renderer.render_preview(
             document.template_name,
             document.styles,
             **document.args
@@ -573,7 +629,8 @@ class Server(object):
         if not document.template_name:
             raise cherrypy.HTTPRedirect('/timeout')
 
-        html, is_complete = self.renderer.render_preview(
+        #  Could use `final_renderer` here to verify images load correctly from remote host
+        html, is_complete = self.edit_renderer.render_preview(
             document.template_name,
             document.styles,
             **document.args
@@ -590,7 +647,7 @@ class Server(object):
         if not document.template_name:
             raise cherrypy.HTTPRedirect('/timeout')
 
-        return self.renderer.render(
+        return self.edit_renderer.render_editor(
             document.template_name,
             document.styles,
             actions=self._actions(document),
@@ -602,18 +659,15 @@ class Server(object):
         email_name = '/'.join(paths)
         email_path = os.path.join(self.settings.source, email_name)
         if os.path.isdir(email_path):
-            return self.renderer.directory(
+            return self.edit_renderer.directory(
                 'Contents of ' + (email_name or 'source directory'),
                 self.settings.source, email_name,
                 '/email/{}'.format
             )
         else:  # A file
-            template, placeholders, _ = reader_read(email_path)
-            args = _unplaceholder(placeholders)
-
-            html = HtmlRenderer(template, self.settings, '').render(placeholders)
-            return self.renderer.question(
-                title=html_escape(args.get('subject')),
+            html, subject = self.final_renderer.render_email(email_path)
+            return self.edit_renderer.question(
+                title=html_escape(subject),
                 description=_get_body_content_string(html),
                 actions=[
                     ['Edit', '/alter/{}'.format(email_name)],
@@ -635,7 +689,7 @@ class Server(object):
             template_styles=template.styles
         )
 
-        return self.renderer.render(
+        return self.edit_renderer.render_editor(
             document.template_name,
             document.styles,
             actions=self._actions(document, **{EMAIL_PARAM_NAME: email_name}),
@@ -668,11 +722,33 @@ class Server(object):
 
         if overwrite or not os.path.exists(full_path):
             # Create and save
-            self.renderer.save(rel_path, document.template_name, document.styles, **document.args)
+            try:
+                output = self.final_renderer.save(rel_path, document.template_name, document.styles, **document.args)
+                if output:
+                    output = str(output, 'utf-8')
+                    return self.final_renderer.question(
+                        title='Saved & postprocessed email: {}'.format(rel_path),
+                        description=html_escape(output),
+                        actions=[
+                            ['View', '/email/{}'.format(rel_path), 2000],
+                        ]
+                    )
+
+            except subprocess.CalledProcessError as err:
+                output = str(err.output, 'utf-8') if err.output else 'Error #{}'.format(err.returncode)
+                return self.final_renderer.error(
+                    title='Postprocessing failed for email: {}'.format(rel_path),
+                    description=html_escape(output),
+                    actions=[
+                        ['View', '/email/{}'.format(rel_path)],
+                    ]
+                )
+
+            # No postprocessing performed/requested
             raise cherrypy.HTTPRedirect('/email/{}'.format(rel_path))
         elif os.path.isdir(full_path):
             # Show directory or allow user to create new file
-            html = self.renderer.directory(
+            html = self.edit_renderer.directory(
                 'Select save name/directory: ' + rel_path,
                 self.settings.source, rel_path,
                 (lambda path: '/save/{0}/{1}'.format(working_name, path)),
@@ -690,7 +766,8 @@ class Server(object):
                 question_str = 'Are you sure you want to overwrite the existing email <code>{}</code>?\
                                 <br/><b>WARNING</b> There are missing or extra placholders'.format(rel_path)
 
-            return self.renderer.question(
+            # File already exists: overwrite?
+            return self.edit_renderer.question(
                 'Overwriting ' + rel_path,
                 question_str,
                 [
@@ -715,8 +792,16 @@ class Server(object):
 
 def serve(args):
     from ..cmd import read_settings
-    settings = read_settings(args)
 
-    renderer = InlineFormRenderer(settings)
+    path = '/'
+
+    settings = read_settings(args)
+    final_renderer = InlineFormRenderer(settings)
+
+    edit_settings = settings._replace(images=path + 'img')  # Serve images from local host during edit step.
+    edit_renderer = InlineFormRenderer(edit_settings, verify_image_url=settings.images)
+
     cherrypy.config.update({'server.socket_port': args.port or 8080})
-    cherrypy.quickstart(Server(settings, renderer), '/')
+    cherrypy.quickstart(Server(
+        settings, edit_renderer=edit_renderer, final_renderer=final_renderer
+    ), path)
