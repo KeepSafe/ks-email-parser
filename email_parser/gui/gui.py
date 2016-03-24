@@ -3,7 +3,7 @@ import bs4
 import os, os.path
 import asyncio
 from . import service
-from .. import fs, placeholder as place_holders
+from .. import fs, utils, placeholder as place_holders
 from ..renderer import HtmlRenderer
 from ..reader import Template, read as reader_read
 import fnmatch
@@ -20,6 +20,9 @@ import requests
 import threading
 from ..cmd import Settings
 import subprocess
+import logging
+import sys
+from multiprocessing import Manager, Queue
 
 
 RESOURCE_PACKAGE = 'email_parser.resources.gui'
@@ -174,6 +177,15 @@ def _push_email_to_cms_service(settings, email_name, email_path):
     req = client.push_template(locale, name, email_path)
     res = loop.run_until_complete(req)
     return res
+
+def _set_logging_handler():
+    logger = logging.getLogger()
+    error_msgs_queue = Manager().Queue()
+    warning_msgs_queue = Manager().Queue()
+    handler = utils.ProgressConsoleHandler(error_msgs_queue, warning_msgs_queue, stream=sys.stdout)
+    logger.setLevel(logging.INFO)
+    logger.addHandler(handler)
+    return handler
 
 
 # Editing & rendering
@@ -716,11 +728,15 @@ class Server(object):
 
         overwrite = args.pop(OVERWRITE_PARAM_NAME, False)
         placeholders_change = False
+        placeholders_messages = []
 
         if os.path.exists(full_path) and not os.path.isdir(full_path):
+            handler = _set_logging_handler()
             content = self.final_renderer.content_to_save(rel_path, document.template_name, document.styles, **document.args)
             locale, name = _get_email_locale_n_name(rel_path)
             placeholders_change = not place_holders.validate_email_content(locale, name, content, self.settings.source)
+            placeholders_messages = list(handler.error_msgs())
+
 
         if overwrite or not os.path.exists(full_path):
             # Create and save
@@ -765,8 +781,8 @@ class Server(object):
             # File already exists or placeholders change: overwrite?
             question_str = 'Are you sure you want to overwrite the existing email <code>{}</code>?'.format(rel_path)
             if placeholders_change:
-                question_str = 'Are you sure you want to overwrite the existing email <code>{}</code>?\
-                                <br/><b>WARNING</b> There are missing or extra placholders'.format(rel_path)
+                question_str = 'Are you sure you want to overwrite the existing email <code>{0}</code>?\
+                                <blockquote><b>WARNING</b><br/>{1}</blockquote>'.format(rel_path, '<br/>'.join(placeholders_messages))
 
             # File already exists: overwrite?
             return self.edit_renderer.question(

@@ -32,20 +32,20 @@ def _parse_string_placeholders(content):
     return Counter(m.group(1) for m in re.finditer(r'\{\{(\w+)\}\}', content))
 
 def _validate_email_placeholders(email_name, email_locale, email_placeholders, all_placeholders):
+    result = True
     missing_placeholders = set(all_placeholders) - set(email_placeholders)
     if missing_placeholders:
         logger.error('There are missing placeholders %s in email %s, locale %s' %
                      (missing_placeholders, email_name, email_locale))
-        return False
+        result = False
     extra_placeholders = set(email_placeholders) - set(all_placeholders)
     if extra_placeholders:
         logger.error('There are extra placeholders %s in email %s, locale %s' %
                      (extra_placeholders, email_name, email_locale))
-        return False
+        result = False
 
-    result = True
     for name, count in all_placeholders.items():
-        email_count = email_placeholders[name]
+        email_count = email_placeholders.get(name, 0)
         if count != email_count:
             logger.error('The number of placeholders "%s" in email "%s" locale "%s" should be %s but was %s' %
                          (name, email_name, email_locale, count, email_count))
