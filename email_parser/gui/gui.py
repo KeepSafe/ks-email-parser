@@ -157,20 +157,20 @@ def _get_email_locale_n_name(email_name):
     return match.group(1, 2)
 
 
-def _get_email_from_cms_service(email_name):
+def _get_email_from_cms_service(settings, email_name):
     locale, name = _get_email_locale_n_name(email_name)
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
-    client = service.Client(loop)
+    client = service.Client(settings.cms_service_host, loop)
     req = client.get_template(locale, name)
     res = loop.run_until_complete(req)
     return res
 
-def _push_email_to_cms_service(email_name, email_path):
+def _push_email_to_cms_service(settings, email_name, email_path):
     locale, name = _get_email_locale_n_name(email_name)
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
-    client = service.Client(loop)
+    client = service.Client(settings.cms_service_host, loop)
     req = client.push_template(locale, name, email_path)
     res = loop.run_until_complete(req)
     return res
@@ -537,14 +537,14 @@ class Server(object):
         email_path = os.path.join(self.settings.source, email_name)
 
         try:
-            res = _push_email_to_cms_service(email_name, email_path)
+            res = _push_email_to_cms_service(self.settings, email_name, email_path)
             messages = ['SUCCES', res]
         except service.TimeoutError as e:
             messages = ['ERROR', str(e)]
         except service.ServiceError as e:
             messages = ['ERROR', 'Service respond with: <code>%s</code><br/><code>%s</code>' % (e.status, e.text)]
 
-        return self.renderer.question(
+        return self.edit_renderer.question(
             messages[0],
             messages[1],
             [
@@ -559,7 +559,7 @@ class Server(object):
         email_path = os.path.join(self.settings.source, email_name)
 
         try:
-            res = _get_email_from_cms_service(email_name)
+            res = _get_email_from_cms_service(self.settings, email_name)
             fs.save_file(res, self.settings.source, email_name)
             place_holders.generate_config(self.settings)
             place_holders._read_placeholders_file.cache_clear()
@@ -569,7 +569,7 @@ class Server(object):
         except service.ServiceError as e:
             messages = ['ERROR', 'Service respond with: <code>%s</code><br/><code>%s</code>' % (e.status, e.text)]
 
-        return self.renderer.question(
+        return self.edit_renderer.question(
             messages[0],
             messages[1],
             [

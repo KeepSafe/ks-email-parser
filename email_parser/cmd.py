@@ -30,7 +30,8 @@ Settings = namedtuple('Settings', [
     'default_locale',
     'workers_pool',
     'local_images',
-    'save'  # Shell script to be called on save from gui
+    'save',  # Shell script to be called on save from gui
+    'cms_service_host'
 ])
 
 
@@ -50,7 +51,8 @@ def default_settings():
         default_locale='en',
         workers_pool=10,
         local_images='templates_html/img',
-        save=None
+        save=None,
+        cms_service_host=None
     )
 
 
@@ -94,6 +96,7 @@ def read_args(argsargs=argparse.ArgumentParser):
     gui_parser.add_argument('-I', '--local-images', type=str, help='Server image directory',
                             default='templates_html/img')
     gui_parser.add_argument('--save', type=str, help='Shell script to call after save action', default=None)
+    gui_parser.add_argument('-s', '--cms-service-host', type=str, help='email-service\'s URL', default=None)
 
     return args.parse_args()
 

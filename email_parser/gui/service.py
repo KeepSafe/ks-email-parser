@@ -7,7 +7,6 @@ from functools import wraps
 
 logger = logging.getLogger(__name__)
 
-SERVICE_HOST = 'http://0.0.0.0:5000'
 ENDPOINTS = {
     'push': {'method': 'PUT', 'url': '/templates/%s/%s'},
     'show': {'method': 'GET', 'url': '/templates/%s/%s'}
@@ -29,8 +28,8 @@ class ServiceError(Exception):
 
 class Client(object):
 
-    def __init__(self, loop=None):
-        self._host = SERVICE_HOST
+    def __init__(self, host, loop=None):
+        self._host = host
         self._loop = loop or asyncio.get_event_loop()
 
     def request(self, path='', method='GET', timeout=5, **kwargs):
