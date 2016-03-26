@@ -3,6 +3,7 @@ from unittest.mock import patch, MagicMock
 
 from email_parser import renderer, errors, cmd
 from email_parser.reader import Template
+from email_parser.fs import Email
 
 
 class TestTextRenderer(TestCase):
@@ -116,8 +117,9 @@ class TestHtmlRenderer(TestCase):
         settings['images'] = 'dummy_images'
         self.settings = cmd.Settings(**settings)
 
+        self.email = Email('name', 'locale', 'path', 'full_path')
         self.template = Template('template_name', ['template_style'])
-        self.renderer = renderer.HtmlRenderer(self.template, self.settings, 'locale')
+        self.renderer = renderer.HtmlRenderer(self.template, self.settings, self.email)
 
     @patch('email_parser.fs.read_file')
     def test_happy_path(self, mock_read):
@@ -167,7 +169,7 @@ class TestHtmlRenderer(TestCase):
         settings = self.settings._asdict()
         settings['strict'] = False
         settings = cmd.Settings(**settings)
-        r = renderer.HtmlRenderer(self.template, settings, 'locale')
+        r = renderer.HtmlRenderer(self.template, settings, self.email)
 
         actual = r.render(placeholders)
 
@@ -183,12 +185,24 @@ class TestHtmlRenderer(TestCase):
         with self.assertRaises(errors.MissingTemplatePlaceholderError):
             self.renderer.render(placeholders)
 
+    @patch('email_parser.renderer.logger.warn')
+    @patch('email_parser.fs.read_file')
+    def test_warn_on_extra_placeholders(self, mock_read, mock_warn):
+        html = '<body>{{content}}</body>'
+        placeholders = {'content': 'dummy_content', 'extra': 'dummy'}
+        mock_read.side_effect = iter(['', html])
+        self.renderer.render(placeholders)
+        expected_warn = "There are extra placeholders {'extra'} in email locale/name, missing in template template_name"
+        mock_warn.assert_called_with(expected_warn)
+
     @patch('email_parser.fs.read_file')
     def test_rtl_locale(self, mock_read):
         html = '<body>{{content}}</body>'
         placeholders = {'content': 'dummy_content'}
         mock_read.side_effect = iter(['', html])
-        r = renderer.HtmlRenderer(self.template, self.settings, 'ar')
+        email_dict = self.email._asdict()
+        email_dict['locale'] = 'ar'
+        r = renderer.HtmlRenderer(self.template, self.settings, Email(**email_dict))
 
         actual = r.render(placeholders)
 
@@ -199,7 +213,9 @@ class TestHtmlRenderer(TestCase):
         html = '<body><div>{{content1}}</div><div>{{content2}}</div></body>'
         placeholders = {'content1': 'dummy_content1', 'content2': 'dummy_content2'}
         mock_read.side_effect = iter(['', html])
-        r = renderer.HtmlRenderer(self.template, self.settings, 'ar')
+        email_dict = self.email._asdict()
+        email_dict['locale'] = 'ar'
+        r = renderer.HtmlRenderer(self.template, self.settings, Email(**email_dict))
 
         actual = r.render(placeholders)
 

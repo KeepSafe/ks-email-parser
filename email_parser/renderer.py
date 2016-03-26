@@ -2,6 +2,7 @@
 Different ways of rendering emails.
 """
 
+import logging
 import markdown
 import bs4
 import pystache
@@ -11,9 +12,12 @@ import xml.etree.ElementTree as ET
 from collections import OrderedDict
 
 from . import markdown_ext, errors, fs, link_shortener
+from .placeholder import parse_string_placeholders
 
 TEXT_EMAIL_PLACEHOLDER_SEPARATOR = '\n\n'
 HTML_PARSER = 'lxml'
+
+logger = logging.getLogger()
 
 def _md_to_html(text, base_url=None):
     extensions = [markdown_ext.inline_text()]
@@ -32,10 +36,11 @@ class HtmlRenderer(object):
     Renders email' body as html.
     """
 
-    def __init__(self, template, settings, locale):
+    def __init__(self, template, settings, email):
         self.template = template
         self.settings = settings
-        self.locale = locale
+        self.email = email
+        self.locale = email.locale
 
     def _read_template(self):
         return fs.read_file(self.settings.templates, self.template.name)
@@ -87,10 +92,19 @@ class HtmlRenderer(object):
         strict = 'strict' if self.settings.strict else 'ignore'
         # pystache escapes html by default, we pass escape option to disable this
         renderer = pystache.Renderer(escape=lambda u: u, missing_tags=strict)
+        placeholders = dict(parts.items() | {'subject': subject}.items() | {'base_url': self.settings.images}.items())
+
+        # check wheter exists extra placeholders in html template
+        template_placeholders = set(parse_string_placeholders(html))
+        parts_placeholders = set(parts)
+        extra_placeholders = parts_placeholders - template_placeholders
+        if extra_placeholders:
+            logger.warn('There are extra placeholders %s in email %s/%s, missing in template %s' %
+                         (extra_placeholders, self.email.locale, self.email.name, self.template.name))
+
         try:
             # add subject for rendering as we have it in html
-            return renderer.render(
-                html, dict(parts.items() | {'subject': subject}.items() | {'base_url': self.settings.images}.items()))
+            return renderer.render(html, placeholders)
         except pystache.context.KeyNotFoundError as e:
             message = 'template {} for locale {} has missing placeholders: {}'.format(
                 self.template.name, self.locale, e)
@@ -172,7 +186,7 @@ def render(email, template, placeholders, ignored_plceholder_names, settings):
     text_renderer = TextRenderer(ignored_plceholder_names, settings.shortener)
     text = text_renderer.render(placeholders)
 
-    html_renderer = HtmlRenderer(template, settings, email.locale)
+    html_renderer = HtmlRenderer(template, settings, email)
     try:
         html = html_renderer.render(placeholders)
     except errors.MissingTemplatePlaceholderError as e:
