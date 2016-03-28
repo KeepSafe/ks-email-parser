@@ -52,7 +52,7 @@ def default_settings():
         workers_pool=10,
         local_images='templates_html/img',
         save=None,
-        cms_service_host=None
+        cms_service_host="http://localhost:5001"
     )
 
 
@@ -95,8 +95,8 @@ def read_args(argsargs=argparse.ArgumentParser):
     gui_parser.add_argument('-P', '--port', type=int, help='Port to serve on', default=8080)
     gui_parser.add_argument('-I', '--local-images', type=str, help='Server image directory',
                             default='templates_html/img')
-    gui_parser.add_argument('--save', type=str, help='Shell script to call after save action', default=None)
-    gui_parser.add_argument('-s', '--cms-service-host', type=str, help='email-service\'s URL', default=None)
+    gui_parser.add_argument('--save', type=str, help='Shell script to call after save action')
+    gui_parser.add_argument('-s', '--cms-service-host', type=str, help='email-service\'s URL')
 
     return args.parse_args()
 
