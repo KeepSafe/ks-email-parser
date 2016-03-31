@@ -117,10 +117,6 @@ def validate_email_content(locale, name, content, src_dir=''):
         return True
 
 
-def list_from_email(email_name, src_dir=''):
-    placeholders = _read_placeholders_file(src_dir).get(email_name, None)
-    if placeholders is not None:
-        res = list(set(placeholders))
-        return res
-    else:
-        return None
+def from_email_name(email_name, src_dir=''):
+    placeholders = _read_placeholders_file(src_dir).get(email_name, {})
+    return list(placeholders)

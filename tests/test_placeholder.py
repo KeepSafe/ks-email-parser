@@ -80,7 +80,8 @@ class TestValidate(TestCase):
 
         self.assertFalse(actual)
 
-class TestList(TestCase):
+
+class TestFromEmailName(TestCase):
 
     def setUp(self):
         self.placeholders = json.dumps({'test_name': {
@@ -94,7 +95,7 @@ class TestList(TestCase):
     def test_placeholder_list_for_given_email_name(self):
         expected = ['another', 'test_placeholder']
 
-        result = placeholder.list_from_email('test_name')
+        result = placeholder.from_email_name('test_name')
         result.sort()
 
         self.assertEqual(expected, result)
@@ -102,12 +103,12 @@ class TestList(TestCase):
     def test_placeholder_list_for_email_without_them(self):
         expected = []
 
-        result = placeholder.list_from_email('without_placeholders')
+        result = placeholder.from_email_name('without_placeholders')
         self.assertEqual(expected, result)
 
 
     def test_placeholder_list_for_non_existing_email(self):
-        expected = None
+        expected = []
 
-        result = placeholder.list_from_email('to_be_or_not_to_be')
+        result = placeholder.from_email_name('to_be_or_not_to_be')
         self.assertEqual(expected, result)
