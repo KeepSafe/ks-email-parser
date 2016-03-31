@@ -79,3 +79,35 @@ class TestValidate(TestCase):
         actual = placeholder.validate_email(self.email)
 
         self.assertFalse(actual)
+
+class TestList(TestCase):
+
+    def setUp(self):
+        self.placeholders = json.dumps({'test_name': {
+                                            'test_placeholder': 1,
+                                            'another': 1
+                                            },
+                                        'without_placeholders': {}
+                                        })
+        placeholder.fs.read_file = MagicMock(return_value=self.placeholders)
+
+    def test_placeholder_list_for_given_email_name(self):
+        expected = ['another', 'test_placeholder']
+
+        result = placeholder.list_from_email('test_name')
+        result.sort()
+
+        self.assertEqual(expected, result)
+
+    def test_placeholder_list_for_email_without_them(self):
+        expected = []
+
+        result = placeholder.list_from_email('without_placeholders')
+        self.assertEqual(expected, result)
+
+
+    def test_placeholder_list_for_non_existing_email(self):
+        expected = None
+
+        result = placeholder.list_from_email('to_be_or_not_to_be')
+        self.assertEqual(expected, result)
