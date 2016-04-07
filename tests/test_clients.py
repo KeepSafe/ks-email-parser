@@ -42,3 +42,9 @@ class TestParser(TestCase):
 
     def test_html(self):
         self._run_and_assert('email.html', 'customerio_email.html')
+
+    def test_globale_text(self):
+        self._run_and_assert('email_globale.text', 'email_globale.text')
+
+    def test_globale_html(self):
+        self._run_and_assert('email_globale.html', 'email_globale.html')
