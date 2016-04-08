@@ -11,7 +11,7 @@ import inlinestyler.utils as inline_styler
 import xml.etree.ElementTree as ET
 from collections import OrderedDict
 
-from . import markdown_ext, errors, fs, link_shortener
+from . import markdown_ext, errors, fs, link_shortener, reader
 from .placeholder import parse_string_placeholders
 
 TEXT_EMAIL_PLACEHOLDER_SEPARATOR = '\n\n'
@@ -87,13 +87,17 @@ class HtmlRenderer(object):
         html = _md_to_html(placeholder, self.settings.images)
         return self._inline_css(html, css)
 
+
+    def _global_placeholders(self):
+        pattern_path = self.settings.pattern.replace('{locale}', self.email.locale).replace('{name}', fs.GLOBAL_PLACEHOLDERS_EMAIL_NAME)
+        global_email_path = fs.path(self.settings.source, pattern_path)
+        css = self._read_css()
+
+        _, placeholders, _ = reader.read(global_email_path, False)
+        return {'global_{}'.format(key): self._render_placeholder(val,css) for key, val in placeholders.items()}
+
     def _concat_parts(self, subject, parts):
         html = self._read_template()
-        strict = 'strict' if self.settings.strict else 'ignore'
-        # pystache escapes html by default, we pass escape option to disable this
-        renderer = pystache.Renderer(escape=lambda u: u, missing_tags=strict)
-        placeholders = dict(parts.items() | {'subject': subject}.items() | {'base_url': self.settings.images}.items())
-
         # check wheter exists extra placeholders in html template
         template_placeholders = set(parse_string_placeholders(html))
         parts_placeholders = set(parts)
@@ -101,6 +105,11 @@ class HtmlRenderer(object):
         if extra_placeholders:
             logger.warn('There are extra placeholders %s in email %s/%s, missing in template %s' %
                          (extra_placeholders, self.email.locale, self.email.name, self.template.name))
+
+        strict = 'strict' if self.settings.strict else 'ignore'
+        # pystache escapes html by default, we pass escape option to disable this
+        renderer = pystache.Renderer(escape=lambda u: u, missing_tags=strict)
+        placeholders = dict(parts.items() | {'subject': subject}.items() | {'base_url': self.settings.images}.items() | self._global_placeholders().items())
 
         try:
             # add subject for rendering as we have it in html

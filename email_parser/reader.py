@@ -20,7 +20,7 @@ def _placeholders(tree):
     return OrderedDict((element.get('name'), element.text) for element in tree.findall('./string'))
 
 
-def _template(tree):
+def _template(tree, email_path):
     name = tree.getroot().get('template')
     if name is None:
         logging.error('no HTML template name define for %s', email_path)
@@ -55,7 +55,7 @@ def _find_parse_error(file_path, exception):
 
 
 
-def read(email_path):
+def read(email_path, load_template=True):
     """
     Reads an email from the path.
 
@@ -77,8 +77,14 @@ def read(email_path):
 
         return None, {}, []
 
-    template = _template(tree)
+    if load_template:
+        template = _template(tree, email_path)
+    else:
+        template = None
+
     placeholders = _placeholders(tree)
     ignored_plceholder_names = _ignored_placeholder_names(tree)
 
     return template, placeholders, ignored_plceholder_names
+
+# def read_template_placeholders

@@ -5,6 +5,7 @@ All filesystem interaction.
 import logging
 import os
 import parse
+import re
 from pathlib import Path
 from string import Formatter
 from collections import namedtuple
@@ -14,6 +15,7 @@ from . import errors
 SUBJECT_EXTENSION = '.subject'
 TEXT_EXTENSION = '.text'
 HTML_EXTENSION = '.html'
+GLOBAL_PLACEHOLDERS_EMAIL_NAME = 'global'
 
 Email = namedtuple('Email', ['name', 'locale', 'path', 'full_path'])
 logger = logging.getLogger()
@@ -39,14 +41,16 @@ def _emails(src_dir, pattern, params, exclusive_path=None):
     else:
         glob_path = Path(src_dir).glob(wildcard_pattern)
 
+    global_email_pattern = re.compile('%s.xml$' % GLOBAL_PLACEHOLDERS_EMAIL_NAME)
     for path in sorted(glob_path, key=lambda path: str(path)):
         if not path.is_dir() and (not exclusive_path or _has_correct_ext(path, pattern)):
             str_path = str(path.relative_to(src_dir))
             result = parser.parse(str_path)
             result.named['path'] = str_path
             result.named['full_path'] = str(path.resolve())
-            logging.debug('loading email %s', result.named['full_path'])
-            yield result
+            if not re.findall(global_email_pattern, str_path):
+                logging.debug('loading email %s', result.named['full_path'])
+                yield result
 
 def _has_correct_ext(path, pattern):
     return os.path.splitext(str(path))[1] == os.path.splitext(pattern)[1]
@@ -58,7 +62,7 @@ def emails(src_dir, pattern, exclusive_path=None):
 
     :param src_dir: base dir for the search
     :param pattern: search pattern
-    :exclusive_path: single email path, glob path for emails subset or None to not affect emails set 
+    :exclusive_path: single email path, glob path for emails subset or None to not affect emails set
 
     :returns: generator for the emails matching the pattern
     """
@@ -124,3 +128,6 @@ def save(email, subject, text, html, dest_dir, fallback_locale=None):
     save_file(subject, dest_dir, locale, email.name + SUBJECT_EXTENSION)
     save_file(text, dest_dir, locale, email.name + TEXT_EXTENSION)
     save_file(html, dest_dir, locale, email.name + HTML_EXTENSION)
+
+def path(*path_parts):
+    return os.path.join(*path_parts)
