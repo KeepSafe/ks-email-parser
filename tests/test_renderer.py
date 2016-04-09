@@ -1,5 +1,5 @@
 from unittest import TestCase
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 from email_parser import renderer, errors, cmd
 from email_parser.reader import Template
@@ -92,6 +92,7 @@ class TestTextRenderer(TestCase):
 
 
 class TestSubjectRenderer(TestCase):
+
     def setUp(self):
         self.renderer = renderer.SubjectRenderer()
 
@@ -110,6 +111,7 @@ class TestSubjectRenderer(TestCase):
 
 
 class TestHtmlRenderer(TestCase):
+
     def setUp(self):
         settings = cmd.default_settings()._asdict()
         settings['templates'] = 'dummy_templates'
@@ -122,7 +124,7 @@ class TestHtmlRenderer(TestCase):
     @patch('email_parser.fs.read_file')
     def test_happy_path(self, mock_read):
         html = '<body>{{content1}}</body>'
-        placeholders = {'content1':'text1'}
+        placeholders = {'content1': 'text1'}
         mock_read.side_effect = iter(['body {}', html])
 
         actual = self.renderer.render(placeholders)
@@ -132,7 +134,7 @@ class TestHtmlRenderer(TestCase):
     @patch('email_parser.fs.read_file')
     def test_empty_style(self, mock_read):
         html = '<body>{{content}}</body>'
-        placeholders = {'content':'dummy_content'}
+        placeholders = {'content': 'dummy_content'}
         mock_read.side_effect = iter(['', html])
 
         actual = self.renderer.render(placeholders)
@@ -142,7 +144,7 @@ class TestHtmlRenderer(TestCase):
     @patch('email_parser.fs.read_file')
     def test_include_raw_subject(self, mock_read):
         html = '<body>{{subject}}</body>'
-        placeholders = {'subject':'dummy_subject'}
+        placeholders = {'subject': 'dummy_subject'}
         mock_read.side_effect = iter(['', html])
 
         actual = self.renderer.render(placeholders)
@@ -173,7 +175,6 @@ class TestHtmlRenderer(TestCase):
 
         self.assertEqual('<body><p>dummy_content</p></body>', actual)
 
-
     @patch('email_parser.fs.read_file')
     def test_fail_on_missing_placeholders(self, mock_read):
         html = '<body>{{content}}{{missing}}</body>'
@@ -203,7 +204,8 @@ class TestHtmlRenderer(TestCase):
 
         actual = r.render(placeholders)
 
-        self.assertEqual('<body dir="rtl">\n <div>\n  <p>\n   dummy_content1\n  </p>\n </div>\n <div>\n  <p>\n   dummy_content2\n  </p>\n </div>\n</body>', actual)
+        self.assertEqual(('<body dir="rtl">\n <div>\n  <p>\n   dummy_content1\n  '
+                          '</p>\n </div>\n <div>\n  <p>\n   dummy_content2\n  </p>\n </div>\n</body>'), actual)
 
     @patch('email_parser.fs.read_file')
     def test_inline_styles(self, mock_read):

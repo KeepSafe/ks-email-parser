@@ -1,6 +1,7 @@
 import re
 import bs4
-import os, os.path
+import os
+import os.path
 import asyncio
 from . import service
 from .. import fs, utils, placeholder as place_holders
@@ -10,7 +11,8 @@ import fnmatch
 import cherrypy
 from functools import lru_cache
 from collections import namedtuple
-import random, string
+import random
+import string
 import urllib.parse
 import time
 from html import escape as html_escape
@@ -18,11 +20,10 @@ import jinja2
 import pkgutil
 import requests
 import threading
-from ..cmd import Settings
 import subprocess
 import logging
 import sys
-from multiprocessing import Manager, Queue
+from multiprocessing import Manager
 
 
 RESOURCE_PACKAGE = 'email_parser.resources.gui'
@@ -169,6 +170,7 @@ def _get_email_from_cms_service(settings, email_name):
     res = loop.run_until_complete(req)
     return res
 
+
 def _push_email_to_cms_service(settings, email_name, email_path):
     locale, name = _get_email_locale_n_name(email_name)
     loop = asyncio.new_event_loop()
@@ -177,6 +179,7 @@ def _push_email_to_cms_service(settings, email_name, email_path):
     req = client.push_template(locale, name, email_path)
     res = loop.run_until_complete(req)
     return res
+
 
 def _set_logging_handler():
     logger = logging.getLogger()
@@ -192,6 +195,7 @@ def _set_logging_handler():
 
 
 class InlineFormReplacer(object):
+
     """
     Reads template files & inserts values to approximate rendered format (or editor-style format)
     """
@@ -296,9 +300,11 @@ class InlineFormReplacer(object):
 
 
 class GenericRenderer(object):
+
     """
     Render directories and simple documents.
     """
+
     def __init__(self, settings):
         self.settings = settings
         self._resource_cache = dict()
@@ -355,9 +361,11 @@ class GenericRenderer(object):
 
 
 class InlineFormRenderer(GenericRenderer):
+
     """
     Render editors and previews
     """
+
     def __init__(self, settings, verify_image_url=None):
         super().__init__(settings)
         self.settings = settings
@@ -391,8 +399,6 @@ class InlineFormRenderer(GenericRenderer):
             values=replacer.make_value_list(),
         )
         return xml
-
-
 
         if self.settings.save:
             abspath = os.path.abspath(os.path.join(self.settings.source, email_name))
@@ -496,6 +502,7 @@ class InlineFormRenderer(GenericRenderer):
 
 
 class Server(object):
+
     def __init__(self, settings, edit_renderer, final_renderer):
         self.settings = settings
         self.edit_renderer = edit_renderer
@@ -538,8 +545,8 @@ class Server(object):
             'KS-Email-Parser GUI',
             'Do you want to create a new email from a template, or edit an existing email?',
             [
-                    ['Create new', '/template'],
-                    ['Edit', '/email'],
+                ['Create new', '/template'],
+                ['Edit', '/email'],
             ]
         )
 
@@ -560,15 +567,13 @@ class Server(object):
             messages[0],
             messages[1],
             [
-                    ['Go back',  '/email/{}'.format(email_name)],
+                ['Go back', '/email/{}'.format(email_name)],
             ]
         )
-
 
     @cherrypy.expose
     def pull(self, *paths, **_ignored):
         email_name = '/'.join(paths)
-        email_path = os.path.join(self.settings.source, email_name)
 
         try:
             res = _get_email_from_cms_service(self.settings, email_name)
@@ -585,7 +590,7 @@ class Server(object):
             messages[0],
             messages[1],
             [
-                    ['Go back',  '/email/{}'.format(email_name)],
+                ['Go back', '/email/{}'.format(email_name)],
             ]
         )
 
@@ -595,8 +600,8 @@ class Server(object):
             '\U0001f62d SORRY \U0001f62d',
             'Your session has timed out! Do you want to create a new email from a template, or edit an existing email?',
             [
-                    ['Create new', '/template'],
-                    ['Edit', '/email'],
+                ['Create new', '/template'],
+                ['Edit', '/email'],
             ]
         )
 
@@ -732,11 +737,11 @@ class Server(object):
 
         if os.path.exists(full_path) and not os.path.isdir(full_path):
             handler = _set_logging_handler()
-            content = self.final_renderer.content_to_save(rel_path, document.template_name, document.styles, **document.args)
+            content = self.final_renderer.content_to_save(
+                rel_path, document.template_name, document.styles, **document.args)
             locale, name = _get_email_locale_n_name(rel_path)
             placeholders_change = not place_holders.validate_email_content(locale, name, content, self.settings.source)
             placeholders_messages = list(handler.error_msgs())
-
 
         if overwrite or not os.path.exists(full_path):
             # Create and save
@@ -782,7 +787,8 @@ class Server(object):
             question_str = 'Are you sure you want to overwrite the existing email <code>{}</code>?'.format(rel_path)
             if placeholders_change:
                 question_str = 'Are you sure you want to overwrite the existing email <code>{0}</code>?\
-                                <blockquote><b>WARNING</b><br/>{1}</blockquote>'.format(rel_path, '<br/>'.join(placeholders_messages))
+                                <blockquote><b>WARNING</b><br/>{1}\
+                                </blockquote>'.format(rel_path, '<br/>'.join(placeholders_messages))
 
             # File already exists: overwrite?
             return self.edit_renderer.question(

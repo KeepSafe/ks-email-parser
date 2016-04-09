@@ -47,14 +47,14 @@ class TestFs(TestCase):
         mock_path.return_value.glob.return_value = [MockPath('src/name1.xml')]
 
         with self.assertRaises(errors.MissingPatternParamError):
-            actual = list(fs.emails('dummy_path', 'src/{name}.xml'))
+            list(fs.emails('dummy_path', 'src/{name}.xml'))
 
     @patch('email_parser.fs.Path')
     def test_emails_fail_on_missing_name(self, mock_path):
         mock_path.return_value.glob.return_value = [MockPath('src/locale1.xml')]
 
         with self.assertRaises(errors.MissingPatternParamError):
-            actual = list(fs.emails('dummy_path', 'src/{locale}.xml'))
+            list(fs.emails('dummy_path', 'src/{locale}.xml'))
 
     @patch('email_parser.fs.Path')
     def test_emails_ignore_dirs(self, mock_path):

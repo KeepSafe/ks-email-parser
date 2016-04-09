@@ -85,11 +85,11 @@ class TestFromEmailName(TestCase):
 
     def setUp(self):
         self.placeholders = json.dumps({'test_name': {
-                                            'test_placeholder': 1,
-                                            'another': 1
-                                            },
-                                        'without_placeholders': {}
-                                        })
+            'test_placeholder': 1,
+            'another': 1
+        },
+            'without_placeholders': {}
+        })
         placeholder.fs.read_file = MagicMock(return_value=self.placeholders)
 
     def test_placeholder_list_for_given_email_name(self):
@@ -105,7 +105,6 @@ class TestFromEmailName(TestCase):
 
         result = placeholder.from_email_name('without_placeholders')
         self.assertEqual(expected, result)
-
 
     def test_placeholder_list_for_non_existing_email(self):
         expected = []

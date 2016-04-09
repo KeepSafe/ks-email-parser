@@ -3,7 +3,6 @@ import aiohttp
 import logging
 import urllib.parse
 import concurrent.futures
-from functools import wraps
 
 logger = logging.getLogger(__name__)
 
@@ -11,6 +10,7 @@ ENDPOINTS = {
     'push': {'method': 'PUT', 'url': '/templates/%s/%s'},
     'show': {'method': 'GET', 'url': '/templates/%s/%s'}
 }
+
 
 class TimeoutError(Exception):
 
@@ -51,7 +51,6 @@ class Client(object):
                             ENDPOINTS['push']['method'],
                             data=data
                             )
-
 
     def get_template(self, locale, name):
         return self.request(ENDPOINTS['show']['url'] % (locale, name),

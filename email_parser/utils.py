@@ -26,7 +26,6 @@ class ProgressConsoleHandler(logging.StreamHandler):
         while not self.warn_msgs_queue.empty():
             yield self.warn_msgs_queue.get()
 
-
     def _print_msg(self, stream, msg, record):
         same_line = hasattr(record, 'same_line')
         if self.on_same_line and not same_line:

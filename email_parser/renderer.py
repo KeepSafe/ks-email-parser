@@ -5,7 +5,6 @@ Different ways of rendering emails.
 import markdown
 import bs4
 import pystache
-import logging
 import inlinestyler.utils as inline_styler
 import xml.etree.ElementTree as ET
 from collections import OrderedDict
@@ -14,6 +13,7 @@ from . import markdown_ext, errors, fs, link_shortener
 
 TEXT_EMAIL_PLACEHOLDER_SEPARATOR = '\n\n'
 HTML_PARSER = 'lxml'
+
 
 def _md_to_html(text, base_url=None):
     extensions = [markdown_ext.inline_text()]

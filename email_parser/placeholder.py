@@ -1,5 +1,5 @@
 from collections import defaultdict, Counter
-from functools import reduce, lru_cache
+from functools import lru_cache
 import json
 import re
 import logging
@@ -24,12 +24,15 @@ def _save_placeholders_file(placeholders, src_dir, indent=4):
 def _read_email_placeholders(email_name, src_dir):
     return _read_placeholders_file(src_dir).get(email_name, {})
 
+
 def _parse_email_placeholders(email_path):
     content = fs.read_file(email_path)
     return _parse_string_placeholders(content)
 
+
 def _parse_string_placeholders(content):
     return Counter(m.group(1) for m in re.finditer(r'\{\{(\w+)\}\}', content))
+
 
 def _validate_email_placeholders(email_name, email_locale, email_placeholders, all_placeholders):
     result = True
@@ -106,6 +109,7 @@ def validate_email(email, src_dir=''):
     except FileNotFoundError:
         # If the file does not exist skip validation
         return True
+
 
 def validate_email_content(locale, name, content, src_dir=''):
     try:

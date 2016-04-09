@@ -1,5 +1,5 @@
 from unittest import TestCase
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from xml.etree import ElementTree
 from collections import OrderedDict
 
@@ -7,10 +7,11 @@ from email_parser import reader
 
 
 class TestReader(TestCase):
+
     def setUp(self):
         self.email_element = ElementTree.fromstring("""
         <resources template="dummy_template.html" style="dummy_template.css">
-        	<string name="subject">dummy subject</string>
+            <string name="subject">dummy subject</string>
             <string name="content">dummy content</string>
         </resources>
         """)
@@ -37,7 +38,7 @@ class TestReader(TestCase):
     def test_template_with_multiple_styles(self, mock_tree):
         email_element = ElementTree.fromstring("""
         <resources template="dummy_template.html" style="dummy_template1.css,dummy_template2.css">
-        	<string name="subject">dummy subject</string>
+            <string name="subject">dummy subject</string>
             <string name="content">dummy content</string>
         </resources>
         """)
@@ -51,7 +52,7 @@ class TestReader(TestCase):
     def test_ignore_non_text_elements(self, mock_tree):
         email_element = ElementTree.fromstring("""
         <resources template="dummy_template.html" style="dummy_template1.css,dummy_template2.css">
-        	<string name="subject">dummy subject</string>
+            <string name="subject">dummy subject</string>
             <string name="content">dummy content</string>
             <string name="color" isText="false">blue</string>
         </resources>
