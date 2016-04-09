@@ -27,6 +27,10 @@ def _read_email_placeholders(email_name, src_dir):
 
 def _parse_email_placeholders(email_path):
     content = fs.read_file(email_path)
+    return _parse_string_placeholders(content)
+
+
+def _parse_string_placeholders(content):
     return Counter(m.group(1) for m in re.finditer(r'\{\{(\w+)\}\}', content))
 
 

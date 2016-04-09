@@ -11,12 +11,13 @@ import xml.etree.ElementTree as ET
 from collections import OrderedDict
 
 from . import markdown_ext, errors, fs, link_shortener
-from .placeholder import parse_string_placeholders
+from .placeholder import _parse_string_placeholders
 
 TEXT_EMAIL_PLACEHOLDER_SEPARATOR = '\n\n'
 HTML_PARSER = 'lxml'
 
 logger = logging.getLogger()
+
 
 def _md_to_html(text, base_url=None):
     extensions = [markdown_ext.inline_text()]
@@ -94,12 +95,12 @@ class HtmlRenderer(object):
         placeholders = dict(parts.items() | {'subject': subject}.items() | {'base_url': self.settings.images}.items())
 
         # check wheter exists extra placeholders in html template
-        template_placeholders = set(parse_string_placeholders(html))
+        template_placeholders = set(_parse_string_placeholders(html))
         parts_placeholders = set(parts)
         extra_placeholders = parts_placeholders - template_placeholders
         if extra_placeholders:
             logger.warn('There are extra placeholders %s in email %s/%s, missing in template %s' %
-                         (extra_placeholders, self.email.locale, self.email.name, self.template.name))
+                        (extra_placeholders, self.email.locale, self.email.name, self.template.name))
 
         try:
             # add subject for rendering as we have it in html
