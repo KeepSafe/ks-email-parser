@@ -13,6 +13,7 @@ def read_fixture(filename):
 
 
 class TestParser(TestCase):
+
     def setUp(self):
         self.dest = tempfile.mkdtemp()
         settings = cmd.default_settings()._asdict()
@@ -62,7 +63,6 @@ class TestParser(TestCase):
         expected = fs.read_file(self.dest, 'en', 'fallback.html').strip()
         actual = fs.read_file(self.dest, 'fr', 'fallback.html').strip()
         self.assertEqual(expected, actual)
-
 
     def remove_dest_folder_before_parsing(self):
         _, filepath = tempfile.mkstemp(dir=self.dest, text='dummy')

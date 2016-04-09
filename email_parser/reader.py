@@ -2,7 +2,8 @@
 Extracts email information from an email file.
 """
 
-import logging, re
+import logging
+import re
 from collections import namedtuple, OrderedDict
 from xml.etree import ElementTree
 
@@ -20,7 +21,7 @@ def _placeholders(tree):
     return OrderedDict((element.get('name'), element.text) for element in tree.findall('./string'))
 
 
-def _template(tree):
+def _template(tree, email_path):
     name = tree.getroot().get('template')
     if name is None:
         logging.error('no HTML template name define for %s', email_path)
@@ -33,16 +34,17 @@ def _template(tree):
 
     return Template(name, styles)
 
+
 def _find_parse_error(file_path, exception):
     pos = exception.position
     with open(file_path) as f:
         lines = f.read().splitlines()
-        error_line = lines[pos[0]-1]
+        error_line = lines[pos[0] - 1]
         node_matches = re.findall(SEGMENT_REGEX, error_line[:pos[1]])
         segment_id = None
 
         if not len(node_matches):
-            prev_line = pos[0]-1
+            prev_line = pos[0] - 1
             search_part = ''.join(lines[:prev_line])
             node_matches = re.findall(SEGMENT_REGEX, search_part)
 
@@ -52,7 +54,6 @@ def _find_parse_error(file_path, exception):
                 segment_id = name_matches[-1]
 
         return error_line, segment_id
-
 
 
 def read(email_path):
@@ -73,11 +74,11 @@ def read(email_path):
             e,
             segment_id,
             line.replace('\t', '  '),
-            " "*e.position[1]+"^")
+            " " * e.position[1] + "^")
 
         return None, {}, []
 
-    template = _template(tree)
+    template = _template(tree, email_path)
     placeholders = _placeholders(tree)
     ignored_plceholder_names = _ignored_placeholder_names(tree)
 
