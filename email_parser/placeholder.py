@@ -26,14 +26,9 @@ def _read_email_placeholders(email_name, src_dir):
 
 
 def _parse_email_placeholders(settings, email):
-    content = fs.read_file(email.full_path)
-    placeholders = parse_string_placeholders(content)
-
-    template, _, _ = reader.read(email.full_path)
-    global_placeholders = Counter()
-    if template.name:
-        global_placeholders = _global_template_placeholders(settings, template, email)
-    return global_placeholders + placeholders
+    _, segments, _ = reader.read(email, settings)
+    segments_str = ''.join(segments.values())
+    return parse_string_placeholders(''.join(segments.values()))
 
 
 def parse_string_placeholders(content):
@@ -79,18 +74,6 @@ def _placeholders_from_emails(emails, settings):
         placeholders[email.name][email.locale] = email_placeholders
     return placeholders
 
-def _global_template_placeholders(settings, template, email):
-    template_content = fs.read_file(settings.templates, template.name)
-    segments_placeholders = set(m.group(1) for m in re.finditer(r'\{\{global_(\w+)\}\}', template_content))
-
-    global_email_path = settings.pattern.replace('{locale}', email.locale).replace('{name}', fs.GLOBAL_PLACEHOLDERS_EMAIL_NAME)
-    global_email_path = global_email_path.replace('{name}', fs.GLOBAL_PLACEHOLDERS_EMAIL_NAME)
-    global_email_path = fs.path(settings.source, global_email_path)
-    _, global_segments, _ = reader.read(global_email_path, False)
-    global_segements_content = ''.join(global_segments.values())
-
-    return parse_string_placeholders(global_segements_content)
-
 
 def _validate_placeholders(placeholders):
     result = True
@@ -118,9 +101,9 @@ def generate_config(settings, indent=4):
     return False
 
 
-def validate_email(settings, email, src_dir=''):
+def validate_email(settings, email):
     try:
-        all_placeholders = _read_email_placeholders(email.name, src_dir)
+        all_placeholders = _read_email_placeholders(email.name, settings.source)
         email_placeholders = _parse_email_placeholders(settings, email)
         logger.debug('validating placeholders for %s', email.path)
         return _validate_email_placeholders(email.name, email.locale, email_placeholders, all_placeholders)

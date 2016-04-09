@@ -43,7 +43,7 @@ class HtmlRenderer(object):
         self.locale = email.locale
 
     def _read_template(self):
-        return fs.read_file(self.settings.templates, self.template.name)
+        return self.template.content
 
     def _read_css(self):
         css = [fs.read_file(self.settings.templates, f) or ' ' for f in self.template.styles]
@@ -88,14 +88,6 @@ class HtmlRenderer(object):
         return self._inline_css(html, css)
 
 
-    def _global_placeholders(self):
-        pattern_path = self.settings.pattern.replace('{locale}', self.email.locale).replace('{name}', fs.GLOBAL_PLACEHOLDERS_EMAIL_NAME)
-        global_email_path = fs.path(self.settings.source, pattern_path)
-        css = self._read_css()
-
-        _, placeholders, _ = reader.read(global_email_path, False)
-        return {'global_{}'.format(key): self._render_placeholder(val,css) for key, val in placeholders.items()}
-
     def _concat_parts(self, subject, parts):
         html = self._read_template()
         # check wheter exists extra placeholders in html template
@@ -109,7 +101,7 @@ class HtmlRenderer(object):
         strict = 'strict' if self.settings.strict else 'ignore'
         # pystache escapes html by default, we pass escape option to disable this
         renderer = pystache.Renderer(escape=lambda u: u, missing_tags=strict)
-        placeholders = dict(parts.items() | {'subject': subject}.items() | {'base_url': self.settings.images}.items() | self._global_placeholders().items())
+        placeholders = dict(parts.items() | {'subject': subject}.items() | {'base_url': self.settings.images}.items())
 
         try:
             # add subject for rendering as we have it in html
