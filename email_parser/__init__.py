@@ -44,6 +44,7 @@ def _parse_email(email, settings):
         logging.info('.', extra={'same_line': True})
         return True
     else:
+        # TODO create default_locale_email function in fs module
         default_locale_email = next(
             fs.email(settings.source, settings.pattern, email.name, settings.default_locale), None)
         if default_locale_email and _render_email(default_locale_email, settings, email.locale):
@@ -58,12 +59,6 @@ def _parse_email(email, settings):
 def _parse_emails_batch(emails, settings):
     results = [_parse_email(email, settings) for email in emails]
     result = reduce(lambda acc, res: acc and res, results)
-    return result
-
-
-@asyncio.coroutine
-def _emails_worker(executor, emails, settings):
-    result = yield from loop.run_in_executor(executor, _parse_emails_batch, emails, settings)
     return result
 
 

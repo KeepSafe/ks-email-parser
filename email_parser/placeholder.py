@@ -121,6 +121,16 @@ def validate_email_content(locale, name, content, src_dir=''):
         return True
 
 
+def validate_template(template, placeholders, email):
+    template_placeholders = set(_parse_string_placeholders(template))
+    extra_placeholders = placeholders - template_placeholders
+    if extra_placeholders:
+        logger.warn('There are extra placeholders %s in email %s/%s, not used in template' %
+                    (extra_placeholders, email.locale, email.name))
+        return False
+    return True
+
+
 def from_email_name(email_name, src_dir=''):
     placeholders = _read_placeholders_file(src_dir).get(email_name, {})
     return list(placeholders)
