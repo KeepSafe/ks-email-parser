@@ -3,7 +3,7 @@ python:
   - "3.5"
   - "3.4"
 # command to install dependencies
-install: "pip install -r requirements.txt"
+install: "pip install -r requirements-dev.txt"
 # command to run tests
 script:
   - flake8 email_parser tests
