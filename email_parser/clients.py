@@ -30,7 +30,7 @@ class CustomerIoClient(object):
         subject, text, html, last_email = '', '', '', None
         for email in emails:
             logger.info('parsing email %s locale %s', email.name, email.locale)
-            template, placeholders, ignored_plceholder_names = reader.read(email.full_path)
+            template, placeholders, ignored_plceholder_names = reader.read(email, settings)
             email_subject, email_text, email_html = renderer.render(
                 email, template, placeholders, ignored_plceholder_names, settings)
             subject = self._append_content(email.locale, subject, email_subject)

@@ -41,7 +41,7 @@ def _emails(src_dir, pattern, params, exclusive_path=None):
     else:
         glob_path = Path(src_dir).glob(wildcard_pattern)
 
-    global_email_pattern = re.compile('%s.xml$' % GLOBAL_PLACEHOLDERS_EMAIL_NAME)
+    global_email_pattern = re.compile('/%s\.xml$' % GLOBAL_PLACEHOLDERS_EMAIL_NAME)
     for path in sorted(glob_path, key=lambda path: str(path)):
         if not path.is_dir() and (not exclusive_path or _has_correct_ext(path, pattern)):
             str_path = str(path.relative_to(src_dir))

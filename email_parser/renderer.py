@@ -17,8 +17,6 @@ from .placeholder import parse_string_placeholders
 TEXT_EMAIL_PLACEHOLDER_SEPARATOR = '\n\n'
 HTML_PARSER = 'lxml'
 
-logger = logging.getLogger()
-
 def _md_to_html(text, base_url=None):
     extensions = [markdown_ext.inline_text()]
     if base_url:
@@ -90,14 +88,6 @@ class HtmlRenderer(object):
 
     def _concat_parts(self, subject, parts):
         html = self._read_template()
-        # check wheter exists extra placeholders in html template
-        template_placeholders = set(parse_string_placeholders(html))
-        parts_placeholders = set(parts)
-        extra_placeholders = parts_placeholders - template_placeholders
-        if extra_placeholders:
-            logger.warn('There are extra placeholders %s in email %s/%s, missing in template %s' %
-                         (extra_placeholders, self.email.locale, self.email.name, self.template.name))
-
         strict = 'strict' if self.settings.strict else 'ignore'
         # pystache escapes html by default, we pass escape option to disable this
         renderer = pystache.Renderer(escape=lambda u: u, missing_tags=strict)

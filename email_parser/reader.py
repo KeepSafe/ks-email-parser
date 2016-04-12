@@ -13,6 +13,8 @@ SEGMENT_NAME_REGEX = r' name="([^"]+)"'
 
 Template = namedtuple('Template', ['name', 'styles', 'content', 'placeholders_order'])
 
+logger = logging.getLogger()
+
 
 def _ignored_placeholder_names(tree, prefix=''):
     return ['{0}{1}'.format(prefix, element.get('name')) for element in tree.findall('./string') if element.get('isText') == 'false']
@@ -21,14 +23,12 @@ def _ignored_placeholder_names(tree, prefix=''):
 def _placeholders(tree, prefix=''):
     return {'{0}{1}'.format(prefix, element.get('name')): element.text for element in tree.findall('./string')}
 
-def _email_placeholders(tree, global_tree):
+def _all_email_placeholders(tree, global_tree):
     placeholders = dict(_placeholders(tree).items() | _placeholders(global_tree, 'global_').items())
     ignored_placeholder_names = _ignored_placeholder_names(tree) + _ignored_placeholder_names(global_tree, 'global_')
     return placeholders, ignored_placeholder_names
 
 def _ordered_placeholders(names, placeholders):
-    if 'subject' not in names:
-        names.append('subject')
     return OrderedDict((name, placeholders[name]) for name in names)
 
 def _template(tree, settings):
@@ -40,6 +40,9 @@ def _template(tree, settings):
     if name:
         content = fs.read_file(settings.templates, name)
         placeholders = [m.group(1) for m in re.finditer(r'\{\{(\w+)\}\}', content)]
+
+    if 'subject' not in placeholders:
+        placeholders.insert(0, 'subject')
 
     style_element = tree.getroot().get('style')
     if style_element:
@@ -70,7 +73,7 @@ def _find_parse_error(file_path, exception):
 
 def _handle_xml_parse_error(path, e):
     line, segment_id = _find_parse_error(path, e)
-    logging.exception(
+    logger.exception(
         'Unable to read content from %s\n%s\nSegment ID: %s\n_______________\n%s\n%s\n',
         path,
         e,
@@ -105,9 +108,17 @@ def read(email, settings):
 
     template = _template(tree, settings)
     if not template.name:
-        logging.error('no HTML template name define for %s', email.path)
+        logger.error('no HTML template name define for %s', email.path)
 
-    placeholders, ignored_plceholder_names = _email_placeholders(tree, global_tree)
+    # check extra placeholders
+    email_placeholders = set(_placeholders(tree))
+    template_placeholders = set(template.placeholders_order)
+    extra_placeholders = email_placeholders - template_placeholders
+    if extra_placeholders:
+        logger.warn('There are extra placeholders %s in email %s/%s, missing in template %s' %
+                     (extra_placeholders, email.locale, email.name, template.name))
+
+    placeholders, ignored_plceholder_names = _all_email_placeholders(tree, global_tree)
     ordered_placeholders = _ordered_placeholders(template.placeholders_order, placeholders)
 
     return template, ordered_placeholders, ignored_plceholder_names
