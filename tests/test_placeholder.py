@@ -14,9 +14,10 @@ class TestGenerator(TestCase):
         self.settings = cmd.Settings(**settings)
 
     @patch('email_parser.placeholder.fs')
-    def test_happy_path(self, mock_fs):
+    @patch('email_parser.placeholder.reader')
+    def test_happy_path(self, mock_reader, mock_fs):
         mock_fs.emails.return_value = [fs.Email('test_name', 'en', 'path', 'full_path')]
-        mock_fs.read_file.return_value = '{{placeholder}}'
+        mock_reader.read.return_value = ('', {'segment': '{{placeholder}}'}, '')
 
         placeholder.generate_config(self.settings, None)
 
@@ -24,21 +25,24 @@ class TestGenerator(TestCase):
             '{"test_name": {"placeholder": 1}}', 'test_src', 'placeholders_config.json')
 
     @patch('email_parser.placeholder.fs')
-    def test_no_emails(self, mock_fs):
+    @patch('email_parser.placeholder.reader')
+    def test_no_emails(self, mock_reader, mock_fs):
         mock_fs.emails.return_value = []
-        mock_fs.read_file.return_value = '{{placeholder}}'
+        mock_reader.read.return_value = ('', {'segment': '{{placeholder}}'}, '')
 
         placeholder.generate_config(self.settings)
 
         self.assertFalse(mock_fs.save_file.called)
 
     @patch('email_parser.placeholder.fs')
-    def test_use_default_language_to_count_placeholders(self, mock_fs):
+    @patch('email_parser.placeholder.reader')
+    def test_use_default_language_to_count_placeholders(self, mock_reader, mock_fs):
         mock_fs.emails.return_value = [
             fs.Email('test_name', 'en', 'path', 'full_path'),
             fs.Email('test_name', 'de', 'path', 'full_path')
         ]
-        mock_fs.read_file.side_effect = iter(['{{placeholder}}', '{{placeholder}}{{extra_placeholder}}'])
+        mock_reader.read.side_effect = iter([('', {'segment': '{{placeholder}}'}, ''),
+                                             ('', {'segment:' '{{placeholder}}{{extra_placeholder}}'}, '')])
 
         placeholder.generate_config(self.settings, None)
 
@@ -49,33 +53,40 @@ class TestGenerator(TestCase):
 class TestValidate(TestCase):
 
     def setUp(self):
+        self.settings = cmd.default_settings()
         self.email = fs.Email('test_name', 'en', 'path', 'full_path')
         self.placeholders = json.dumps({'test_name': {'test_placeholder': 1}})
         self.content = '{{test_placeholder}}'
         placeholder._read_placeholders_file.cache_clear()
 
     @patch('email_parser.placeholder.fs')
-    def test_happy_path(self, mock_fs):
-        mock_fs.read_file.side_effect = iter([self.placeholders, self.content])
+    @patch('email_parser.placeholder.reader')
+    def test_happy_path(self, mock_reader, mock_fs):
+        mock_fs.read_file.side_effect = iter([self.placeholders])
+        mock_reader.read.return_value = ('', {'segment': self.content}, '')
 
-        actual = placeholder.validate_email(self.email)
+        actual = placeholder.validate_email(self.settings, self.email)
 
         self.assertTrue(actual)
 
     @patch('email_parser.placeholder.fs')
-    def test_missing_placeholder(self, mock_fs):
+    @patch('email_parser.placeholder.reader')
+    def test_missing_placeholder(self, mock_reader, mock_fs):
         content = 'content'
-        mock_fs.read_file.side_effect = iter([self.placeholders, content])
+        mock_fs.read_file.side_effect = iter([self.placeholders])
+        mock_reader.read.return_value = ('', {'segment': content}, '')
 
-        actual = placeholder.validate_email(self.email)
+        actual = placeholder.validate_email(self.settings, self.email)
 
         self.assertFalse(actual)
 
     @patch('email_parser.placeholder.fs')
-    def test_extra_placeholder(self, mock_fs):
+    @patch('email_parser.placeholder.reader')
+    def test_extra_placeholder(self, mock_reader, mock_fs):
         placeholders = json.dumps({'test_name': {}})
-        mock_fs.read_file.side_effect = iter([placeholders, self.content])
+        mock_fs.read_file.side_effect = iter([placeholders])
+        mock_reader.read.return_value = ('', {'segment': self.content}, '')
 
-        actual = placeholder.validate_email(self.email)
+        actual = placeholder.validate_email(self.settings, self.email)
 
         self.assertFalse(actual)

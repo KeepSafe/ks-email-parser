@@ -111,6 +111,16 @@ class TestSubjectRenderer(TestCase):
 
 
 class TestHtmlRenderer(TestCase):
+
+    def _get_renderer(self, template_html, template_placeholders, **kwargs):
+        template = Template(name='template_name',
+                            styles=['template_style'],
+                            content=template_html,
+                            placeholders_order=template_placeholders)
+        return renderer.HtmlRenderer(template,
+                                     kwargs.get('settings', self.settings),
+                                     kwargs.get('email', self.email))
+
     def setUp(self):
         settings = cmd.default_settings()._asdict()
         settings['templates'] = 'dummy_templates'
@@ -118,60 +128,68 @@ class TestHtmlRenderer(TestCase):
         self.settings = cmd.Settings(**settings)
 
         self.email = Email('name', 'locale', 'path', 'full_path')
-        self.template = Template('template_name', ['template_style'])
-        self.renderer = renderer.HtmlRenderer(self.template, self.settings, self.email)
+        self.global_email = '<?xml version="1.0" encoding="UTF-8" ?><resources></resources>'
 
     @patch('email_parser.fs.read_file')
     def test_happy_path(self, mock_read):
         html = '<body>{{content1}}</body>'
+        html_placeholders = ['content1']
         placeholders = {'content1':'text1'}
-        mock_read.side_effect = iter(['body {}', html])
+        mock_read.side_effect = iter(['body {}'])
 
-        actual = self.renderer.render(placeholders)
+        renderer = self._get_renderer(html, html_placeholders)
+        actual = renderer.render(placeholders)
 
         self.assertEqual('<body><p>text1</p></body>', actual)
 
     @patch('email_parser.fs.read_file')
     def test_empty_style(self, mock_read):
         html = '<body>{{content}}</body>'
+        html_placeholders = ['content']
         placeholders = {'content':'dummy_content'}
-        mock_read.side_effect = iter(['', html])
+        mock_read.side_effect = iter([''])
 
-        actual = self.renderer.render(placeholders)
+        renderer = self._get_renderer(html, html_placeholders)
+        actual = renderer.render(placeholders)
 
         self.assertEqual('<body><p>dummy_content</p></body>', actual)
 
     @patch('email_parser.fs.read_file')
     def test_include_raw_subject(self, mock_read):
         html = '<body>{{subject}}</body>'
+        html_placeholders = ['subject']
         placeholders = {'subject':'dummy_subject'}
-        mock_read.side_effect = iter(['', html])
+        mock_read.side_effect = iter([''])
 
-        actual = self.renderer.render(placeholders)
+        renderer = self._get_renderer(html, html_placeholders)
+        actual = renderer.render(placeholders)
 
         self.assertEqual('<body>dummy_subject</body>', actual)
 
     @patch('email_parser.fs.read_file')
     def test_include_base_url(self, mock_read):
         html = '<body>{{base_url}}</body>'
+        html_placeholders = ['base_url']
         placeholders = {}
-        mock_read.side_effect = iter(['', html])
+        mock_read.side_effect = iter([''])
 
-        actual = self.renderer.render(placeholders)
+        renderer = self._get_renderer(html, html_placeholders)
+        actual = renderer.render(placeholders)
 
         self.assertEqual('<body>dummy_images</body>', actual)
 
     @patch('email_parser.fs.read_file')
     def test_ignore_missing_placeholders(self, mock_read):
         html = '<body>{{content}}{{missing}}</body>'
+        html_placeholders = ['content', 'missing']
         placeholders = {'content': 'dummy_content'}
-        mock_read.side_effect = iter(['', html])
+        mock_read.side_effect = iter([''])
         settings = self.settings._asdict()
         settings['strict'] = False
         settings = cmd.Settings(**settings)
-        r = renderer.HtmlRenderer(self.template, settings, self.email)
 
-        actual = r.render(placeholders)
+        renderer = self._get_renderer(html, html_placeholders, settings=settings)
+        actual = renderer.render(placeholders)
 
         self.assertEqual('<body><p>dummy_content</p></body>', actual)
 
@@ -179,54 +197,50 @@ class TestHtmlRenderer(TestCase):
     @patch('email_parser.fs.read_file')
     def test_fail_on_missing_placeholders(self, mock_read):
         html = '<body>{{content}}{{missing}}</body>'
+        html_placeholders = ['content', 'missing']
         placeholders = {'content': 'dummy_content'}
-        mock_read.side_effect = iter(['', html])
+        mock_read.side_effect = iter([''])
 
+        renderer = self._get_renderer(html, html_placeholders)
         with self.assertRaises(errors.MissingTemplatePlaceholderError):
-            self.renderer.render(placeholders)
-
-    @patch('email_parser.renderer.logger.warn')
-    @patch('email_parser.fs.read_file')
-    def test_warn_on_extra_placeholders(self, mock_read, mock_warn):
-        html = '<body>{{content}}</body>'
-        placeholders = {'content': 'dummy_content', 'extra': 'dummy'}
-        mock_read.side_effect = iter(['', html])
-        self.renderer.render(placeholders)
-        expected_warn = "There are extra placeholders {'extra'} in email locale/name, missing in template template_name"
-        mock_warn.assert_called_with(expected_warn)
+            renderer.render(placeholders)
 
     @patch('email_parser.fs.read_file')
     def test_rtl_locale(self, mock_read):
         html = '<body>{{content}}</body>'
+        html_placeholders = ['content']
         placeholders = {'content': 'dummy_content'}
-        mock_read.side_effect = iter(['', html])
+        mock_read.side_effect = iter([''])
         email_dict = self.email._asdict()
         email_dict['locale'] = 'ar'
-        r = renderer.HtmlRenderer(self.template, self.settings, Email(**email_dict))
 
-        actual = r.render(placeholders)
+        renderer = self._get_renderer(html, html_placeholders, email=Email(**email_dict))
+        actual = renderer.render(placeholders)
 
         self.assertEqual('<body dir="rtl">\n <p>\n  dummy_content\n </p>\n</body>', actual)
 
     @patch('email_parser.fs.read_file')
     def test_rtl_two_placeholders(self, mock_read):
         html = '<body><div>{{content1}}</div><div>{{content2}}</div></body>'
+        html_placeholders = ['content1', 'content2']
         placeholders = {'content1': 'dummy_content1', 'content2': 'dummy_content2'}
-        mock_read.side_effect = iter(['', html])
+        mock_read.side_effect = iter([''])
         email_dict = self.email._asdict()
         email_dict['locale'] = 'ar'
-        r = renderer.HtmlRenderer(self.template, self.settings, Email(**email_dict))
 
-        actual = r.render(placeholders)
+        renderer = self._get_renderer(html, html_placeholders, email=Email(**email_dict))
+        actual = renderer.render(placeholders)
 
         self.assertEqual('<body dir="rtl">\n <div>\n  <p>\n   dummy_content1\n  </p>\n </div>\n <div>\n  <p>\n   dummy_content2\n  </p>\n </div>\n</body>', actual)
 
     @patch('email_parser.fs.read_file')
     def test_inline_styles(self, mock_read):
         html = '<body>{{content}}</body>'
+        html_placeholders = ['content']
         placeholders = {'content': 'dummy_content'}
-        mock_read.side_effect = iter(['p {color:red;}', html])
+        mock_read.side_effect = iter(['p {color:red;}'])
 
-        actual = self.renderer.render(placeholders)
+        renderer = self._get_renderer(html, html_placeholders)
+        actual = renderer.render(placeholders)
 
         self.assertEqual('<body><p style="color: red">dummy_content</p></body>', actual)

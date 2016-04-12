@@ -13,6 +13,9 @@ def read_fixture(filename):
 
 
 class TestParser(TestCase):
+
+    maxDiff = None
+
     def setUp(self):
         self.dest = tempfile.mkdtemp()
         settings = cmd.default_settings()._asdict()
@@ -42,6 +45,12 @@ class TestParser(TestCase):
     def test_html(self):
         self._run_and_assert('email.html')
 
+    def test_global_text(self):
+        self._run_and_assert('email_globale.text')
+
+    def test_global_html(self):
+        self._run_and_assert('email_globale.html')
+
     def test_rtl(self):
         settings = self.settings._asdict()
         settings['right_to_left'] = ['en']
@@ -62,7 +71,6 @@ class TestParser(TestCase):
         expected = fs.read_file(self.dest, 'en', 'fallback.html').strip()
         actual = fs.read_file(self.dest, 'fr', 'fallback.html').strip()
         self.assertEqual(expected, actual)
-
 
     def remove_dest_folder_before_parsing(self):
         _, filepath = tempfile.mkstemp(dir=self.dest, text='dummy')
