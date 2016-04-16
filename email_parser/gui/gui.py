@@ -1,14 +1,18 @@
 import re
 import bs4
-import os, os.path
-from .. import fs
+import os
+import os.path
+import asyncio
+from . import service
+from .. import fs, utils, placeholder as place_holders
 from ..renderer import HtmlRenderer
 from ..reader import Template, read as reader_read
 import fnmatch
 import cherrypy
 from functools import lru_cache
 from collections import namedtuple
-import random, string
+import random
+import string
 import urllib.parse
 import time
 from html import escape as html_escape
@@ -16,8 +20,10 @@ import jinja2
 import pkgutil
 import requests
 import threading
-from ..cmd import Settings
 import subprocess
+import logging
+import sys
+from multiprocessing import Manager
 
 
 RESOURCE_PACKAGE = 'email_parser.resources.gui'
@@ -150,10 +156,46 @@ def _unplaceholder(placeholders):
     return {K: fix_item(V) for K, V in placeholders.items()}
 
 
+def _get_email_locale_n_name(email_name):
+    match = re.match(r'([^/]+)/([^/]+).xml', email_name)
+    return match.group(1, 2)
+
+
+def _get_email_from_cms_service(settings, email_name):
+    locale, name = _get_email_locale_n_name(email_name)
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    client = service.Client(settings.cms_service_host, loop)
+    req = client.get_template(locale, name)
+    res = loop.run_until_complete(req)
+    return res
+
+
+def _push_email_to_cms_service(settings, email_name, email_path):
+    locale, name = _get_email_locale_n_name(email_name)
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    client = service.Client(settings.cms_service_host, loop)
+    req = client.push_template(locale, name, email_path)
+    res = loop.run_until_complete(req)
+    return res
+
+
+def _set_logging_handler():
+    logger = logging.getLogger()
+    error_msgs_queue = Manager().Queue()
+    warning_msgs_queue = Manager().Queue()
+    handler = utils.ProgressConsoleHandler(error_msgs_queue, warning_msgs_queue, stream=sys.stdout)
+    logger.setLevel(logging.INFO)
+    logger.addHandler(handler)
+    return handler
+
+
 # Editing & rendering
 
 
 class InlineFormReplacer(object):
+
     """
     Reads template files & inserts values to approximate rendered format (or editor-style format)
     """
@@ -258,9 +300,11 @@ class InlineFormReplacer(object):
 
 
 class GenericRenderer(object):
+
     """
     Render directories and simple documents.
     """
+
     def __init__(self, settings):
         self.settings = settings
         self._resource_cache = dict()
@@ -317,9 +361,11 @@ class GenericRenderer(object):
 
 
 class InlineFormRenderer(GenericRenderer):
+
     """
     Render editors and previews
     """
+
     def __init__(self, settings, verify_image_url=None):
         super().__init__(settings)
         self.settings = settings
@@ -337,6 +383,13 @@ class InlineFormRenderer(GenericRenderer):
         :param args:
         :return:
         """
+        xml = self.content_to_save(email_name, template_name, styles, **args)
+
+        fs.save_file(xml, self.settings.source, email_name)
+        place_holders.generate_config(self.settings)
+        place_holders._read_placeholders_file.cache_clear()
+
+    def content_to_save(self, email_name, template_name, styles, **args):
         replacer = InlineFormReplacer.make(self.settings, args, template_name)
         xml = self.gui_template(
             'email.xml.jinja2',
@@ -345,8 +398,7 @@ class InlineFormRenderer(GenericRenderer):
             attrs=replacer.attrs,
             values=replacer.make_value_list(),
         )
-
-        fs.save_file(xml, self.settings.source, email_name)
+        return xml
 
         if self.settings.save:
             abspath = os.path.abspath(os.path.join(self.settings.source, email_name))
@@ -450,6 +502,7 @@ class InlineFormRenderer(GenericRenderer):
 
 
 class Server(object):
+
     def __init__(self, settings, edit_renderer, final_renderer):
         self.settings = settings
         self.edit_renderer = edit_renderer
@@ -492,8 +545,52 @@ class Server(object):
             'KS-Email-Parser GUI',
             'Do you want to create a new email from a template, or edit an existing email?',
             [
-                    ['Create new', '/template'],
-                    ['Edit', '/email'],
+                ['Create new', '/template'],
+                ['Edit', '/email'],
+            ]
+        )
+
+    @cherrypy.expose
+    def push(self, *paths, **_ignored):
+        email_name = '/'.join(paths)
+        email_path = os.path.join(self.settings.source, email_name)
+
+        try:
+            res = _push_email_to_cms_service(self.settings, email_name, email_path)
+            messages = ['SUCCES', res]
+        except service.TimeoutError as e:
+            messages = ['ERROR', str(e)]
+        except service.ServiceError as e:
+            messages = ['ERROR', 'Service respond with: <code>%s</code><br/><code>%s</code>' % (e.status, e.text)]
+
+        return self.edit_renderer.question(
+            messages[0],
+            messages[1],
+            [
+                ['Go back', '/email/{}'.format(email_name)],
+            ]
+        )
+
+    @cherrypy.expose
+    def pull(self, *paths, **_ignored):
+        email_name = '/'.join(paths)
+
+        try:
+            res = _get_email_from_cms_service(self.settings, email_name)
+            fs.save_file(res, self.settings.source, email_name)
+            place_holders.generate_config(self.settings)
+            place_holders._read_placeholders_file.cache_clear()
+            messages = ['SUCCES', '']
+        except service.TimeoutError as e:
+            messages = ['ERROR', str(e)]
+        except service.ServiceError as e:
+            messages = ['ERROR', 'Service respond with: <code>%s</code><br/><code>%s</code>' % (e.status, e.text)]
+
+        return self.edit_renderer.question(
+            messages[0],
+            messages[1],
+            [
+                ['Go back', '/email/{}'.format(email_name)],
             ]
         )
 
@@ -503,8 +600,8 @@ class Server(object):
             '\U0001f62d SORRY \U0001f62d',
             'Your session has timed out! Do you want to create a new email from a template, or edit an existing email?',
             [
-                    ['Create new', '/template'],
-                    ['Edit', '/email'],
+                ['Create new', '/template'],
+                ['Edit', '/email'],
             ]
         )
 
@@ -593,6 +690,8 @@ class Server(object):
                 description=_get_body_content_string(html),
                 actions=[
                     ['Edit', '/alter/{}'.format(email_name)],
+                    ['Push to repository', '/push/{}'.format(email_name)],
+                    ['Update from repository', '/pull/{}'.format(email_name)],
                 ]
             )
 
@@ -633,6 +732,17 @@ class Server(object):
             raise cherrypy.HTTPRedirect('/timeout')
 
         overwrite = args.pop(OVERWRITE_PARAM_NAME, False)
+        placeholders_change = False
+        placeholders_messages = []
+
+        if os.path.exists(full_path) and not os.path.isdir(full_path):
+            handler = _set_logging_handler()
+            content = self.final_renderer.content_to_save(
+                rel_path, document.template_name, document.styles, **document.args)
+            locale, name = _get_email_locale_n_name(rel_path)
+            placeholders_change = not place_holders.validate_email_content(locale, name, content, self.settings.source)
+            placeholders_messages = list(handler.error_msgs())
+
         if overwrite or not os.path.exists(full_path):
             # Create and save
             try:
@@ -673,10 +783,17 @@ class Server(object):
             )
             return html
         else:
+            # File already exists or placeholders change: overwrite?
+            question_str = 'Are you sure you want to overwrite the existing email <code>{}</code>?'.format(rel_path)
+            if placeholders_change:
+                question_str = 'Are you sure you want to overwrite the existing email <code>{0}</code>?\
+                                <blockquote><b>WARNING</b><br/>{1}\
+                                </blockquote>'.format(rel_path, '<br/>'.join(placeholders_messages))
+
             # File already exists: overwrite?
             return self.edit_renderer.question(
                 'Overwriting ' + rel_path,
-                'Are you sure you want to overwrite the existing email <code>{}</code>?'.format(rel_path),
+                question_str,
                 [
                     ['No, save as a new file',
                      '/save/{0}/{1}'.format(

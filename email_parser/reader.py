@@ -50,16 +50,17 @@ def _template(tree, settings):
 
     return Template(name, styles, content, placeholders)
 
+
 def _find_parse_error(file_path, exception):
     pos = exception.position
     with open(file_path) as f:
         lines = f.read().splitlines()
-        error_line = lines[pos[0]-1]
+        error_line = lines[pos[0] - 1]
         node_matches = re.findall(SEGMENT_REGEX, error_line[:pos[1]])
         segment_id = None
 
         if not len(node_matches):
-            prev_line = pos[0]-1
+            prev_line = pos[0] - 1
             search_part = ''.join(lines[:prev_line])
             node_matches = re.findall(SEGMENT_REGEX, search_part)
 

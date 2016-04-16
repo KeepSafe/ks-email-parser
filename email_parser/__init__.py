@@ -15,8 +15,8 @@ import asyncio
 import concurrent.futures
 from itertools import islice
 from functools import reduce
-from multiprocessing import Manager, Queue
-from . import cmd, fs, reader, renderer, clients, placeholder, utils
+from multiprocessing import Manager
+from . import cmd, fs, reader, renderer, placeholder, utils
 
 logger = logging.getLogger()
 loop = asyncio.get_event_loop()
@@ -29,8 +29,10 @@ def _render_email(email, settings, fallback_locale=None):
 
     template, placeholders, ignored_plceholder_names = reader.read(email, settings)
     if template:
-        subject, text, html = renderer.render(email, template, placeholders, ignored_plceholder_names, settings)
-        fs.save(email, subject, text, html, settings.destination, fallback_locale)
+        subject, text, html = renderer.render(
+            email, template, placeholders, ignored_plceholder_names, settings)
+        fs.save(email, subject, text, html,
+                settings.destination, fallback_locale)
         return True
     else:
         return False
@@ -41,6 +43,7 @@ def _parse_email(email, settings):
         logging.info('.', extra={'same_line': True})
         return True
     else:
+        # TODO create default_locale_email function in fs module
         default_locale_email = next(
             fs.email(settings.source, settings.pattern, email.name, settings.default_locale), None)
         if default_locale_email and _render_email(default_locale_email, settings, email.locale):
@@ -58,27 +61,25 @@ def _parse_emails_batch(emails, settings):
     return result
 
 
-@asyncio.coroutine
-def _emails_worker(executor, emails, settings):
-    result = yield from loop.run_in_executor(executor, _parse_emails_batch, emails, settings)
-    return result
-
-
 def _parse_emails(settings):
     if not settings.exclusive:
         shutil.rmtree(settings.destination, ignore_errors=True)
 
-    emails = iter(fs.emails(settings.source, settings.pattern, settings.exclusive))
-    executor = concurrent.futures.ProcessPoolExecutor(max_workers=settings.workers_pool)
+    emails = iter(
+        fs.emails(settings.source, settings.pattern, settings.exclusive))
+    executor = concurrent.futures.ProcessPoolExecutor(
+        max_workers=settings.workers_pool)
     tasks = []
 
     emails_batch = list(islice(emails, settings.workers_pool))
     while emails_batch:
-        task = loop.run_in_executor(executor, _parse_emails_batch, emails_batch, settings)
+        task = loop.run_in_executor(
+            executor, _parse_emails_batch, emails_batch, settings)
         tasks.append(task)
         emails_batch = list(islice(emails, settings.workers_pool))
     results = yield from asyncio.gather(*tasks)
-    result = reduce(lambda acc, result: True if acc and result else False, results)
+    result = reduce(
+        lambda acc, result: True if acc and result else False, results)
     return result
 
 
@@ -91,7 +92,8 @@ def init_log(verbose):
     log_level = logging.DEBUG if verbose else logging.INFO
     error_msgs_queue = Manager().Queue()
     warning_msgs_queue = Manager().Queue()
-    handler = utils.ProgressConsoleHandler(error_msgs_queue, warning_msgs_queue, stream=sys.stdout)
+    handler = utils.ProgressConsoleHandler(
+        error_msgs_queue, warning_msgs_queue, stream=sys.stdout)
     logger.setLevel(log_level)
     logger.addHandler(handler)
 

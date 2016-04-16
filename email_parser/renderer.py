@@ -6,16 +6,18 @@ import logging
 import markdown
 import bs4
 import pystache
-import logging
 import inlinestyler.utils as inline_styler
 import xml.etree.ElementTree as ET
 from collections import OrderedDict
 
-from . import markdown_ext, errors, fs, link_shortener, reader
+from . import markdown_ext, errors, fs, link_shortener
 from .placeholder import parse_string_placeholders
 
 TEXT_EMAIL_PLACEHOLDER_SEPARATOR = '\n\n'
 HTML_PARSER = 'lxml'
+
+logger = logging.getLogger()
+
 
 def _md_to_html(text, base_url=None):
     extensions = [markdown_ext.inline_text()]
@@ -88,12 +90,12 @@ class HtmlRenderer(object):
 
     def _concat_parts(self, subject, parts):
         html = self._read_template()
-        strict = 'strict' if self.settings.strict else 'ignore'
-        # pystache escapes html by default, we pass escape option to disable this
-        renderer = pystache.Renderer(escape=lambda u: u, missing_tags=strict)
         placeholders = dict(parts.items() | {'subject': subject}.items() | {'base_url': self.settings.images}.items())
 
         try:
+            strict = 'strict' if self.settings.strict else 'ignore'
+            # pystache escapes html by default, we pass escape option to disable this
+            renderer = pystache.Renderer(escape=lambda u: u, missing_tags=strict)
             # add subject for rendering as we have it in html
             return renderer.render(html, placeholders)
         except pystache.context.KeyNotFoundError as e:

@@ -31,6 +31,7 @@ def _parse_params(pattern):
             '{{name}} is a required parameter in the pattern but it is not present in {}'.format(pattern))
     return params
 
+
 def _emails(src_dir, pattern, params, exclusive_path=None):
     wildcard_params = {k: '*' for k in params}
     wildcard_pattern = pattern.format(**wildcard_params)
@@ -52,8 +53,10 @@ def _emails(src_dir, pattern, params, exclusive_path=None):
                 logging.debug('loading email %s', result.named['full_path'])
                 yield result
 
+
 def _has_correct_ext(path, pattern):
     return os.path.splitext(str(path))[1] == os.path.splitext(pattern)[1]
+
 
 def emails(src_dir, pattern, exclusive_path=None):
     """
@@ -101,6 +104,7 @@ def read_file(*path_parts, **kwargs):
     logger.debug('reading file from %s', path)
     with open(path, **kwargs) as fp:
         return fp.read()
+
 
 def save_file(content, *path_parts):
     """

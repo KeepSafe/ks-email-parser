@@ -14,8 +14,6 @@ def read_fixture(filename):
 
 class TestParser(TestCase):
 
-    maxDiff = None
-
     def setUp(self):
         self.dest = tempfile.mkdtemp()
         settings = cmd.default_settings()._asdict()

@@ -6,7 +6,9 @@ import re
 INLINE_TEXT_PATTERN = r'\[{2}(.+)\]{2}'
 IMAGE_PATTERN = '![{}]({}/{})'
 
+
 class InlineBlockProcessor(BlockProcessor):
+
     """
     Inlines the content instead of parsing it as markdown.
     """
@@ -24,16 +26,17 @@ class InlineBlockProcessor(BlockProcessor):
 
 
 class BaseUrlImagePattern(Pattern):
+
     """
     Adds base url to images which have relative path.
     """
 
     url_pattern = re.compile(
-        r'^(?:http|ftp)s?://' # http:// or https://
-        r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+(?:[A-Z]{2,6}\.?|[A-Z0-9-]{2,}\.?)|' #domain...
-        r'localhost|' #localhost...
-        r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})' # ...or ip
-        r'(?::\d+)?' # optional port
+        r'^(?:http|ftp)s?://'  # http:// or https://
+        r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+(?:[A-Z]{2,6}\.?|[A-Z0-9-]{2,}\.?)|'  # domain...
+        r'localhost|'  # localhost...
+        r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})'  # ...or ip
+        r'(?::\d+)?'  # optional port
         r'(?:/?|[/?]\S+)$', re.IGNORECASE)
 
     def __init__(self, images_dir, *args):
@@ -59,11 +62,13 @@ class BaseUrlImagePattern(Pattern):
 
 
 class InlineTextExtension(Extension):
+
     def extendMarkdown(self, md, md_globals):
         md.parser.blockprocessors.add('inline_text', InlineBlockProcessor(md.parser), '<paragraph')
 
 
 class BaseUrlExtension(Extension):
+
     def __init__(self, images_dir):
         super().__init__()
         self.images_dir = images_dir
@@ -74,6 +79,7 @@ class BaseUrlExtension(Extension):
 
 def inline_text():
     return InlineTextExtension()
+
 
 def base_url(base_url):
     return BaseUrlExtension(base_url)

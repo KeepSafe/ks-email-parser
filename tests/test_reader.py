@@ -12,7 +12,7 @@ class TestReader(TestCase):
         self.email = fs.Email(name='dummy', locale='dummy', path='dummy', full_path='dummy')
         self.email_element = ElementTree.fromstring("""
         <resources template="dummy_template.html" style="dummy_template.css">
-        	<string name="subject">dummy subject</string>
+            <string name="subject">dummy subject</string>
             <string name="content">dummy content</string>
             <string name="greeting">dummy you</string>
         </resources>
@@ -83,7 +83,7 @@ class TestReader(TestCase):
     def test_template_with_multiple_styles(self, mock_tree, mock_read):
         email_element = ElementTree.fromstring("""
         <resources template="dummy_template.html" style="dummy_template1.css,dummy_template2.css">
-        	<string name="subject">dummy subject</string>
+            <string name="subject">dummy subject</string>
             <string name="content">dummy content</string>
         </resources>
         """)
@@ -100,7 +100,7 @@ class TestReader(TestCase):
     def test_ignore_non_text_elements(self, mock_tree, mock_read):
         email_element = ElementTree.fromstring("""
         <resources template="dummy_template.html" style="dummy_template1.css,dummy_template2.css">
-        	<string name="subject">dummy subject</string>
+            <string name="subject">dummy subject</string>
             <string name="content">dummy content</string>
             <string name="color" isText="false">blue</string>
         </resources>
