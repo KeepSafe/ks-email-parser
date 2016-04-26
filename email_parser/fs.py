@@ -32,7 +32,7 @@ def _parse_params(pattern):
     return params
 
 
-def _emails(src_dir, pattern, params, exclusive_path=None):
+def _emails(src_dir, pattern, params, exclusive_path=None, include_global=False):
     wildcard_params = {k: '*' for k in params}
     wildcard_pattern = pattern.format(**wildcard_params)
     parser = parse.compile(pattern)
@@ -47,11 +47,12 @@ def _emails(src_dir, pattern, params, exclusive_path=None):
         if not path.is_dir() and (not exclusive_path or _has_correct_ext(path, pattern)):
             str_path = str(path.relative_to(src_dir))
             result = parser.parse(str_path)
-            result.named['path'] = str_path
-            result.named['full_path'] = str(path.resolve())
-            if not re.findall(global_email_pattern, str_path):
-                logging.debug('loading email %s', result.named['full_path'])
-                yield result
+            if result:  # HACK: result can be empty when pattern doesnt cotain any placeholder
+                result.named['path'] = str_path
+                result.named['full_path'] = str(path.resolve())
+                if not re.findall(global_email_pattern, str_path) or include_global:
+                    logging.debug('loading email %s', result.named['full_path'])
+                    yield result
 
 
 def _has_correct_ext(path, pattern):
@@ -74,7 +75,7 @@ def emails(src_dir, pattern, exclusive_path=None):
         yield Email(**result.named)
 
 
-def email(src_dir, pattern, email_name, locale=None):
+def email(src_dir, pattern, email_name, locale=None, include_global=False):
     """
     Gets an email by name. Used for clients which should produce a single file for all locales.
 
@@ -89,7 +90,7 @@ def email(src_dir, pattern, email_name, locale=None):
     if locale:
         single_email_pattern = single_email_pattern.replace('{locale}', locale)
     params = _parse_params(pattern)
-    for result in _emails(src_dir, single_email_pattern, params):
+    for result in _emails(src_dir, single_email_pattern, params, None, include_global):
         result.named['name'] = email_name
         if locale:
             result.named['locale'] = locale

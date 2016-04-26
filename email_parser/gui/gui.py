@@ -194,7 +194,7 @@ def _set_logging_handler():
 
 def _get_email(email_name, settings):
     locale, name = _get_email_locale_n_name(email_name)
-    email = next(fs.email(settings.source, settings.pattern, name, locale))
+    email = next(fs.email(settings.source, settings.pattern, name, locale, True))
     return email
 
 # Editing & rendering
