@@ -11,7 +11,6 @@ import xml.etree.ElementTree as ET
 from collections import OrderedDict
 
 from . import markdown_ext, errors, fs, link_shortener
-from .placeholder import parse_string_placeholders
 
 TEXT_EMAIL_PLACEHOLDER_SEPARATOR = '\n\n'
 HTML_PARSER = 'lxml'

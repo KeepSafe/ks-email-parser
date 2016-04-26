@@ -82,6 +82,7 @@ def _new_working_args():
     return _get_working_args(working_name)
 
 
+# WTF???!!!!
 def _extract_document(args=None, working_name=None, email_name=None, template_name=None, template_styles=None):
     # Return working_name, email_name, template_name, styles, args
     args = args or dict()
@@ -190,6 +191,11 @@ def _set_logging_handler():
     logger.addHandler(handler)
     return handler
 
+
+def _get_email(email_name, settings):
+    locale, name = _get_email_locale_n_name(email_name)
+    email = next(fs.email(settings.source, settings.pattern, name, locale))
+    return email
 
 # Editing & rendering
 
@@ -406,15 +412,15 @@ class InlineFormRenderer(GenericRenderer):
         else:
             return None
 
-    def render_preview(self, template_name, styles, **args):
-        replacer = InlineFormReplacer.make(self.settings, args, template_name)
-        if styles:
+    def render_preview(self, template, email, **args):
+        replacer = InlineFormReplacer.make(self.settings, args, template.name)
+        if template.styles:
             # Use "real" renderer, replace missing values with ???
             placeholders = replacer.placeholders(lambda missing_key: '???')
-            html = HtmlRenderer(Template(template_name, styles), self.settings, '').render(placeholders)
+            html = HtmlRenderer(template, self.settings, email).render(placeholders)
         else:
             html = self.resource('preview.no.styles.html')
-        return html, (styles and not replacer.required)
+        return html, (template.styles and not replacer.required)
 
     def render_editor(
             self, template_name,
@@ -448,11 +454,11 @@ class InlineFormRenderer(GenericRenderer):
             verified_dropdowns={A: self._verified_images for A in image_attrs}
         )
 
-    def render_email(self, email_path):
-        template, placeholders, _ = reader_read(email_path)
+    def render_email(self, email):
+        template, placeholders, _ = reader_read(email, self.settings)
         args = _unplaceholder(placeholders)
 
-        html = HtmlRenderer(template, self.settings, '').render(placeholders)
+        html = HtmlRenderer(template, self.settings, email).render(placeholders)
         return html, args.get('subject')
 
     def _find_styles(self, path_glob='*.css'):
@@ -648,10 +654,18 @@ class Server(object):
         if not document.template_name:
             raise cherrypy.HTTPRedirect('/timeout')
 
+        email = _get_email(document.email_name, self.settings)
+        template, _, _ = reader_read(email, self.settings)
+
+        if document.styles: # it means that template.styles should be overwritten
+            template = template._asdict()
+            template['styles'] = document.styles
+            template = Template(**template)
+
         #  Could use `final_renderer` here to verify images load correctly from remote host
         html, is_complete = self.edit_renderer.render_preview(
-            document.template_name,
-            document.styles,
+            template,
+            email,
             **document.args
         )
         fragment = _get_body_content_string(html).strip()
@@ -684,7 +698,8 @@ class Server(object):
                 '/email/{}'.format
             )
         else:  # A file
-            html, subject = self.final_renderer.render_email(email_path)
+            email = _get_email(email_name, self.settings)
+            html, subject = self.final_renderer.render_email(email)
             return self.edit_renderer.question(
                 title=html_escape(subject),
                 description=_get_body_content_string(html),
@@ -699,7 +714,8 @@ class Server(object):
     def alter(self, *paths, **_ignored):
         email_name = '/'.join(paths)
         email_path = os.path.join(self.settings.source, email_name)
-        template, placeholders, _ = reader_read(email_path)
+        email = _get_email(email_name, self.settings)
+        template, placeholders, _ = reader_read(email, self.settings)
         args = _unplaceholder(placeholders)
         document = _extract_document(
             args,

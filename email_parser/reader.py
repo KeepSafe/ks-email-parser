@@ -17,7 +17,8 @@ logger = logging.getLogger()
 
 
 def _ignored_placeholder_names(tree, prefix=''):
-    return ['{0}{1}'.format(prefix, element.get('name')) for element in tree.findall('./string') if element.get('isText') == 'false']
+    return ['{0}{1}'.format(prefix, element.get('name')) for
+            element in tree.findall('./string') if element.get('isText') == 'false']
 
 
 def _placeholders(tree, prefix=''):
@@ -43,6 +44,10 @@ def _template(tree, settings):
 
     if 'subject' not in placeholders:
         placeholders.insert(0, 'subject')
+
+    # base_url placeholder is not a content block
+    while 'base_url' in placeholders:
+        placeholders.remove('base_url')
 
     style_element = tree.getroot().get('style')
     if style_element:

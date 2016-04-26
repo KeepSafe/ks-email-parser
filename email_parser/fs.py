@@ -133,5 +133,6 @@ def save(email, subject, text, html, dest_dir, fallback_locale=None):
     save_file(text, dest_dir, locale, email.name + TEXT_EXTENSION)
     save_file(html, dest_dir, locale, email.name + HTML_EXTENSION)
 
+
 def path(*path_parts):
     return os.path.join(*path_parts)

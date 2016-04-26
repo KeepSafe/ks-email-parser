@@ -28,7 +28,7 @@ def _read_email_placeholders(email_name, src_dir):
 def _parse_email_placeholders(settings, email):
     _, segments, _ = reader.read(email, settings)
     segments_str = ''.join(segments.values())
-    return parse_string_placeholders(''.join(segments.values()))
+    return parse_string_placeholders(segments_str)
 
 
 def parse_string_placeholders(content):
@@ -115,7 +115,7 @@ def validate_email(settings, email):
 def validate_email_content(locale, name, content, src_dir=''):
     try:
         all_placeholders = _read_email_placeholders(name, src_dir)
-        email_placeholders = _parse_string_placeholders(content)
+        email_placeholders = parse_string_placeholders(content)
         return _validate_email_placeholders(name, locale, email_placeholders, all_placeholders)
     except FileNotFoundError:
         # If the file does not exist skip validation
@@ -123,7 +123,7 @@ def validate_email_content(locale, name, content, src_dir=''):
 
 
 def validate_template(template, placeholders, email):
-    template_placeholders = set(_parse_string_placeholders(template))
+    template_placeholders = set(parse_string_placeholders(template))
     extra_placeholders = placeholders - template_placeholders
     if extra_placeholders:
         logger.warn('There are extra placeholders %s in email %s/%s, not used in template' %
