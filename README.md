@@ -91,7 +91,7 @@ String attributes:
 
 ## Templates
 
-HTML templates use [Mustache](http://mustache.github.io/) to parse the template. You can use `{{name}}` inside a template and it will be replace by `name` string element from the email XML. You can find example of the templates in `templates_html` folder in this repo.
+HTML templates use [Mustache](http://mustache.github.io/) to parse the template. You can use `{{name}}` inside a template and it will be replace by `name` string element from the email XML or you can use `{{global_name}}` and it will be replaced  by `name` string elemenet from `<lang>/global.xml` (this file has exactly the same structure as usual email XML and behaviour, except it won't be parsed). You can find example of the templates in `templates_html` folder in this repo.
 
 
 ## Folder structure
@@ -100,6 +100,7 @@ HTML templates use [Mustache](http://mustache.github.io/) to parse the template.
 src/
     en/
         email_template.xml
+    global.xml
 target/
 templates_html/
     html_template.html
