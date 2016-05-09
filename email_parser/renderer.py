@@ -86,7 +86,6 @@ class HtmlRenderer(object):
         html = _md_to_html(placeholder, self.settings.images)
         return self._inline_css(html, css)
 
-
     def _concat_parts(self, subject, parts):
         html = self._read_template()
         placeholders = dict(parts.items() | {'subject': subject}.items() | {'base_url': self.settings.images}.items())

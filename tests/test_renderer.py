@@ -1,5 +1,5 @@
 from unittest import TestCase
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 from email_parser import renderer, errors, cmd
 from email_parser.reader import Template
@@ -134,7 +134,7 @@ class TestHtmlRenderer(TestCase):
     def test_happy_path(self, mock_read):
         html = '<body>{{content1}}</body>'
         html_placeholders = ['content1']
-        placeholders = {'content1':'text1'}
+        placeholders = {'content1': 'text1'}
         mock_read.side_effect = iter(['body {}'])
 
         renderer = self._get_renderer(html, html_placeholders)
@@ -146,7 +146,7 @@ class TestHtmlRenderer(TestCase):
     def test_empty_style(self, mock_read):
         html = '<body>{{content}}</body>'
         html_placeholders = ['content']
-        placeholders = {'content':'dummy_content'}
+        placeholders = {'content': 'dummy_content'}
         mock_read.side_effect = iter([''])
 
         renderer = self._get_renderer(html, html_placeholders)
@@ -158,7 +158,7 @@ class TestHtmlRenderer(TestCase):
     def test_include_raw_subject(self, mock_read):
         html = '<body>{{subject}}</body>'
         html_placeholders = ['subject']
-        placeholders = {'subject':'dummy_subject'}
+        placeholders = {'subject': 'dummy_subject'}
         mock_read.side_effect = iter([''])
 
         renderer = self._get_renderer(html, html_placeholders)
@@ -192,7 +192,6 @@ class TestHtmlRenderer(TestCase):
         actual = renderer.render(placeholders)
 
         self.assertEqual('<body><p>dummy_content</p></body>', actual)
-
 
     @patch('email_parser.fs.read_file')
     def test_fail_on_missing_placeholders(self, mock_read):
@@ -230,8 +229,9 @@ class TestHtmlRenderer(TestCase):
 
         renderer = self._get_renderer(html, html_placeholders, email=Email(**email_dict))
         actual = renderer.render(placeholders)
-
-        self.assertEqual('<body dir="rtl">\n <div>\n  <p>\n   dummy_content1\n  </p>\n </div>\n <div>\n  <p>\n   dummy_content2\n  </p>\n </div>\n</body>', actual)
+        expected = '<body dir="rtl">\n <div>\n  <p>\n   dummy_content1\n  </p>\n </div>\n <div>\n  <p>\n   dummy_content2\n  </p>\n </div>\
+\n</body>'
+        self.assertEqual(expected, actual)
 
     @patch('email_parser.fs.read_file')
     def test_inline_styles(self, mock_read):

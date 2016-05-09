@@ -28,13 +28,16 @@ def _placeholders(tree, prefix=''):
         return {}
     return {'{0}{1}'.format(prefix, element.get('name')): element.text for element in tree.findall('./string')}
 
+
 def _all_email_placeholders(tree, global_tree):
     placeholders = dict(_placeholders(tree).items() | _placeholders(global_tree, 'global_').items())
     ignored_placeholder_names = _ignored_placeholder_names(tree) + _ignored_placeholder_names(global_tree, 'global_')
     return placeholders, ignored_placeholder_names
 
+
 def _ordered_placeholders(names, placeholders):
     return OrderedDict((name, placeholders[name]) for name in names)
+
 
 def _template(tree, settings):
     content = None
@@ -89,7 +92,7 @@ def _handle_xml_parse_error(path, e):
         e,
         segment_id,
         line.replace('\t', '  '),
-        " "*e.position[1]+"^")
+        " " * e.position[1] + "^")
 
 
 def read(email, settings):
@@ -129,7 +132,7 @@ def read(email, settings):
     extra_placeholders = email_placeholders - template_placeholders
     if extra_placeholders:
         logger.warn('There are extra placeholders %s in email %s/%s, missing in template %s' %
-                     (extra_placeholders, email.locale, email.name, template.name))
+                    (extra_placeholders, email.locale, email.name, template.name))
 
     placeholders, ignored_plceholder_names = _all_email_placeholders(tree, global_tree)
     ordered_placeholders = _ordered_placeholders(template.placeholders_order, placeholders)

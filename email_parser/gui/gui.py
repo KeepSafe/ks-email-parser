@@ -664,7 +664,7 @@ class Server(object):
         email = _get_email(document.email_name, self.settings)
         template, _, _ = reader_read(email, self.settings)
 
-        if document.styles: # it means that template.styles should be overwritten
+        if document.styles:  # it means that template.styles should be overwritten
             template = template._asdict()
             template['styles'] = document.styles
             template = Template(**template)
@@ -720,7 +720,6 @@ class Server(object):
     @cherrypy.expose
     def alter(self, *paths, **_ignored):
         email_name = '/'.join(paths)
-        email_path = os.path.join(self.settings.source, email_name)
         email = _get_email(email_name, self.settings)
         template, placeholders, _ = reader_read(email, self.settings)
         args = _unplaceholder(placeholders)
@@ -763,7 +762,8 @@ class Server(object):
             validating_content = self.final_renderer.content_to_validate(
                 rel_path, document.template_name, document.styles, **document.args)
             locale, name = _get_email_locale_n_name(rel_path)
-            placeholders_change = not place_holders.validate_email_content(locale, name, validating_content, self.settings.source)
+            placeholders_change = not place_holders.validate_email_content(locale, name,
+                                                                           validating_content, self.settings.source)
             placeholders_messages = list(handler.error_msgs())
 
         if overwrite or not os.path.exists(full_path):

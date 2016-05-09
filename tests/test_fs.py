@@ -66,7 +66,10 @@ class TestFs(TestCase):
 
     @patch('email_parser.fs.Path')
     def test_emails_ignore_global_by_default(self, mock_path):
-        mock_path.return_value.glob.return_value = [MockPath('src/locale1/name1.xml'), MockPath('src/locale1/global.xml')]
+        mock_path.return_value.glob.return_value = [
+            MockPath('src/locale1/name1.xml'),
+            MockPath('src/locale1/global.xml')
+        ]
 
         actual = list(fs.emails('dummy_path', 'src/{locale}/{name}.xml'))
         self.assertEqual(1, len(actual))
