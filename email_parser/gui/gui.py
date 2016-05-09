@@ -82,7 +82,6 @@ def _new_working_args():
     return _get_working_args(working_name)
 
 
-# WTF???!!!!
 def _extract_document(args=None, working_name=None, email_name=None, template_name=None, template_styles=None):
     # Return working_name, email_name, template_name, styles, args
     args = args or dict()
@@ -211,18 +210,19 @@ class InlineFormReplacer(object):
     # Group 4: lookahead: following non-space character (if any)
     CONTENT_REGEX = re.compile(r'(([">]?)[^">{}]*)\{\{\s*(\w+)\s*\}\}(?=[^"<{}]*(["<]?))')
 
-    def __init__(self, builtins=None, values=None):
+    def __init__(self, builtins=None, values=None, ommit_global_placeholders=False):
         self.builtins = builtins or dict()
         self.values = values or dict()
         self.names = list()
         self.attrs = list()
         self.required = list()  # Only valid after we've done a replacement on a template
         self.html = None
+        self.skip_global = ommit_global_placeholders
 
     @classmethod
-    def make(cls, settings, args, template_name):
+    def make(cls, settings, args, template_name, ommit_global_placeholders=False):
         print(settings.images)
-        replacer = cls({'base_url': settings.images}, args)
+        replacer = cls({'base_url': settings.images}, args, ommit_global_placeholders=ommit_global_placeholders)
         replacer.require('subject')
         # Generate our filled-in template
         template_html = _read_template(settings, template_name)
@@ -248,6 +248,8 @@ class InlineFormReplacer(object):
 
         if name in self.builtins:
             return before + self.builtins[name]
+        elif name[:7] == 'global_':
+            return before
         elif prefix == '>' or postfix == '<':
             return before + self._textarea(name)
         elif '"' in (prefix, postfix):
@@ -297,7 +299,7 @@ class InlineFormReplacer(object):
         values = list()
         written_names = set()
         for name in self.names:
-            if name in written_names or name in self.builtins:
+            if name in written_names or name in self.builtins or (self.skip_global and name[:7] == 'global_'):
                 continue
             written_names.add(name)
             value = self.require(name)
@@ -395,8 +397,9 @@ class InlineFormRenderer(GenericRenderer):
         place_holders.generate_config(self.settings)
         place_holders._read_placeholders_file.cache_clear()
 
-    def content_to_save(self, email_name, template_name, styles, **args):
-        replacer = InlineFormReplacer.make(self.settings, args, template_name)
+    def content_to_save(self, email_name, template_name, styles, ommit_global_placeholders=True, **args):
+        replacer = InlineFormReplacer.make(self.settings, args, template_name,
+                                           ommit_global_placeholders=ommit_global_placeholders)
         xml = self.gui_template(
             'email.xml.jinja2',
             template=template_name,
@@ -411,6 +414,10 @@ class InlineFormRenderer(GenericRenderer):
             return subprocess.check_output([self.settings.save, abspath], stderr=subprocess.STDOUT)
         else:
             return None
+
+    def content_to_validate(self, *args, **kwargs):
+        kwargs['ommit_global_placeholders'] = False
+        return self.content_to_save(*args, **kwargs)
 
     def render_preview(self, template, email, **args):
         replacer = InlineFormReplacer.make(self.settings, args, template.name)
@@ -753,10 +760,10 @@ class Server(object):
 
         if os.path.exists(full_path) and not os.path.isdir(full_path):
             handler = _set_logging_handler()
-            content = self.final_renderer.content_to_save(
+            validating_content = self.final_renderer.content_to_validate(
                 rel_path, document.template_name, document.styles, **document.args)
             locale, name = _get_email_locale_n_name(rel_path)
-            placeholders_change = not place_holders.validate_email_content(locale, name, content, self.settings.source)
+            placeholders_change = not place_holders.validate_email_content(locale, name, validating_content, self.settings.source)
             placeholders_messages = list(handler.error_msgs())
 
         if overwrite or not os.path.exists(full_path):
