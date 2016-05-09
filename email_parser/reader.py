@@ -17,11 +17,15 @@ logger = logging.getLogger()
 
 
 def _ignored_placeholder_names(tree, prefix=''):
+    if tree is None:
+        return []
     return ['{0}{1}'.format(prefix, element.get('name')) for
             element in tree.findall('./string') if element.get('isText') == 'false']
 
 
 def _placeholders(tree, prefix=''):
+    if tree is None:
+        return {}
     return {'{0}{1}'.format(prefix, element.get('name')): element.text for element in tree.findall('./string')}
 
 def _all_email_placeholders(tree, global_tree):
@@ -107,7 +111,10 @@ def read(email, settings):
         global_email_path = settings.pattern.replace('{locale}', email.locale)
         global_email_path = global_email_path.replace('{name}', fs.GLOBAL_PLACEHOLDERS_EMAIL_NAME)
         global_email_fullpath = fs.path(settings.source, global_email_path)
-        global_tree = ElementTree.parse(global_email_fullpath)
+        if fs.is_file(global_email_fullpath):
+            global_tree = ElementTree.parse(global_email_fullpath)
+        else:
+            global_tree = None
     except ElementTree.ParseError as e:
         _handle_xml_parse_error(global_email_path, e)
         return None, {}, []
