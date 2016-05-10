@@ -89,7 +89,7 @@ def read_args(argsargs=argparse.ArgumentParser):
                                  help='Name of the email to generate the template for')
 
     config_parser = subparsers.add_parser('config')
-    config_parser.add_argument('config_name', help='Name of config to generate')
+    config_parser.add_argument('config_name', help='Name of config to generate. Available: `placeholders`')
 
     gui_parser = subparsers.add_parser('gui')
     gui_parser.add_argument('-P', '--port', type=int, help='Port to serve on', default=8080)
