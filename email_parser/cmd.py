@@ -52,7 +52,7 @@ def default_settings():
         workers_pool=10,
         local_images='templates_html/img',
         save=None,
-        cms_service_host="http://localhost:5001"
+        cms_service_host="http://localhost:5002"
     )
 
 
