@@ -4,7 +4,7 @@ import json
 import re
 import logging
 
-from . import fs
+from . import fs, reader
 
 PLACEHOLDERS_FILENAME = 'placeholders_config.json'
 
@@ -25,12 +25,13 @@ def _read_email_placeholders(email_name, src_dir):
     return _read_placeholders_file(src_dir).get(email_name, {})
 
 
-def _parse_email_placeholders(email_path):
-    content = fs.read_file(email_path)
-    return _parse_string_placeholders(content)
+def _parse_email_placeholders(settings, email):
+    _, segments, _ = reader.read(email, settings)
+    segments_str = ''.join(segments.values())
+    return parse_string_placeholders(segments_str)
 
 
-def _parse_string_placeholders(content):
+def parse_string_placeholders(content):
     return Counter(m.group(1) for m in re.finditer(r'\{\{(\w+)\}\}', content))
 
 
@@ -66,10 +67,10 @@ def _all_placeholders_for_email_name(locale_placeholders):
     return result
 
 
-def _placeholders_from_emails(emails):
+def _placeholders_from_emails(emails, settings):
     placeholders = defaultdict(dict)
     for email in emails:
-        email_placeholders = _parse_email_placeholders(email.full_path)
+        email_placeholders = _parse_email_placeholders(settings, email)
         placeholders[email.name][email.locale] = email_placeholders
     return placeholders
 
@@ -92,7 +93,7 @@ def _reduce_to_email_placeholders(placeholders):
 def generate_config(settings, indent=4):
     emails = fs.emails(settings.source, settings.pattern)
     emails = filter(lambda e: e.locale == 'en', emails)
-    placeholders = _placeholders_from_emails(emails)
+    placeholders = _placeholders_from_emails(emails, settings)
     placeholders = _reduce_to_email_placeholders(placeholders)
     if placeholders:
         _save_placeholders_file(placeholders, settings.source, indent)
@@ -100,10 +101,10 @@ def generate_config(settings, indent=4):
     return False
 
 
-def validate_email(email, src_dir=''):
+def validate_email(settings, email):
     try:
-        all_placeholders = _read_email_placeholders(email.name, src_dir)
-        email_placeholders = _parse_email_placeholders(email.full_path)
+        all_placeholders = _read_email_placeholders(email.name, settings.source)
+        email_placeholders = _parse_email_placeholders(settings, email)
         logger.debug('validating placeholders for %s', email.path)
         return _validate_email_placeholders(email.name, email.locale, email_placeholders, all_placeholders)
     except FileNotFoundError:
@@ -114,7 +115,7 @@ def validate_email(email, src_dir=''):
 def validate_email_content(locale, name, content, src_dir=''):
     try:
         all_placeholders = _read_email_placeholders(name, src_dir)
-        email_placeholders = _parse_string_placeholders(content)
+        email_placeholders = parse_string_placeholders(content)
         return _validate_email_placeholders(name, locale, email_placeholders, all_placeholders)
     except FileNotFoundError:
         # If the file does not exist skip validation
@@ -122,7 +123,7 @@ def validate_email_content(locale, name, content, src_dir=''):
 
 
 def validate_template(template, placeholders, email):
-    template_placeholders = set(_parse_string_placeholders(template))
+    template_placeholders = set(parse_string_placeholders(template))
     extra_placeholders = placeholders - template_placeholders
     if extra_placeholders:
         logger.warn('There are extra placeholders %s in email %s/%s, not used in template' %

@@ -43,6 +43,12 @@ class TestParser(TestCase):
     def test_html(self):
         self._run_and_assert('email.html')
 
+    def test_global_text(self):
+        self._run_and_assert('email_globale.text')
+
+    def test_global_html(self):
+        self._run_and_assert('email_globale.html')
+
     def test_rtl(self):
         settings = self.settings._asdict()
         settings['right_to_left'] = ['en']

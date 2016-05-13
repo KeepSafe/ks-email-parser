@@ -63,3 +63,24 @@ class TestFs(TestCase):
         actual = list(fs.emails('dummy_path', 'src/{locale}/{name}.xml'))
 
         self.assertEqual(1, len(actual))
+
+    @patch('email_parser.fs.Path')
+    def test_emails_ignore_global_by_default(self, mock_path):
+        mock_path.return_value.glob.return_value = [
+            MockPath('src/locale1/name1.xml'),
+            MockPath('src/locale1/global.xml')
+        ]
+
+        actual = list(fs.emails('dummy_path', 'src/{locale}/{name}.xml'))
+        self.assertEqual(1, len(actual))
+
+    @patch('email_parser.fs.Path')
+    def test_email_include_global(self, mock_path):
+        mock_path.return_value.glob.return_value = [MockPath('src/locale1/name1.xml'),
+                                                    MockPath('src/locale1/global.xml'),
+                                                    MockPath('src/locale2/global.xml')]
+
+        actual = list(fs.email('dummy_path', 'src/{locale}/{name}.xml', 'global', 'locale1', True))
+        self.assertEqual(1, len(actual))
+        self.assertEqual('global', actual[0].name)
+        self.assertEqual('locale1', actual[0].locale)

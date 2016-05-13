@@ -11,7 +11,6 @@ import xml.etree.ElementTree as ET
 from collections import OrderedDict
 
 from . import markdown_ext, errors, fs, link_shortener
-from .placeholder import validate_template
 
 TEXT_EMAIL_PLACEHOLDER_SEPARATOR = '\n\n'
 HTML_PARSER = 'lxml'
@@ -43,7 +42,7 @@ class HtmlRenderer(object):
         self.locale = email.locale
 
     def _read_template(self):
-        return fs.read_file(self.settings.templates, self.template.name)
+        return self.template.content
 
     def _read_css(self):
         css = [fs.read_file(self.settings.templates, f) or ' ' for f in self.template.styles]
@@ -90,7 +89,6 @@ class HtmlRenderer(object):
     def _concat_parts(self, subject, parts):
         html = self._read_template()
         placeholders = dict(parts.items() | {'subject': subject}.items() | {'base_url': self.settings.images}.items())
-        validate_template(html, set(parts), self.email)
 
         try:
             strict = 'strict' if self.settings.strict else 'ignore'

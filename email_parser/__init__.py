@@ -24,11 +24,10 @@ loop.set_debug(False)
 
 
 def _render_email(email, settings, fallback_locale=None):
-    if not placeholder.validate_email(email, settings.source) and not settings.force:
+    if not placeholder.validate_email(settings, email) and not settings.force:
         return False
 
-    template, placeholders, ignored_plceholder_names = reader.read(
-        email.full_path)
+    template, placeholders, ignored_plceholder_names = reader.read(email, settings)
     if template:
         subject, text, html = renderer.render(
             email, template, placeholders, ignored_plceholder_names, settings)
