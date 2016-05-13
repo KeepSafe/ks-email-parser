@@ -848,7 +848,10 @@ def serve(args):
     edit_settings = settings._replace(images=path + 'img')  # Serve images from local host during edit step.
     edit_renderer = InlineFormRenderer(edit_settings, verify_image_url=settings.images)
 
-    cherrypy.config.update({'server.socket_port': args.port or 8080})
+    cherrypy.config.update({
+        'server.socket_port': args.port or 8080,
+        'server.socket_host': '0.0.0.0'
+        })
     cherrypy.quickstart(Server(
         settings, edit_renderer=edit_renderer, final_renderer=final_renderer
     ), path)
