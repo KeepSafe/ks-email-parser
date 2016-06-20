@@ -851,7 +851,7 @@ def serve(args):
     cherrypy.config.update({
         'server.socket_port': args.port or 8080,
         'server.socket_host': '0.0.0.0'
-        })
+    })
     cherrypy.quickstart(Server(
         settings, edit_renderer=edit_renderer, final_renderer=final_renderer
     ), path)
