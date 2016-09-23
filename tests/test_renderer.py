@@ -101,7 +101,15 @@ class TestSubjectRenderer(TestCase):
 
         actual = self.renderer.render(placeholders)
 
-        self.assertEqual('dummy subject', actual)
+        self.assertEqual('dummy subject', actual[0])
+
+    def test_ab(self):
+        placeholders = {'content': 'dummy content', 'subject': 'dummy subject',
+                        'subject_b': 'bbb', 'subject_a': 'aaa'}
+
+        actual = self.renderer.render(placeholders)
+
+        self.assertEqual(['dummy subject', 'aaa', 'bbb'], actual)
 
     def test_raise_error_for_missing_subject(self):
         placeholders = {'content': 'dummy content'}
