@@ -14,6 +14,7 @@ from . import markdown_ext, errors, fs, link_shortener
 
 TEXT_EMAIL_PLACEHOLDER_SEPARATOR = '\n\n'
 HTML_PARSER = 'lxml'
+SUBJECTS_PLACEHOLDERS = ['subject', 'subject_a', 'subject_b']
 
 logger = logging.getLogger()
 
@@ -25,8 +26,9 @@ def _md_to_html(text, base_url=None):
     return markdown.markdown(text, extensions=extensions)
 
 
-def _split_subject(placeholders):
-    return placeholders.get('subject'), OrderedDict((k, v) for k, v in placeholders.items() if k != 'subject')
+def _split_subjects(placeholders):
+    return ([placeholders.get(subject) for subject in SUBJECTS_PLACEHOLDERS],
+            OrderedDict((k, v) for k, v in placeholders.items() if k not in SUBJECTS_PLACEHOLDERS))
 
 
 class HtmlRenderer(object):
@@ -88,7 +90,8 @@ class HtmlRenderer(object):
 
     def _concat_parts(self, subject, parts):
         html = self._read_template()
-        placeholders = dict(parts.items() | {'subject': subject}.items() | {'base_url': self.settings.images}.items())
+        placeholders = dict(parts.items() | {'subject': subject[0]}.items() |
+                            {'base_url': self.settings.images}.items())
 
         try:
             strict = 'strict' if self.settings.strict else 'ignore'
@@ -102,7 +105,7 @@ class HtmlRenderer(object):
             raise errors.MissingTemplatePlaceholderError(message) from e
 
     def render(self, placeholders):
-        subject, contents = _split_subject(placeholders)
+        subject, contents = _split_subjects(placeholders)
         css = self._read_css()
         parts = {k: self._render_placeholder(v, css) for k, v in contents.items()}
         html = self._concat_parts(subject, parts)
@@ -152,7 +155,7 @@ class TextRenderer(object):
         return self._html_to_text(html)
 
     def render(self, placeholders):
-        _, contents = _split_subject(placeholders)
+        _, contents = _split_subjects(placeholders)
         parts = [self._md_to_text(v) for k, v in contents.items() if k not in self.ignored_plceholder_names]
         return TEXT_EMAIL_PLACEHOLDER_SEPARATOR.join(v for v in filter(bool, parts))
 
@@ -164,15 +167,15 @@ class SubjectRenderer(object):
     """
 
     def render(self, placeholders):
-        subject, _ = _split_subject(placeholders)
-        if subject is None:
+        subjects, _ = _split_subjects(placeholders)
+        if subjects[0] is None:
             raise errors.MissingSubjectError('Subject is required for every email')
-        return subject
+        return subjects
 
 
 def render(email, template, placeholders, ignored_plceholder_names, settings):
     subject_renderer = SubjectRenderer()
-    subject = subject_renderer.render(placeholders)
+    subjects = subject_renderer.render(placeholders)
 
     text_renderer = TextRenderer(ignored_plceholder_names, settings.shortener)
     text = text_renderer.render(placeholders)
@@ -184,4 +187,4 @@ def render(email, template, placeholders, ignored_plceholder_names, settings):
         raise errors.RenderingError(
             'failed to generate html content for {} with message: {}'.format(email.full_path, e)) from e
 
-    return subject, text, html
+    return subjects, text, html

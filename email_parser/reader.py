@@ -10,6 +10,7 @@ from . import fs
 
 SEGMENT_REGEX = r'\<string[^>]*>'
 SEGMENT_NAME_REGEX = r' name="([^"]+)"'
+SUBJECTS_PLACEHOLDERS = ['subject_b', 'subject_a', 'subject']
 
 Template = namedtuple('Template', ['name', 'styles', 'content', 'placeholders_order'])
 
@@ -36,6 +37,10 @@ def _all_email_placeholders(tree, global_tree):
 
 
 def _ordered_placeholders(names, placeholders):
+    for subject in SUBJECTS_PLACEHOLDERS:
+        if subject in placeholders and subject not in names:
+            names.insert(0, subject)
+
     return OrderedDict((name, placeholders[name]) for name in names)
 
 
@@ -48,9 +53,6 @@ def _template(tree, settings):
     if name:
         content = fs.read_file(settings.templates, name)
         placeholders = [m.group(1) for m in re.finditer(r'\{\{(\w+)\}\}', content)]
-
-    if 'subject' not in placeholders:
-        placeholders.insert(0, 'subject')
 
     # base_url placeholder is not a content block
     while 'base_url' in placeholders:
@@ -129,7 +131,7 @@ def read(email, settings):
     # check extra placeholders
     email_placeholders = set(_placeholders(tree))
     template_placeholders = set(template.placeholders_order)
-    extra_placeholders = email_placeholders - template_placeholders
+    extra_placeholders = email_placeholders - template_placeholders - set(SUBJECTS_PLACEHOLDERS)
     if extra_placeholders:
         logger.warn('There are extra placeholders %s in email %s/%s, missing in template %s' %
                     (extra_placeholders, email.locale, email.name, template.name))
