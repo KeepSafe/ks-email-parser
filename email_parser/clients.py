@@ -31,9 +31,9 @@ class CustomerIoClient(object):
         for email in emails:
             logger.info('parsing email %s locale %s', email.name, email.locale)
             template, placeholders, ignored_plceholder_names = reader.read(email, settings)
-            email_subject, email_text, email_html = renderer.render(
+            email_subjects, email_text, email_html = renderer.render(
                 email, template, placeholders, ignored_plceholder_names, settings)
-            subject = self._append_content(email.locale, subject, email_subject)
+            subject = self._append_content(email.locale, subject, email_subjects[0])
             text = self._append_content(email.locale, text, email_text)
             html = self._append_content(email.locale, html, email_html)
             last_email = email
@@ -44,7 +44,7 @@ class CustomerIoClient(object):
         text = text + '\n' + self._end_locale_selection
         html = html + '\n' + self._end_locale_selection
         email = fs.Email(last_email.name, '', last_email.path, last_email.full_path)
-        fs.save(email, subject, text, html, settings.destination)
+        fs.save(email, [subject], text, html, settings.destination)
         return True
 
 

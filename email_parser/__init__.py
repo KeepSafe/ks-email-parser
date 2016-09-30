@@ -29,9 +29,9 @@ def _render_email(email, settings, fallback_locale=None):
 
     template, placeholders, ignored_plceholder_names = reader.read(email, settings)
     if template:
-        subject, text, html = renderer.render(
+        subjects, text, html = renderer.render(
             email, template, placeholders, ignored_plceholder_names, settings)
-        fs.save(email, subject, text, html,
+        fs.save(email, subjects, text, html,
                 settings.destination, fallback_locale)
         return True
     else:

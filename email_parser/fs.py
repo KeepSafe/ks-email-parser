@@ -13,6 +13,8 @@ from collections import namedtuple
 from . import errors
 
 SUBJECT_EXTENSION = '.subject'
+A_SUBJECT_EXTENSION = '.a.subject'
+B_SUBJECT_EXTENSION = '.b.subject'
 TEXT_EXTENSION = '.text'
 HTML_EXTENSION = '.html'
 GLOBAL_PLACEHOLDERS_EMAIL_NAME = 'global'
@@ -117,7 +119,7 @@ def save_file(content, *path_parts):
         return fp.write(content)
 
 
-def save(email, subject, text, html, dest_dir, fallback_locale=None):
+def save(email, subjects, text, html, dest_dir, fallback_locale=None):
     """
     Saves an email. The locale and name are taken from email tuple.
 
@@ -130,7 +132,10 @@ def save(email, subject, text, html, dest_dir, fallback_locale=None):
     locale = fallback_locale if fallback_locale else email.locale
 
     os.makedirs(os.path.join(dest_dir, locale), exist_ok=True)
-    save_file(subject, dest_dir, locale, email.name + SUBJECT_EXTENSION)
+    save_file(subjects[0], dest_dir, locale, email.name + SUBJECT_EXTENSION)
+    if len(subjects) == 3 and subjects[1] and subjects[2]:
+        save_file(subjects[1], dest_dir, locale, email.name + A_SUBJECT_EXTENSION)
+        save_file(subjects[2], dest_dir, locale, email.name + B_SUBJECT_EXTENSION)
     save_file(text, dest_dir, locale, email.name + TEXT_EXTENSION)
     save_file(html, dest_dir, locale, email.name + HTML_EXTENSION)
 
