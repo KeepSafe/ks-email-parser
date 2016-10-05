@@ -14,7 +14,7 @@ from . import markdown_ext, errors, fs, link_shortener
 
 TEXT_EMAIL_PLACEHOLDER_SEPARATOR = '\n\n'
 HTML_PARSER = 'lxml'
-SUBJECTS_PLACEHOLDERS = ['subject', 'subject_a', 'subject_b']
+SUBJECTS_PLACEHOLDERS = ['subject', 'subject_a', 'subject_b', 'alt_subject']
 
 logger = logging.getLogger()
 

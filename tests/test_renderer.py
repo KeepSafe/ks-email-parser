@@ -93,6 +93,7 @@ class TestTextRenderer(TestCase):
 
 
 class TestSubjectRenderer(TestCase):
+
     def setUp(self):
         self.renderer = renderer.SubjectRenderer()
 
@@ -109,7 +110,7 @@ class TestSubjectRenderer(TestCase):
 
         actual = self.renderer.render(placeholders)
 
-        self.assertEqual(['dummy subject', 'aaa', 'bbb'], actual)
+        self.assertEqual(['dummy subject', 'aaa', 'bbb', None], actual)
 
     def test_raise_error_for_missing_subject(self):
         placeholders = {'content': 'dummy content'}

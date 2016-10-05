@@ -52,6 +52,12 @@ class TestParser(TestCase):
     def test_subjects_ab_b(self):
         self._run_and_assert('email_subjects_ab.b.subject')
 
+    def test_alt_subject_main(self):
+        self._run_and_assert('email_alt_subject.subject')
+
+    def test_alt_subject(self):
+        self._run_and_assert('email_alt_subject.alt.subject')
+
     def test_global_text(self):
         self._run_and_assert('email_globale.text')
 
