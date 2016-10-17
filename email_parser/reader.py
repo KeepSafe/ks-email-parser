@@ -10,7 +10,7 @@ from . import fs
 
 SEGMENT_REGEX = r'\<string[^>]*>'
 SEGMENT_NAME_REGEX = r' name="([^"]+)"'
-SUBJECTS_PLACEHOLDERS = ['subject_b', 'subject_a', 'alt_subject', 'subject']
+SUBJECTS_PLACEHOLDERS = ['subject_b', 'subject_a', 'subject_resend', 'subject']
 
 Template = namedtuple('Template', ['name', 'styles', 'content', 'placeholders_order'])
 

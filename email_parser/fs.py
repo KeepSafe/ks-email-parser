@@ -13,9 +13,9 @@ from collections import namedtuple
 from . import errors
 
 SUBJECT_EXTENSION = '.subject'
-ALT_SUBJECT_EXTENSION = '.alt.subject'
-A_SUBJECT_EXTENSION = '.a.subject'
-B_SUBJECT_EXTENSION = '.b.subject'
+SUBJECT_RESEND_EXTENSION = '.resend.subject'
+SUBJECT_A_EXTENSION = '.a.subject'
+SUBJECT_B_EXTENSION = '.b.subject'
 TEXT_EXTENSION = '.text'
 HTML_EXTENSION = '.html'
 GLOBAL_PLACEHOLDERS_EMAIL_NAME = 'global'
@@ -135,11 +135,11 @@ def save(email, subjects, text, html, dest_dir, fallback_locale=None):
     os.makedirs(os.path.join(dest_dir, locale), exist_ok=True)
     save_file(subjects[0], dest_dir, locale, email.name + SUBJECT_EXTENSION)
     if len(subjects) > 1 and subjects[1] is not None:
-        save_file(subjects[1], dest_dir, locale, email.name + A_SUBJECT_EXTENSION)
+        save_file(subjects[1], dest_dir, locale, email.name + SUBJECT_A_EXTENSION)
     if len(subjects) > 2 and subjects[2] is not None:
-        save_file(subjects[2], dest_dir, locale, email.name + B_SUBJECT_EXTENSION)
+        save_file(subjects[2], dest_dir, locale, email.name + SUBJECT_B_EXTENSION)
     if len(subjects) > 3 and subjects[3] is not None:
-        save_file(subjects[3], dest_dir, locale, email.name + ALT_SUBJECT_EXTENSION)
+        save_file(subjects[3], dest_dir, locale, email.name + SUBJECT_RESEND_EXTENSION)
     save_file(text, dest_dir, locale, email.name + TEXT_EXTENSION)
     save_file(html, dest_dir, locale, email.name + HTML_EXTENSION)
 
