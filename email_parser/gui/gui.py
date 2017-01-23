@@ -25,9 +25,7 @@ import logging
 import sys
 from multiprocessing import Manager
 
-
 RESOURCE_PACKAGE = 'email_parser.resources.gui'
-
 
 DOCUMENT_TIMEOUT = 24 * 60 * 60  # 24 hours
 
@@ -49,12 +47,9 @@ CONTENT_TYPES = {
     '.jpeg': 'image/jpeg',
 }
 
-
 # Dealing with documents, in our cache & invented from POST params
 
-
 Document = namedtuple('Document', ['working_name', 'email_name', 'template_name', 'styles', 'args'])
-
 
 RECENT_DOCUMENTS = dict()
 
@@ -112,11 +107,8 @@ def _extract_document(args=None, working_name=None, email_name=None, template_na
 def _get_body_content_string(soup, comments=True):
     if not isinstance(soup, bs4.BeautifulSoup):
         soup = bs4.BeautifulSoup(soup, HTML_PARSER)
-    return ''.join(
-        ('<!--{}-->'.format(C) if comments else '') if isinstance(C, bs4.Comment)
-        else str(C)
-        for C in soup.body.contents
-    )
+    return ''.join(('<!--{}-->'.format(C) if comments else '') if isinstance(C, bs4.Comment) else str(C)
+                   for C in soup.body.contents)
 
 
 # Utilities
@@ -153,6 +145,7 @@ def _unplaceholder(placeholders):
             return item[2:-2]
         else:
             return item
+
     return {K: fix_item(V) for K, V in placeholders.items()}
 
 
@@ -196,11 +189,11 @@ def _get_email(email_name, settings):
     email = next(fs.email(settings.source, settings.pattern, name, locale, True))
     return email
 
+
 # Editing & rendering
 
 
 class InlineFormReplacer(object):
-
     """
     Reads template files & inserts values to approximate rendered format (or editor-style format)
     """
@@ -261,8 +254,8 @@ class InlineFormReplacer(object):
     def _textarea(self, name):
         value = self.require(name)
         return ('<textarea class="{2}" name="{0}" placeholder="{0}"' +
-                ' style="resize: vertical; width: 95%; height: 160px;">{1}</textarea>'
-                ).format(name, value, 'present' if value else 'absent')
+                ' style="resize: vertical; width: 95%; height: 160px;">{1}</textarea>').format(name, value, 'present'
+                                                                                               if value else 'absent')
 
     def replace(self, template_html):
         self.html = self.CONTENT_REGEX.sub(self._sub, template_html)
@@ -281,11 +274,7 @@ class InlineFormReplacer(object):
                 May be `None` indicating not to return such replacements.
         :return: Dict of placeholder names to values.
         """
-        result = {
-            K: self._format_placeholder(K, V)
-            for K, V in self.values.items()
-            if self._should_make_placeholder(K)
-        }
+        result = {K: self._format_placeholder(K, V) for K, V in self.values.items() if self._should_make_placeholder(K)}
         print('Making result!')
         if fill_missing is not None:
             for key in self.required:
@@ -308,7 +297,6 @@ class InlineFormReplacer(object):
 
 
 class GenericRenderer(object):
-
     """
     Render directories and simple documents.
     """
@@ -325,13 +313,14 @@ class GenericRenderer(object):
         resource = self.resource(template_name)
         return jinja2.Template(resource).render(**args)
 
-    def directory(
-            self,
-            description, root, path, href,
-            accepts=(lambda path: not os.path.basename(path).startswith('.')),
-            old_filename='',
-            actions=()
-    ):
+    def directory(self,
+                  description,
+                  root,
+                  path,
+                  href,
+                  accepts=(lambda path: not os.path.basename(path).startswith('.')),
+                  old_filename='',
+                  actions=()):
         root_path = os.path.join(root, path)
         parent = href(os.path.dirname(path)) if path else None
         files = list()
@@ -348,28 +337,24 @@ class GenericRenderer(object):
             old_filename=old_filename,
             parent=parent,
             actions=actions,
-            files=files,
-        )
+            files=files, )
 
     def question(self, title, description, actions):
         return self.gui_template(
             'question.html.jinja2',
             title=title,
             description=description,
-            actions=actions,
-        )
+            actions=actions, )
 
     def error(self, title, description, actions):
         return self.gui_template(
             'error.html.jinja2',
             title=title,
             description=description,
-            actions=actions,
-        )
+            actions=actions, )
 
 
 class InlineFormRenderer(GenericRenderer):
-
     """
     Render editors and previews
     """
@@ -380,7 +365,7 @@ class InlineFormRenderer(GenericRenderer):
         self._verified_images = set()
 
         verify_image_url = verify_image_url or self.settings.images
-        threading.Thread(target=self._prepare_verified_images, args=(verify_image_url,)).start()
+        threading.Thread(target=self._prepare_verified_images, args=(verify_image_url, )).start()
 
     def save(self, email_name, template_name, styles, **args):
         """
@@ -398,15 +383,14 @@ class InlineFormRenderer(GenericRenderer):
         place_holders._read_placeholders_file.cache_clear()
 
     def content_to_save(self, email_name, template_name, styles, ommit_global_placeholders=True, **args):
-        replacer = InlineFormReplacer.make(self.settings, args, template_name,
-                                           ommit_global_placeholders=ommit_global_placeholders)
+        replacer = InlineFormReplacer.make(
+            self.settings, args, template_name, ommit_global_placeholders=ommit_global_placeholders)
         xml = self.gui_template(
             'email.xml.jinja2',
             template=template_name,
             style=','.join(styles),
             attrs=replacer.attrs,
-            values=replacer.make_value_list(),
-        )
+            values=replacer.make_value_list(), )
         return xml
 
         if self.settings.save:
@@ -429,12 +413,7 @@ class InlineFormRenderer(GenericRenderer):
             html = self.resource('preview.no.styles.html')
         return html, (template.styles and not replacer.required)
 
-    def render_editor(
-            self, template_name,
-            styles=(),
-            actions={},
-            **args
-    ):
+    def render_editor(self, template_name, styles=(), actions={}, **args):
         replacer = InlineFormReplacer.make(self.settings, args, template_name)
 
         edit_html = replacer.html
@@ -457,9 +436,10 @@ class InlineFormRenderer(GenericRenderer):
             save_url=actions.get('save'),
             attrs=replacer.attrs,
             values=args,
-            dropdowns={A: image_filenames for A in image_attrs},
-            verified_dropdowns={A: self._verified_images for A in image_attrs}
-        )
+            dropdowns={A: image_filenames
+                       for A in image_attrs},
+            verified_dropdowns={A: self._verified_images
+                                for A in image_attrs})
 
     def render_email(self, email):
         template, placeholders, _ = reader_read(email, self.settings)
@@ -499,12 +479,7 @@ class InlineFormRenderer(GenericRenderer):
         pattern = re.compile('^.*\{\{(.*)\}\}.*$')
 
         attrs = set()
-        for image in soup.find_all(
-                'img',
-                attrs={
-                    'src': (lambda x: x.startswith(base_url) and pattern.match(x))
-                }
-        ):
+        for image in soup.find_all('img', attrs={'src': (lambda x: x.startswith(base_url) and pattern.match(x))}):
             src = image.get('src')
             attr = pattern.match(src).group(1).strip()
             attrs.add(attr)
@@ -515,7 +490,6 @@ class InlineFormRenderer(GenericRenderer):
 
 
 class Server(object):
-
     def __init__(self, settings, edit_renderer, final_renderer):
         self.settings = settings
         self.edit_renderer = edit_renderer
@@ -538,15 +512,12 @@ class Server(object):
         if os.path.isdir(img_path):
             return self.edit_renderer.directory(
                 'Contents of ' + (img_name or 'image directory'),
-                self.settings.local_images, img_name,
-                '/img/{}'.format,
-            )
+                self.settings.local_images,
+                img_name,
+                '/img/{}'.format, )
         else:
             _, ext = os.path.splitext(os.path.join(*path))
-            content_type = CONTENT_TYPES.get(
-                ext.lower(),
-                'image/{}'.format(ext[1:].lower())
-            )
+            content_type = CONTENT_TYPES.get(ext.lower(), 'image/{}'.format(ext[1:].lower()))
 
             data = fs.read_file(self.settings.local_images, *path, mode='rb')
             cherrypy.response.headers['Content-Type'] = content_type
@@ -555,13 +526,10 @@ class Server(object):
     @cherrypy.expose
     def index(self):
         return self.edit_renderer.question(
-            'KS-Email-Parser GUI',
-            'Do you want to create a new email from a template, or edit an existing email?',
-            [
+            'KS-Email-Parser GUI', 'Do you want to create a new email from a template, or edit an existing email?', [
                 ['Create new', '/template'],
                 ['Edit', '/email'],
-            ]
-        )
+            ])
 
     @cherrypy.expose
     def push(self, *paths, **_ignored):
@@ -576,13 +544,7 @@ class Server(object):
         except service.ServiceError as e:
             messages = ['ERROR', 'Service respond with: <code>%s</code><br/><code>%s</code>' % (e.status, e.text)]
 
-        return self.edit_renderer.question(
-            messages[0],
-            messages[1],
-            [
-                ['Go back', '/email/{}'.format(email_name)],
-            ]
-        )
+        return self.edit_renderer.question(messages[0], messages[1], [['Go back', '/email/{}'.format(email_name)], ])
 
     @cherrypy.expose
     def pull(self, *paths, **_ignored):
@@ -599,13 +561,7 @@ class Server(object):
         except service.ServiceError as e:
             messages = ['ERROR', 'Service respond with: <code>%s</code><br/><code>%s</code>' % (e.status, e.text)]
 
-        return self.edit_renderer.question(
-            messages[0],
-            messages[1],
-            [
-                ['Go back', '/email/{}'.format(email_name)],
-            ]
-        )
+        return self.edit_renderer.question(messages[0], messages[1], [['Go back', '/email/{}'.format(email_name)], ])
 
     @cherrypy.expose
     def timeout(self, *_ignored, **_also_ignored):
@@ -615,20 +571,16 @@ class Server(object):
             [
                 ['Create new', '/template'],
                 ['Edit', '/email'],
-            ]
-        )
+            ])
 
     @cherrypy.expose
     def template(self, *paths, **_ignored):
         template_name = '/'.join(paths)
         template_path = os.path.join(self.settings.templates, template_name)
         if os.path.isdir(template_path):
-            return self.edit_renderer.directory(
-                'Contents of ' + (template_name or 'template directory'),
-                self.settings.templates, template_name,
-                '/template/{}'.format,
-                (lambda path: os.path.isdir(path) or '.htm' in path.lower())
-            )
+            return self.edit_renderer.directory('Contents of ' + (template_name or 'template directory'),
+                                                self.settings.templates, template_name, '/template/{}'.format,
+                                                (lambda path: os.path.isdir(path) or '.htm' in path.lower()))
         else:  # A file
             document = _extract_document({}, template_name=template_name)
             if not document.template_name:
@@ -636,8 +588,7 @@ class Server(object):
             return self.edit_renderer.render_editor(
                 document.template_name,
                 document.styles,
-                actions=self._actions(document, **{TEMPLATE_PARAM_NAME: template_name}),
-            )
+                actions=self._actions(document, **{TEMPLATE_PARAM_NAME: template_name}), )
 
     @cherrypy.expose
     def preview(self, working_name, **args):
@@ -647,11 +598,7 @@ class Server(object):
             raise cherrypy.HTTPRedirect('/timeout')
 
         #  Could use `edit_renderer` here to serve images from local host
-        html, _ = self.final_renderer.render_preview(
-            document.template_name,
-            document.styles,
-            **document.args
-        )
+        html, _ = self.final_renderer.render_preview(document.template_name, document.styles, **document.args)
         return html
 
     @cherrypy.expose
@@ -670,11 +617,7 @@ class Server(object):
             template = Template(**template)
 
         #  Could use `final_renderer` here to verify images load correctly from remote host
-        html, is_complete = self.edit_renderer.render_preview(
-            template,
-            email,
-            **document.args
-        )
+        html, is_complete = self.edit_renderer.render_preview(template, email, **document.args)
         fragment = _get_body_content_string(html).strip()
         if not is_complete:
             # Hack so client can tell from result that it's incomplete
@@ -688,22 +631,15 @@ class Server(object):
             raise cherrypy.HTTPRedirect('/timeout')
 
         return self.edit_renderer.render_editor(
-            document.template_name,
-            document.styles,
-            actions=self._actions(document),
-            **document.args
-        )
+            document.template_name, document.styles, actions=self._actions(document), **document.args)
 
     @cherrypy.expose
     def email(self, *paths, **_ignored):
         email_name = '/'.join(paths)
         email_path = os.path.join(self.settings.source, email_name)
         if os.path.isdir(email_path):
-            return self.edit_renderer.directory(
-                'Contents of ' + (email_name or 'source directory'),
-                self.settings.source, email_name,
-                '/email/{}'.format
-            )
+            return self.edit_renderer.directory('Contents of ' + (email_name or 'source directory'),
+                                                self.settings.source, email_name, '/email/{}'.format)
         else:  # A file
             email = _get_email(email_name, self.settings)
             html, subject = self.final_renderer.render_email(email)
@@ -714,8 +650,7 @@ class Server(object):
                     ['Edit', '/alter/{}'.format(email_name)],
                     ['Push to repository', '/push/{}'.format(email_name)],
                     ['Update from repository', '/pull/{}'.format(email_name)],
-                ]
-            )
+                ])
 
     @cherrypy.expose
     def alter(self, *paths, **_ignored):
@@ -724,18 +659,13 @@ class Server(object):
         template, placeholders, _ = reader_read(email, self.settings)
         args = _unplaceholder(placeholders)
         document = _extract_document(
-            args,
-            email_name=email_name,
-            template_name=template.name,
-            template_styles=template.styles
-        )
+            args, email_name=email_name, template_name=template.name, template_styles=template.styles)
 
         return self.edit_renderer.render_editor(
             document.template_name,
             document.styles,
             actions=self._actions(document, **{EMAIL_PARAM_NAME: email_name}),
-            **document.args
-        )
+            **document.args)
 
     @cherrypy.expose
     def saveas(self, working_name, *email_paths, **args):
@@ -759,11 +689,11 @@ class Server(object):
 
         if os.path.exists(full_path) and not os.path.isdir(full_path):
             handler = _set_logging_handler()
-            validating_content = self.final_renderer.content_to_validate(
-                rel_path, document.template_name, document.styles, **document.args)
+            validating_content = self.final_renderer.content_to_validate(rel_path, document.template_name,
+                                                                         document.styles, **document.args)
             locale, name = _get_email_locale_n_name(rel_path)
-            placeholders_change = not place_holders.validate_email_content(locale, name,
-                                                                           validating_content, self.settings.source)
+            placeholders_change = not place_holders.validate_email_content(locale, name, validating_content,
+                                                                           self.settings.source)
             placeholders_messages = list(handler.error_msgs())
 
         if overwrite or not os.path.exists(full_path):
@@ -775,20 +705,14 @@ class Server(object):
                     return self.final_renderer.question(
                         title='Saved & postprocessed email: {}'.format(rel_path),
                         description=html_escape(output),
-                        actions=[
-                            ['View', '/email/{}'.format(rel_path), 2000],
-                        ]
-                    )
+                        actions=[['View', '/email/{}'.format(rel_path), 2000], ])
 
             except subprocess.CalledProcessError as err:
                 output = str(err.output, 'utf-8') if err.output else 'Error #{}'.format(err.returncode)
                 return self.final_renderer.error(
                     title='Postprocessing failed for email: {}'.format(rel_path),
                     description=html_escape(output),
-                    actions=[
-                        ['View', '/email/{}'.format(rel_path)],
-                    ]
-                )
+                    actions=[['View', '/email/{}'.format(rel_path)], ])
 
             # No postprocessing performed/requested
             raise cherrypy.HTTPRedirect('/email/{}'.format(rel_path))
@@ -796,14 +720,13 @@ class Server(object):
             # Show directory or allow user to create new file
             html = self.edit_renderer.directory(
                 'Select save name/directory: ' + rel_path,
-                self.settings.source, rel_path,
-                (lambda path: '/save/{0}/{1}'.format(working_name, path)),
+                self.settings.source,
+                rel_path, (lambda path: '/save/{0}/{1}'.format(working_name, path)),
                 old_filename=os.path.basename(document.email_name) if document.email_name else '',
                 actions=[
                     ['Save', '/saveas/{0}/{1}'.format(working_name, rel_path)],
                     ['Return to Edit', '/edit/{}'.format(working_name)],
-                ]
-            )
+                ])
             return html
         else:
             # File already exists or placeholders change: overwrite?
@@ -814,20 +737,13 @@ class Server(object):
                                 </blockquote>'.format(rel_path, '<br/>'.join(placeholders_messages))
 
             # File already exists: overwrite?
-            return self.edit_renderer.question(
-                'Overwriting ' + rel_path,
-                question_str,
+            return self.edit_renderer.question('Overwriting ' + rel_path, question_str, [
+                ['No, save as a new file', '/save/{0}/{1}'.format(working_name, os.path.dirname(rel_path))],
                 [
-                    ['No, save as a new file',
-                     '/save/{0}/{1}'.format(
-                         working_name, os.path.dirname(rel_path)
-                     )],
-                    ['Yes, how dare you question me!',
-                     '/save/{0}/{1}?{2}=1'.format(
-                         working_name, rel_path, OVERWRITE_PARAM_NAME
-                     )],
-                ]
-            )
+                    'Yes, how dare you question me!', '/save/{0}/{1}?{2}=1'.format(working_name, rel_path,
+                                                                                   OVERWRITE_PARAM_NAME)
+                ],
+            ])
 
     @classmethod
     def _make_save_url(cls, document):
@@ -848,10 +764,5 @@ def serve(args):
     edit_settings = settings._replace(images=path + 'img')  # Serve images from local host during edit step.
     edit_renderer = InlineFormRenderer(edit_settings, verify_image_url=settings.images)
 
-    cherrypy.config.update({
-        'server.socket_port': args.port or 8080,
-        'server.socket_host': '0.0.0.0'
-    })
-    cherrypy.quickstart(Server(
-        settings, edit_renderer=edit_renderer, final_renderer=final_renderer
-    ), path)
+    cherrypy.config.update({'server.socket_port': args.port or 8080, 'server.socket_host': '0.0.0.0'})
+    cherrypy.quickstart(Server(settings, edit_renderer=edit_renderer, final_renderer=final_renderer), path)
