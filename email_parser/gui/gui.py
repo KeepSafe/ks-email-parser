@@ -604,7 +604,6 @@ class Server(object):
     @cherrypy.expose
     def preview_fragment(self, working_name, **args):
         document = _extract_document(args, working_name)
-        print(document)
         if not document.template_name:
             raise cherrypy.HTTPRedirect('/timeout')
 

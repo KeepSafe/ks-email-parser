@@ -41,7 +41,7 @@ def _emails(src_dir, pattern, params, exclusive_path=None, include_global=False)
     parser = parse.compile(pattern)
 
     if exclusive_path:
-        glob_path = Path('.').glob(exclusive_path)
+        glob_path = Path(src_dir).glob(exclusive_path)
     else:
         glob_path = Path(src_dir).glob(wildcard_pattern)
 
