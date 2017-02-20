@@ -97,6 +97,22 @@ def _handle_xml_parse_error(path, e):
         " " * e.position[1] + "^")
 
 
+def global_placeholders(email, settings):
+    # read global placeholders email
+    try:
+        global_email_path = settings.pattern.replace('{locale}', email.locale)
+        global_email_path = global_email_path.replace('{name}', fs.GLOBAL_PLACEHOLDERS_EMAIL_NAME)
+        global_email_fullpath = fs.path(settings.source, global_email_path)
+        if fs.is_file(global_email_fullpath):
+            global_tree = ElementTree.parse(global_email_fullpath)
+        else:
+            global_tree = None
+    except ElementTree.ParseError as e:
+        _handle_xml_parse_error(global_email_path, e)
+        return {}
+    return _placeholders(global_tree, 'global_')
+
+
 def read(email, settings):
     """
     Reads an email from the path.

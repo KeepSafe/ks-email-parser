@@ -6,7 +6,7 @@ import asyncio
 from . import service
 from .. import fs, utils, placeholder as place_holders
 from ..renderer import HtmlRenderer
-from ..reader import Template, read as reader_read
+from ..reader import Template, global_placeholders, read as reader_read
 import fnmatch
 import cherrypy
 from functools import lru_cache
@@ -421,10 +421,6 @@ class InlineFormRenderer(GenericRenderer):
         image_attrs = self._find_image_attrs(edit_html)
         image_filenames = self._find_images()
 
-        print(image_attrs)
-        print(image_filenames)
-        print(self._verified_images)
-
         return self.gui_template(
             "editor.html.jinja2",
             view_url=actions.get('preview_fragment'),
@@ -593,7 +589,6 @@ class Server(object):
     @cherrypy.expose
     def preview(self, working_name, **args):
         document = _extract_document(args, working_name)
-        print(document)
         if not document.template_name:
             raise cherrypy.HTTPRedirect('/timeout')
 
@@ -607,8 +602,14 @@ class Server(object):
         if not document.template_name:
             raise cherrypy.HTTPRedirect('/timeout')
 
-        email = _get_email(document.email_name, self.settings)
-        template, _, _ = reader_read(email, self.settings)
+        if document.email_name:
+            email = _get_email(document.email_name, self.settings)
+            template, _, _ = reader_read(email, self.settings)
+        else:
+            content = _read_template(self.settings, document.template_name)
+            email = fs.Email(working_name, 'en', '', '')
+            template = Template(document.template_name, document.styles, content, [m.group(1) for m in re.finditer(r'\{\{(\w+)\}\}', content)])
+            document.args.update(global_placeholders(email, self.settings))
 
         if document.styles:  # it means that template.styles should be overwritten
             template = template._asdict()
