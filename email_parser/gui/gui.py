@@ -608,7 +608,8 @@ class Server(object):
         else:
             content = _read_template(self.settings, document.template_name)
             email = fs.Email(working_name, 'en', '', '')
-            template = Template(document.template_name, document.styles, content, [m.group(1) for m in re.finditer(r'\{\{(\w+)\}\}', content)])
+            template = Template(document.template_name, document.styles, content,
+                                [m.group(1) for m in re.finditer(r'\{\{(\w+)\}\}', content)])
             document.args.update(global_placeholders(email, self.settings))
 
         if document.styles:  # it means that template.styles should be overwritten
