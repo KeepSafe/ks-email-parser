@@ -26,13 +26,14 @@ class CustomerIoClient(object):
         return content
 
     def parse(self, email_name, settings):
+        link_locale_mappings = reader.read_link_locale_mappings(settings)
         emails = fs.email(settings.source, settings.pattern, email_name)
         subject, text, html, last_email = '', '', '', None
         for email in emails:
             logger.info('parsing email %s locale %s', email.name, email.locale)
             template, placeholders, ignored_plceholder_names = reader.read(email, settings)
             email_subjects, email_text, email_html = renderer.render(
-                email, template, placeholders, ignored_plceholder_names, settings)
+                email, template, placeholders, ignored_plceholder_names, link_locale_mappings, settings)
             subject = self._append_content(email.locale, subject, email_subjects[0])
             text = self._append_content(email.locale, text, email_text)
             html = self._append_content(email.locale, html, email_html)

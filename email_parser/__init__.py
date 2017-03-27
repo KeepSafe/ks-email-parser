@@ -23,14 +23,15 @@ loop = asyncio.get_event_loop()
 loop.set_debug(False)
 
 
-def _render_email(email, settings, fallback_locale=None):
+def _render_email(email, link_locale_mappings, settings, fallback_locale=None):
     if not placeholder.validate_email(settings, email) and not settings.force:
         return False
 
     template, placeholders, ignored_plceholder_names = reader.read(email, settings)
     if template:
         subjects, text, html = renderer.render(
-            email, template, placeholders, ignored_plceholder_names, settings)
+            email, template, placeholders, ignored_plceholder_names,
+            link_locale_mappings, settings)
         fs.save(email, subjects, text, html,
                 settings.destination, fallback_locale)
         return True
@@ -38,15 +39,15 @@ def _render_email(email, settings, fallback_locale=None):
         return False
 
 
-def _parse_email(email, settings):
-    if _render_email(email, settings):
+def _parse_email(email, link_locale_mappings, settings):
+    if _render_email(email, link_locale_mappings, settings):
         logging.info('.', extra={'same_line': True})
         return True
     else:
         # TODO create default_locale_email function in fs module
         default_locale_email = next(
             fs.email(settings.source, settings.pattern, email.name, settings.default_locale), None)
-        if default_locale_email and _render_email(default_locale_email, settings, email.locale):
+        if default_locale_email and _render_email(default_locale_email, link_locale_mappings, settings, email.locale):
             logging.info('F', extra={'same_line': True})
             logging.warn('Email %s/%s substituted by %s/%s' %
                          (email.locale, email.name, default_locale_email.locale, default_locale_email.name))
@@ -55,8 +56,8 @@ def _parse_email(email, settings):
         return False
 
 
-def _parse_emails_batch(emails, settings):
-    results = [_parse_email(email, settings) for email in emails]
+def _parse_emails_batch(emails, link_locale_mappings, settings):
+    results = [_parse_email(email, link_locale_mappings, settings) for email in emails]
     result = reduce(lambda acc, res: acc and res, results)
     return result
 
@@ -65,8 +66,14 @@ def _parse_emails(settings):
     if not settings.exclusive:
         shutil.rmtree(settings.destination, ignore_errors=True)
 
+    link_locale_mappings = reader.read_link_locale_mappings(settings)
+    logger.debug(link_locale_mappings)
+    if not link_locale_mappings and not settings.force:
+        return False
+
     emails = iter(
         fs.emails(settings.source, settings.pattern, settings.exclusive))
+
     executor = concurrent.futures.ProcessPoolExecutor(
         max_workers=settings.workers_pool)
     tasks = []
@@ -74,7 +81,8 @@ def _parse_emails(settings):
     emails_batch = list(islice(emails, settings.workers_pool))
     while emails_batch:
         task = loop.run_in_executor(
-            executor, _parse_emails_batch, emails_batch, settings)
+            executor, _parse_emails_batch, emails_batch,
+            link_locale_mappings, settings)
         tasks.append(task)
         emails_batch = list(islice(emails, settings.workers_pool))
     results = yield from asyncio.gather(*tasks)

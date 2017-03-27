@@ -3,10 +3,13 @@ Extracts email information from an email file.
 """
 
 import logging
+import json
 import re
 from collections import namedtuple, OrderedDict
 from xml.etree import ElementTree
 from . import fs
+
+LINK_LOCALE_MAPPINGS_FILENAME = 'link_locale_mappings.json'
 
 SEGMENT_REGEX = r'\<string[^>]*>'
 SEGMENT_NAME_REGEX = r' name="([^"]+)"'
@@ -156,3 +159,13 @@ def read(email, settings):
     ordered_placeholders = _ordered_placeholders(template.placeholders_order, placeholders)
 
     return template, ordered_placeholders, ignored_plceholder_names
+
+
+def read_link_locale_mappings(settings):
+    try:
+        content = fs.read_file(settings.source, LINK_LOCALE_MAPPINGS_FILENAME)
+        return json.loads(content)
+    except FileNotFoundError:
+        logger.error('Link locale mapping (%s) could not be found at: %s' % (LINK_LOCALE_MAPPINGS_FILENAME,
+                                                                             settings.source))
+    return {}

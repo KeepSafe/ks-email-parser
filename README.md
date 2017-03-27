@@ -48,6 +48,20 @@ wrap the entire block in `[[text]]`, for example `<string name="link">[[www.goog
 This is true only for entire blocks of text (paragraphs separated by blanck lines), `<string name="link">[[www.google.pl]] hello</string>`
 would be rendered as `[[www.google.pl]] hello`
 
+#### Link locale
+
+`{link_locale}` is special placeholder, which is resolved by mapping located in `src/link_locale_mappings.json` during rendering.
+If email locale couldn't be mapped to link locale, it's `en` by default.
+
+```
+{
+  "email locale": "link locale",
+  "zh-TW-Hant": "zh"
+}
+```
+If email locale will be `zh-TW-Hant`, then `[something](https://getkeepsafe.com/?locale={link_locale})` will be rendered as `[something](https://getkeepsafe.com/?locale=zh)`.
+
+
 #### Base url for images
 
 The parser will automatically add base_url to any image tag in markdown, so `![Alt text](/path/to/img.jpg)` and base url `base_url`
@@ -145,7 +159,7 @@ The file is a mapping of name to required placeholders and the number of times t
 }
 ```
 
-You can generate the file in the provided source directory from existing emails with 
+You can generate the file in the provided source directory from existing emails with
 
 ```
 $ ks-email-parser config placeholders
