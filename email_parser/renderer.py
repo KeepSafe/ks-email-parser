@@ -50,7 +50,6 @@ class HtmlRenderer(object):
     def __init__(self, template, link_locale_mappings, email, settings):
         self.template = template
         self.settings = settings
-        # self.link_locale_mappings = link_locale_mappings
         self.locale = email.locale
         self.link_locale = _map_link_locale(email, link_locale_mappings)
 

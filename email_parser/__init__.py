@@ -67,7 +67,6 @@ def _parse_emails(settings):
         shutil.rmtree(settings.destination, ignore_errors=True)
 
     link_locale_mappings = reader.read_link_locale_mappings(settings)
-    logger.debug(link_locale_mappings)
     if not link_locale_mappings and not settings.force:
         return False
 
