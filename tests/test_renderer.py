@@ -9,7 +9,8 @@ from email_parser.fs import Email
 class TestTextRenderer(TestCase):
 
     def setUp(self):
-        self.renderer = renderer.TextRenderer([])
+        self.email = Email('name', 'locale', 'path', 'full_path')
+        self.renderer = renderer.TextRenderer([], {}, self.email)
 
     def test_happy_path(self):
         placeholders = {'content': 'dummy content'}
@@ -43,7 +44,7 @@ class TestTextRenderer(TestCase):
     def test_ignored_placeholders(self):
         placeholders = {'content': 'dummy content', 'ignore': 'test'}
 
-        r = renderer.TextRenderer(['ignore'])
+        r = renderer.TextRenderer(['ignore'], {}, self.email)
 
         actual = r.render(placeholders)
 
@@ -55,6 +56,21 @@ class TestTextRenderer(TestCase):
         actual = self.renderer.render(placeholders)
 
         self.assertEqual('dummy link_text (http://link_url) content', actual)
+
+    def test_default_link_locale_for_links(self):
+        placeholders = {'content': 'dummy [link_text](http://link_url?locale={link_locale}) content'}
+
+        actual = self.renderer.render(placeholders)
+
+        self.assertEqual('dummy link_text (http://link_url?locale=en) content', actual)
+
+    def test_link_locale_for_links(self):
+        placeholders = {'content': 'dummy [link_text](http://link_url?locale={link_locale}) content'}
+
+        r = renderer.TextRenderer(['ignore'], {'locale': 'zh'}, self.email)
+        actual = r.render(placeholders)
+
+        self.assertEqual('dummy link_text (http://link_url?locale=zh) content', actual)
 
     def test_use_text_if_href_is_empty(self):
         placeholders = {'content': 'dummy [http://link_url]() content'}
@@ -127,8 +143,9 @@ class TestHtmlRenderer(TestCase):
                             content=template_html,
                             placeholders_order=template_placeholders)
         return renderer.HtmlRenderer(template,
-                                     kwargs.get('settings', self.settings),
-                                     kwargs.get('email', self.email))
+                                     kwargs.get('link_locale_mappings', {}),
+                                     kwargs.get('email', self.email),
+                                     kwargs.get('settings', self.settings))
 
     def setUp(self):
         settings = cmd.default_settings()._asdict()
