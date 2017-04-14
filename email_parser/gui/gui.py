@@ -53,6 +53,13 @@ Document = namedtuple('Document', ['working_name', 'email_name', 'template_name'
 
 RECENT_DOCUMENTS = dict()
 
+logger = logging.getLogger()
+error_msgs_queue = Manager().Queue()
+warning_msgs_queue = Manager().Queue()
+default_logger_handler = utils.ProgressConsoleHandler(error_msgs_queue, warning_msgs_queue, stream=sys.stdout)
+logger.setLevel(logging.INFO)
+logger.addHandler(default_logger_handler)
+
 
 def _clean_documents():
     expired_keys = set()
@@ -172,16 +179,6 @@ def _push_email_to_cms_service(settings, email_name, email_path):
     req = client.push_template(locale, name, email_path)
     res = loop.run_until_complete(req)
     return res
-
-
-def _set_logging_handler():
-    logger = logging.getLogger(__name__)
-    error_msgs_queue = Manager().Queue()
-    warning_msgs_queue = Manager().Queue()
-    handler = utils.ProgressConsoleHandler(error_msgs_queue, warning_msgs_queue, stream=sys.stdout)
-    logger.setLevel(logging.INFO)
-    logger.addHandler(handler)
-    return handler
 
 
 def _get_email(email_name, settings):
@@ -691,13 +688,12 @@ class Server(object):
         placeholders_messages = []
 
         if os.path.exists(full_path) and not os.path.isdir(full_path):
-            handler = _set_logging_handler()
             validating_content = self.final_renderer.content_to_validate(rel_path, document.template_name,
                                                                          document.styles, **document.args)
             locale, name = _get_email_locale_n_name(rel_path)
             placeholders_change = not place_holders.validate_email_content(locale, name, validating_content,
                                                                            self.settings.source)
-            placeholders_messages = list(handler.error_msgs())
+            placeholders_messages = list(default_logger_handler.error_msgs())
 
         if overwrite or not os.path.exists(full_path):
             # Create and save
