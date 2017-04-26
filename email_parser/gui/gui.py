@@ -6,7 +6,7 @@ import asyncio
 from . import service
 from .. import fs, utils, placeholder as place_holders
 from ..renderer import HtmlRenderer
-from ..reader import Template, global_placeholders, read as reader_read
+from ..reader import Template, global_placeholders, read_link_locale_mappings, read as reader_read
 import fnmatch
 import cherrypy
 from functools import lru_cache
@@ -408,7 +408,8 @@ class InlineFormRenderer(GenericRenderer):
         if template.styles:
             # Use "real" renderer, replace missing values with ???
             placeholders = replacer.placeholders(lambda missing_key: '???')
-            html = HtmlRenderer(template, self.settings, email).render(placeholders)
+            link_locales = read_link_locale_mappings(self.settings)
+            html = HtmlRenderer(template, link_locales, email, self.settings).render(placeholders)
         else:
             html = self.resource('preview.no.styles.html')
         return html, (template.styles and not replacer.required)
@@ -440,8 +441,9 @@ class InlineFormRenderer(GenericRenderer):
     def render_email(self, email):
         template, placeholders, _ = reader_read(email, self.settings)
         args = _unplaceholder(placeholders)
+        link_locales = read_link_locale_mappings(self.settings)
 
-        html = HtmlRenderer(template, self.settings, email).render(placeholders)
+        html = HtmlRenderer(template, link_locales, email, self.settings).render(placeholders)
         return html, args.get('subject')
 
     def _find_styles(self, path_glob='*.css'):
