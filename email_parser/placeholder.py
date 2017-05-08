@@ -8,7 +8,7 @@ from . import fs, reader
 
 PLACEHOLDERS_FILENAME = 'placeholders_config.json'
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 
 @lru_cache(maxsize=None)
@@ -86,8 +86,10 @@ def _validate_placeholders(placeholders):
 
 
 def _reduce_to_email_placeholders(placeholders):
-    return {email_name: _all_placeholders_for_email_name(locale_placeholders)
-            for email_name, locale_placeholders in placeholders.items()}
+    return {
+        email_name: _all_placeholders_for_email_name(locale_placeholders)
+        for email_name, locale_placeholders in placeholders.items()
+    }
 
 
 def generate_config(settings, indent=4):

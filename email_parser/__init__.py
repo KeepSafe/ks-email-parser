@@ -18,7 +18,7 @@ from functools import reduce
 from multiprocessing import Manager
 from . import cmd, fs, reader, renderer, placeholder, utils
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 loop = asyncio.get_event_loop()
 loop.set_debug(False)
 
@@ -29,11 +29,9 @@ def _render_email(email, link_locale_mappings, settings, fallback_locale=None):
 
     template, placeholders, ignored_plceholder_names = reader.read(email, settings)
     if template:
-        subjects, text, html = renderer.render(
-            email, template, placeholders, ignored_plceholder_names,
-            link_locale_mappings, settings)
-        fs.save(email, subjects, text, html,
-                settings.destination, fallback_locale)
+        subjects, text, html = renderer.render(email, template, placeholders, ignored_plceholder_names,
+                                               link_locale_mappings, settings)
+        fs.save(email, subjects, text, html, settings.destination, fallback_locale)
         return True
     else:
         return False
@@ -70,23 +68,18 @@ def _parse_emails(settings):
     if not link_locale_mappings and not settings.force:
         return False
 
-    emails = iter(
-        fs.emails(settings.source, settings.pattern, settings.exclusive))
+    emails = iter(fs.emails(settings.source, settings.pattern, settings.exclusive))
 
-    executor = concurrent.futures.ProcessPoolExecutor(
-        max_workers=settings.workers_pool)
+    executor = concurrent.futures.ProcessPoolExecutor(max_workers=settings.workers_pool)
     tasks = []
 
     emails_batch = list(islice(emails, settings.workers_pool))
     while emails_batch:
-        task = loop.run_in_executor(
-            executor, _parse_emails_batch, emails_batch,
-            link_locale_mappings, settings)
+        task = loop.run_in_executor(executor, _parse_emails_batch, emails_batch, link_locale_mappings, settings)
         tasks.append(task)
         emails_batch = list(islice(emails, settings.workers_pool))
     results = yield from asyncio.gather(*tasks)
-    result = reduce(
-        lambda acc, result: True if acc and result else False, results)
+    result = reduce(lambda acc, result: True if acc and result else False, results)
     return result
 
 
@@ -99,8 +92,7 @@ def init_log(verbose):
     log_level = logging.DEBUG if verbose else logging.INFO
     error_msgs_queue = Manager().Queue()
     warning_msgs_queue = Manager().Queue()
-    handler = utils.ProgressConsoleHandler(
-        error_msgs_queue, warning_msgs_queue, stream=sys.stdout)
+    handler = utils.ProgressConsoleHandler(error_msgs_queue, warning_msgs_queue, stream=sys.stdout)
     logger.setLevel(log_level)
     logger.addHandler(handler)
 
