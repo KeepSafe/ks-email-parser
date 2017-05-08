@@ -175,7 +175,7 @@ def _push_email_to_cms_service(settings, email_name, email_path):
 
 
 def _set_logging_handler():
-    logger = logging.getLogger()
+    logger = logging.getLogger(__name__)
     error_msgs_queue = Manager().Queue()
     warning_msgs_queue = Manager().Queue()
     handler = utils.ProgressConsoleHandler(error_msgs_queue, warning_msgs_queue, stream=sys.stdout)

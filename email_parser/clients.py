@@ -5,11 +5,10 @@ Each email service has it's own client. The client is responsible for generating
 from . import fs, reader, renderer
 import logging
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 
 class CustomerIoClient(object):
-
     """
     Generates file for customer.io
     Custmer.io has a custom formatting for emails http://customer.io/docs/localization-i18n.html
@@ -49,9 +48,7 @@ class CustomerIoClient(object):
         return True
 
 
-_clients = {
-    'customerio': CustomerIoClient()
-}
+_clients = {'customerio': CustomerIoClient()}
 
 
 def client(client_name):

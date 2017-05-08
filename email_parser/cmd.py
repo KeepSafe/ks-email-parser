@@ -8,31 +8,30 @@ from collections import namedtuple
 
 from . import placeholder
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
-ShortenerSettings = namedtuple('ShortenerSettings', [
-    'name',
-    'properties'
-])
+ShortenerSettings = namedtuple('ShortenerSettings', ['name', 'properties'])
 
-Settings = namedtuple('Settings', [
-    'source',
-    'destination',
-    'templates',
-    'images',
-    'pattern',
-    'right_to_left',
-    'strict',
-    'force',
-    'verbose',
-    'shortener',
-    'exclusive',
-    'default_locale',
-    'workers_pool',
-    'local_images',
-    'save',  # Shell script to be called on save from gui
-    'cms_service_host'
-])
+Settings = namedtuple(
+    'Settings',
+    [
+        'source',
+        'destination',
+        'templates',
+        'images',
+        'pattern',
+        'right_to_left',
+        'strict',
+        'force',
+        'verbose',
+        'shortener',
+        'exclusive',
+        'default_locale',
+        'workers_pool',
+        'local_images',
+        'save',  # Shell script to be called on save from gui
+        'cms_service_host'
+    ])
 
 
 def default_settings():
@@ -52,8 +51,7 @@ def default_settings():
         workers_pool=10,
         local_images='templates_html/img',
         save=None,
-        cms_service_host="http://localhost:5000"
-    )
+        cms_service_host="http://localhost:5000")
 
 
 def read_args(argsargs=argparse.ArgumentParser):
@@ -64,20 +62,22 @@ def read_args(argsargs=argparse.ArgumentParser):
     args.add_argument('-s', '--source', help='args\'s source folder, default: %s' % settings.source)
     args.add_argument(
         '-e', '--exclusive', help='Exclusive path of subset emails to compile, default: %s' % settings.exclusive)
-    args.add_argument('-d', '--destination',
-                      help='args\'s destination folder, default: %s' % settings.destination)
+    args.add_argument('-d', '--destination', help='args\'s destination folder, default: %s' % settings.destination)
     args.add_argument('-t', '--templates', help='Templates folder, default: %s' % settings.templates)
-    args.add_argument('-rtl', '--right-to-left',
-                      help='Comma separated list of RTL language codes, default: %s' % settings.right_to_left)
+    args.add_argument(
+        '-rtl',
+        '--right-to-left',
+        help='Comma separated list of RTL language codes, default: %s' % settings.right_to_left)
     args.add_argument('-i', '--images', help='Images base directory, default: %s' % settings.images)
     args.add_argument('-p', '--pattern', help='Email file search pattern, default: %s' % settings.pattern)
 
-    args.add_argument('-nst', '--not-strict',
-                      help='Disable strict mode, allow templates with unfilled parameters',
-                      action='store_false')
+    args.add_argument(
+        '-nst',
+        '--not-strict',
+        help='Disable strict mode, allow templates with unfilled parameters',
+        action='store_false')
     args.add_argument('-f', '--force', help='Generate emails despite errors', action='store_true')
-    args.add_argument('-wp', '--workers-pool',
-                      help='Number of workers, default: %s' % settings.workers_pool, type=int)
+    args.add_argument('-wp', '--workers-pool', help='Number of workers, default: %s' % settings.workers_pool, type=int)
     args.add_argument('-vv', '--verbose', help='Generate emails despite errors', action='store_true')
     args.add_argument('-v', '--version', help='Show version', action='store_true')
 
@@ -85,16 +85,15 @@ def read_args(argsargs=argparse.ArgumentParser):
 
     template_parser = subparsers.add_parser('client')
     template_parser.add_argument('client', help='Provider name')
-    template_parser.add_argument('email_name',
-                                 help='Name of the email to generate the template for')
+    template_parser.add_argument('email_name', help='Name of the email to generate the template for')
 
     config_parser = subparsers.add_parser('config')
     config_parser.add_argument('config_name', help='Name of config to generate. Available: `placeholders`')
 
     gui_parser = subparsers.add_parser('gui')
     gui_parser.add_argument('-P', '--port', type=int, help='Port to serve on', default=8080)
-    gui_parser.add_argument('-I', '--local-images', type=str, help='Server image directory',
-                            default='templates_html/img')
+    gui_parser.add_argument(
+        '-I', '--local-images', type=str, help='Server image directory', default='templates_html/img')
     gui_parser.add_argument('--save', type=str, help='Shell script to call after save action')
     gui_parser.add_argument('-s', '--cms-service-host', type=str, help='email-service\'s URL')
 

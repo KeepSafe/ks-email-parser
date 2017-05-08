@@ -21,7 +21,7 @@ HTML_EXTENSION = '.html'
 GLOBAL_PLACEHOLDERS_EMAIL_NAME = 'global'
 
 Email = namedtuple('Email', ['name', 'locale', 'path', 'full_path'])
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 
 def _parse_params(pattern):

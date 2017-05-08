@@ -17,7 +17,7 @@ HTML_PARSER = 'lxml'
 SUBJECTS_PLACEHOLDERS = ['subject', 'subject_a', 'subject_b', 'subject_resend']
 LINK_LOCALE = '{link_locale}'
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 
 def _md_to_html(text, base_url=None):
@@ -28,8 +28,8 @@ def _md_to_html(text, base_url=None):
 
 
 def _split_subjects(placeholders):
-    return ([placeholders.get(subject) for subject in SUBJECTS_PLACEHOLDERS],
-            OrderedDict((k, v) for k, v in placeholders.items() if k not in SUBJECTS_PLACEHOLDERS))
+    return ([placeholders.get(subject) for subject in SUBJECTS_PLACEHOLDERS], OrderedDict(
+        (k, v) for k, v in placeholders.items() if k not in SUBJECTS_PLACEHOLDERS))
 
 
 def _map_link_locale(email, link_locale_mappings):
@@ -42,7 +42,6 @@ def _map_link_locale(email, link_locale_mappings):
 
 
 class HtmlRenderer(object):
-
     """
     Renders email' body as html.
     """
@@ -100,8 +99,8 @@ class HtmlRenderer(object):
 
     def _concat_parts(self, subject, parts):
         html = self._read_template()
-        placeholders = dict(parts.items() | {'subject': subject[0]}.items() |
-                            {'base_url': self.settings.images}.items())
+        placeholders = dict(parts.items() | {'subject': subject[0]}.items() | {'base_url': self.settings.images
+                                                                               }.items())
 
         try:
             strict = 'strict' if self.settings.strict else 'ignore'
@@ -110,8 +109,8 @@ class HtmlRenderer(object):
             # add subject for rendering as we have it in html
             return renderer.render(html, placeholders)
         except pystache.context.KeyNotFoundError as e:
-            message = 'template {} for locale {} has missing placeholders: {}'.format(
-                self.template.name, self.locale, e)
+            message = 'template {} for locale {} has missing placeholders: {}'.format(self.template.name, self.locale,
+                                                                                      e)
             raise errors.MissingTemplatePlaceholderError(message) from e
 
     def render(self, placeholders):
@@ -124,7 +123,6 @@ class HtmlRenderer(object):
 
 
 class TextRenderer(object):
-
     """
     Renders email's body as text.
     """
@@ -168,13 +166,14 @@ class TextRenderer(object):
 
     def render(self, placeholders):
         _, contents = _split_subjects(placeholders)
-        parts = [self._md_to_text(v.replace(LINK_LOCALE, self.link_locale))
-                 for k, v in contents.items() if k not in self.ignored_plceholder_names]
+        parts = [
+            self._md_to_text(v.replace(LINK_LOCALE, self.link_locale)) for k, v in contents.items()
+            if k not in self.ignored_plceholder_names
+        ]
         return TEXT_EMAIL_PLACEHOLDER_SEPARATOR.join(v for v in filter(bool, parts))
 
 
 class SubjectRenderer(object):
-
     """
     Renders email's subject as text.
     """

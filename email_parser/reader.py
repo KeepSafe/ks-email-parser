@@ -17,7 +17,7 @@ SUBJECTS_PLACEHOLDERS = ['subject_b', 'subject_a', 'subject_resend', 'subject']
 
 Template = namedtuple('Template', ['name', 'styles', 'content', 'placeholders_order'])
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 
 def _ignored_placeholder_names(tree, prefix=''):

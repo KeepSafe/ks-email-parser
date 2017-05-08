@@ -8,11 +8,16 @@ __pycache__/
 venv/
 *.pyc
 
+# OSX
+.DS_Store
+
 # Intellij files
 .idea/
 *.iml
 
 # Sublime files
-.DS_Store
 *.sublime-project
 *.sublime-workspace
+
+# VS Code
+.vscode
