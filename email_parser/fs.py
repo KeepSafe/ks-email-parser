@@ -120,6 +120,12 @@ def save_file(content, *path_parts):
         return fp.write(content)
 
 
+def delete_file(*path_parts):
+    path = os.path.join(*path_parts)
+    logger.debug('deleting file to %s', path)
+    os.remove(path)
+
+
 def save(email, subjects, text, html, dest_dir, fallback_locale=None):
     """
     Saves an email. The locale and name are taken from email tuple.
@@ -142,6 +148,12 @@ def save(email, subjects, text, html, dest_dir, fallback_locale=None):
         save_file(subjects[3], dest_dir, locale, email.name + SUBJECT_RESEND_EXTENSION)
     save_file(text, dest_dir, locale, email.name + TEXT_EXTENSION)
     save_file(html, dest_dir, locale, email.name + HTML_EXTENSION)
+
+
+def resolve_path(src_dir, pattern, locale, template_name):
+    pattern = pattern.replace('{locale}', locale)
+    pattern = pattern.replace('{name}', template_name)
+    return path(src_dir, pattern)
 
 
 def path(*path_parts):
