@@ -13,7 +13,9 @@ def _update_settings(settings=None):
 
 def get_email(settings, locale, email_name):
     settings = _update_settings(settings)
-    email = next(fs.email(settings.source, settings.pattern, email_name, locale, True))
+    email = fs.master_email(settings.source, settings.pattern, email_name, locale, True)
+    if not email:
+        return None
     if not placeholder.validate_email(settings, email) and not settings.force:
         return None
     template, _, _ = reader.read(email, settings)
@@ -22,8 +24,9 @@ def get_email(settings, locale, email_name):
 
 def parse_email(settings, locale, email_name):
     settings = _update_settings(settings)
-    email = next(fs.email(settings.source, settings.pattern, email_name, locale, True))
-
+    email = fs.master_email(settings.source, settings.pattern, email_name, locale, True)
+    if not email:
+        return None
     if not placeholder.validate_email(settings, email) and not settings.force:
         return None
     link_locale_mappings = reader.read_link_locale_mappings(settings)
@@ -37,13 +40,13 @@ def parse_email(settings, locale, email_name):
 
 def get_template(settings, locale, template_name):
     settings = _update_settings(settings)
-    email = next(fs.email(settings.source, settings.pattern, template_name, locale, True))
+    email = fs.master_email(settings.source, settings.pattern, template_name, locale, True)
     return fs.read_file(email.full_path)
 
 
 def delete_template(settings, template_name):
     settings = _update_settings(settings)
-    emails = next(fs.email(settings.source, settings.pattern, template_name, None, True))
+    emails = fs.master_email(settings.source, settings.pattern, template_name, None, True)
     files = []
     for email in emails:
         files.append(email.full_path)

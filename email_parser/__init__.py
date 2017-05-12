@@ -39,18 +39,18 @@ def _render_email(email, link_locale_mappings, settings, fallback_locale=None):
 
 def _parse_email(email, link_locale_mappings, settings):
     if _render_email(email, link_locale_mappings, settings):
-        logging.info('.', extra={'same_line': True})
+        logger.info('.', extra={'same_line': True})
         return True
     else:
         # TODO create default_locale_email function in fs module
         default_locale_email = next(
             fs.email(settings.source, settings.pattern, email.name, settings.default_locale), None)
         if default_locale_email and _render_email(default_locale_email, link_locale_mappings, settings, email.locale):
-            logging.info('F', extra={'same_line': True})
-            logging.warn('Email %s/%s substituted by %s/%s' %
-                         (email.locale, email.name, default_locale_email.locale, default_locale_email.name))
+            logger.info('F', extra={'same_line': True})
+            logger.warn('Email %s/%s substituted by %s/%s' %
+                        (email.locale, email.name, default_locale_email.locale, default_locale_email.name))
         else:
-            logging.info('E', extra={'same_line': True})
+            logger.info('E', extra={'same_line': True})
         return False
 
 
