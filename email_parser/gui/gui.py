@@ -47,13 +47,15 @@ CONTENT_TYPES = {
     '.jpeg': 'image/jpeg',
 }
 
+TEMPLATE_EXTENSION = '.xml'
+
 # Dealing with documents, in our cache & invented from POST params
 
 Document = namedtuple('Document', ['working_name', 'email_name', 'template_name', 'styles', 'args'])
 
 RECENT_DOCUMENTS = dict()
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 error_msgs_queue = Manager().Queue()
 warning_msgs_queue = Manager().Queue()
 default_logger_handler = utils.ProgressConsoleHandler(error_msgs_queue, warning_msgs_queue, stream=sys.stdout)
@@ -157,7 +159,8 @@ def _unplaceholder(placeholders):
 
 
 def _get_email_locale_n_name(email_name):
-    match = re.match(r'([^/]+)/([^/]+).xml', email_name)
+    logger.info("email_name", email_name)
+    match = re.match(r'([^/]+)/([^/]+)' + TEMPLATE_EXTENSION, email_name)
     return match.group(1, 2)
 
 
@@ -670,15 +673,18 @@ class Server(object):
     @cherrypy.expose
     def saveas(self, working_name, *email_paths, **args):
         email_name = '/'.join(email_paths)
-        saveas = args.pop(SAVEAS_PARAM_NAME, None)
-        if saveas:
-            email_name = '/'.join((email_name, saveas))
+        saveas_filename = args.pop(SAVEAS_PARAM_NAME, None)
+        if saveas_filename:
+            saveas_filename += TEMPLATE_EXTENSION if not saveas_filename[-4:] == TEMPLATE_EXTENSION else ''
+            parts = (email_name, saveas_filename)
+            email_name = '/'.join(parts)
         raise cherrypy.HTTPRedirect('/save/{0}/{1}'.format(working_name, email_name))
 
     @cherrypy.expose
     def save(self, working_name, *paths, **args):
         rel_path = '/'.join(paths)
         full_path = os.path.join(self.settings.source, rel_path)
+
         document = _extract_document({}, working_name)
         if not document.template_name:
             raise cherrypy.HTTPRedirect('/timeout')
@@ -686,6 +692,8 @@ class Server(object):
         overwrite = args.pop(OVERWRITE_PARAM_NAME, False)
         placeholders_change = False
         placeholders_messages = []
+
+        logger.info('working_name: ${0}, paths: ${1}, args: ${2}', working_name, paths, args)
 
         if os.path.exists(full_path) and not os.path.isdir(full_path):
             validating_content = self.final_renderer.content_to_validate(rel_path, document.template_name,
