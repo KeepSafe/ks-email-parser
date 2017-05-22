@@ -418,7 +418,7 @@ class InlineFormRenderer(GenericRenderer):
         replacer = InlineFormReplacer.make(self.settings, args, template_name)
 
         edit_html = replacer.html
-        edit_column = _get_body_content_string(edit_html).strip()
+        edit_column = '<form name=\"gui-edit-content-form\">{0}</form>'.format(_get_body_content_string(edit_html).strip())
         image_attrs = self._find_image_attrs(edit_html)
         image_filenames = self._find_images()
 
@@ -648,7 +648,7 @@ class Server(object):
             html, subject = self.final_renderer.render_email(email)
             return self.edit_renderer.question(
                 title=html_escape(subject),
-                description=_get_body_content_string(html),
+                # description=_get_body_content_string(html),
                 actions=[
                     ['Edit', '/alter/{}'.format(email_name)],
                     ['Push to repository', '/push/{}'.format(email_name)],
