@@ -575,6 +575,18 @@ class Server(object):
     def template(self, *paths, **_ignored):
         template_name = '/'.join(paths)
         template_path = os.path.join(self.settings.templates, template_name)
+
+        root_path = self.settings.source
+        available_locale_dict = {}
+        for name in sorted(os.listdir(root_path)):
+            name_path = os.path.join(root_path, name)
+            if os.path.isdir(name_path):
+                available_locale_dict[name] = name_path
+
+        extra_args = {
+            'availableLocaleDict': available_locale_dict
+        }
+
         if os.path.isdir(template_path):
             return self.edit_renderer.directory('Contents of ' + (template_name or 'template directory'),
                                                 self.settings.templates, template_name, '/template/{}'.format,
@@ -586,7 +598,8 @@ class Server(object):
             return self.edit_renderer.render_editor(
                 document.template_name,
                 document.styles,
-                actions=self._actions(document, **{TEMPLATE_PARAM_NAME: template_name}), )
+                actions=self._actions(document, **{TEMPLATE_PARAM_NAME: template_name}),
+                **extra_args)
 
     @cherrypy.expose
     def preview(self, working_name, **args):

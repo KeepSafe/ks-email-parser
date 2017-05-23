@@ -54,6 +54,20 @@
                     <div class="row">
                         <div class="col-md-4 col-md-offset-4">
                             <div class="form-group">
+                                <label for="saveAsFilename">Template filename</label>
+                                <input type="text" class="form-control" name="templateFilename" id="saveAsFilename"
+                                       placeholder="Template filename"
+                                       required>
+                            </div>
+                            <div class="form-group">
+                                <label for="saveAsLocale">Template locale</label>
+                                <select multiple class="form-control" id="saveAsLocale" name="saveAsLocale" required>
+                                    {% for locale_name, locale_path in values['availableLocaleDict'].items() %}
+                                        <option value="{{ locale_path|e }}">{{ locale_name|e }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="form-group">
                                 <label for="cssMultipleSelect">Template style</label>
                                 <select multiple class="form-control" id="cssMultipleSelect" name="HIDDEN__styles" required>
                                     {% for style in all_styles %}
