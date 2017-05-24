@@ -82,4 +82,5 @@ def save_email_placeholders(settings, placeholders):
 
 
 def placeholders_filepath(settings):
+    settings = _update_settings(settings)
     return fs.path(settings.source, placeholder.PLACEHOLDERS_FILENAME)
