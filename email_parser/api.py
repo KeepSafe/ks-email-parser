@@ -60,8 +60,7 @@ def save_template(settings, locale, template_name, template):
     path = fs.resolve_path(settings.source, settings.pattern, locale, template_name)
     fs.save_file(template, path)
     placeholder.generate_config(settings)
-    if placeholder.validate_email_content(locale, template_name, template, settings.source):
-        return path
+    return path
 
 
 def get_email_names(settings):
