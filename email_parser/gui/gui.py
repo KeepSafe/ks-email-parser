@@ -25,6 +25,8 @@ import logging
 import sys
 from multiprocessing import Manager
 
+import json
+
 RESOURCE_PACKAGE = 'email_parser.resources.gui'
 
 DOCUMENT_TIMEOUT = 24 * 60 * 60  # 24 hours
@@ -159,8 +161,7 @@ def _unplaceholder(placeholders):
 
 
 def _get_email_locale_n_name(email_name):
-    logger.info("email_name", email_name)
-    match = re.match(r'([^/]+)/([^/]+)' + TEMPLATE_EXTENSION, email_name)
+    match = re.match(r'([^/]+)/([^/]+)', email_name)
     return match.group(1, 2)
 
 
@@ -425,6 +426,7 @@ class InlineFormRenderer(GenericRenderer):
         return self.gui_template(
             "editor.html.jinja2",
             view_url=actions.get('preview_fragment'),
+            validation_url=actions.get('validation_status'),
             title='Editing {}'.format(template_name),
             subject=args.get('subject', ''),
             content=edit_column,
@@ -501,6 +503,7 @@ class Server(object):
             'save': '{}{}'.format(cls._make_save_url(document), qargs),
             'edit': '/edit/{}{}'.format(document.working_name, qargs),
             'preview_fragment': '/preview_fragment/{}{}'.format(document.working_name, qargs),
+            'validation_status': '/validation_status/{}{}'.format(document.working_name, qargs),
         }
 
     @cherrypy.expose
@@ -611,6 +614,30 @@ class Server(object):
         html, _ = self.final_renderer.render_preview(document.template_name, document.styles, **document.args)
         return html
 
+    def get_placeholder_validation_errors(self, path, template_name, styles, **args):
+        content_to_validate = self.final_renderer.content_to_validate(path, template_name, styles, **args)
+        locale, name = _get_email_locale_n_name(path)
+        if not place_holders.validate_email_content(locale, name, content_to_validate, self.settings.source):
+            return list(default_logger_handler.error_msgs())
+        return []
+
+    @cherrypy.expose
+    @cherrypy.tools.json_out()
+    def validation_status(self, working_name, **args):
+        path = '/'.join([args['localePath'], args['templateFilename']])
+        errors_list = []
+        try:
+            document = _extract_document(args, working_name)
+            errors_list = self.get_placeholder_validation_errors(path, document.template_name, document.styles, **document.args)
+        except Exception as ex:
+            logger.warning('Could not validate template %s' % ex)
+
+        res = {
+            'validationErrors': errors_list
+        }
+
+        return res
+
     @cherrypy.expose
     def preview_fragment(self, working_name, **args):
         document = _extract_document(args, working_name)
@@ -705,16 +732,6 @@ class Server(object):
         overwrite = args.pop(OVERWRITE_PARAM_NAME, False)
         placeholders_change = False
         placeholders_messages = []
-
-        logger.info('working_name: ${0}, paths: ${1}, args: ${2}', working_name, paths, args)
-
-        if os.path.exists(full_path) and not os.path.isdir(full_path):
-            validating_content = self.final_renderer.content_to_validate(rel_path, document.template_name,
-                                                                         document.styles, **document.args)
-            locale, name = _get_email_locale_n_name(rel_path)
-            placeholders_change = not place_holders.validate_email_content(locale, name, validating_content,
-                                                                           self.settings.source)
-            placeholders_messages = list(default_logger_handler.error_msgs())
 
         if overwrite or not os.path.exists(full_path):
             # Create and save
