@@ -411,7 +411,8 @@ class InlineFormRenderer(GenericRenderer):
         replacer = InlineFormReplacer.make(self.settings, args, template_name)
 
         edit_html = replacer.html
-        edit_column = '<form name=\"gui-edit-content-form\">{0}</form>'.format(_get_body_content_string(edit_html).strip())
+        edit_column_tpl = '<form name=\"gui-edit-content-form\">{0}</form>'
+        edit_column = edit_column_tpl.format(_get_body_content_string(edit_html).strip())
         image_attrs = self._find_image_attrs(edit_html)
         image_filenames = self._find_images()
 
@@ -612,7 +613,10 @@ class Server(object):
         errors_list = []
         try:
             document = _extract_document(args, working_name)
-            errors_list = self.get_placeholder_validation_errors(path, document.template_name, document.styles, **document.args)
+            errors_list = self.get_placeholder_validation_errors(path,
+                                                                 document.template_name,
+                                                                 document.styles,
+                                                                 **document.args)
         except Exception as ex:
             logger.warning('Could not validate template %s' % ex)
 
@@ -737,6 +741,7 @@ class Server(object):
                 actions=[['View', '/email/{}'.format(rel_path)], ])
 
         try:
+            res = None
             create_template_action = ['Create new email', '/template/{}'.format(document.template_name)]
             res = _push_email_to_cms_service(self.settings, rel_path, email_path)
 
@@ -745,8 +750,9 @@ class Server(object):
                                                str(e),
                                                [create_template_action, ])
         except service.ServiceError as e:
-            message = 'Service respond with: Status: <code>%s</code><br/><code>%s</code><br/>' % (
-                e.status, e.text)
+            message = 'Service respond with: Status: ' \
+                      '<code>%s</code><br/><code>%s</code><br/>' % (e.status, e.text)
+            message += 'Response: <code>%s</code><br/>' if res else ''
             return self.edit_renderer.question('ERROR',
                                                message,
                                                [create_template_action, ])
