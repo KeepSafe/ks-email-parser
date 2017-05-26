@@ -79,6 +79,8 @@
                                        pattern=".+\.xml"
                                        placeholder="Template filename"
                                        aria-describedby="helpBlock2"
+                                       value="{{ values.get('templateFilename', '') }}"
+                                       readonly="{{ 'true' if values.get('templateFilename', None) else 'false'}}"
                                        required>
                                 <span id="helpBlock2" class="help-block">
                                     File name should end with <b>.xml</b> extension
@@ -86,9 +88,14 @@
                             </div>
                             <div class="form-group">
                                 <label for="localeName">Template locale</label>
-                                <select class="form-control" id="localeName" name="localePath" required>
-                                    {% for locale_name, locale_path in values['availableLocaleDict'].items() %}
-                                        <option value="{{ locale_path|e }}">{{ locale_name|e }}</option>
+                                <select class="form-control" id="localeName" name="localePath" required
+                                        readonly="{{ 'true' if values.get('localePath', None) else 'false' }}">
+                                {% for locale_name, locale_path in values['availableLocaleDict'].items() %}
+                                        <option value="{{ locale_path|e }}"
+                                                {{ 'selected' if values.get('localePath', None) == locale_name else '' }}
+                                        >
+                                        {{ locale_name|e }}
+                                        </option>
                                     {% endfor %}
                                 </select>
                             </div>

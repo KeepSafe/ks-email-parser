@@ -479,6 +479,21 @@ class InlineFormRenderer(GenericRenderer):
 
 
 # Server
+def get_availble_locale(root_path):
+    """
+    extracts list of directories from given root_path
+    directories are assumed to be locale names
+
+    :return:
+    """
+
+    available_locale_dict = {}
+    for name in sorted(os.listdir(root_path)):
+        name_path = os.path.join(root_path, name)
+        if os.path.isdir(name_path):
+            available_locale_dict[name] = name
+
+    return available_locale_dict
 
 
 class Server(object):
@@ -555,16 +570,8 @@ class Server(object):
     def template(self, *paths, **_ignored):
         template_name = '/'.join(paths)
         template_path = os.path.join(self.settings.templates, template_name)
-
-        root_path = self.settings.source
-        available_locale_dict = {}
-        for name in sorted(os.listdir(root_path)):
-            name_path = os.path.join(root_path, name)
-            if os.path.isdir(name_path):
-                available_locale_dict[name] = name
-
         extra_args = {
-            'availableLocaleDict': available_locale_dict
+            'availableLocaleDict': get_availble_locale(self.settings.source)
         }
 
         if os.path.isdir(template_path):
@@ -668,6 +675,7 @@ class Server(object):
                 description=_get_body_content_string(html),
                 actions=[
                     ['OK', '/'],
+                    ['Edit', '/alter/{}'.format(email_name)],
                 ])
 
     @cherrypy.expose
@@ -676,6 +684,13 @@ class Server(object):
         email = _get_email(email_name, self.settings)
         template, placeholders, _ = reader_read(email, self.settings)
         args = _unplaceholder(placeholders)
+        extra_args = {
+            'availableLocaleDict': {
+                email.locale: email.locale
+            },
+            'localePath': email.locale,
+            'templateFilename': email.name + TEMPLATE_EXTENSION
+        }
         document = _extract_document(
             args, email_name=email_name, template_name=template.name, template_styles=template.styles)
 
@@ -683,7 +698,7 @@ class Server(object):
             document.template_name,
             document.styles,
             actions=self._actions(document, **{EMAIL_PARAM_NAME: email_name}),
-            **document.args)
+            **{**extra_args, **document.args})
 
     @cherrypy.expose
     def saveas(self, working_name, *email_paths, **args):
