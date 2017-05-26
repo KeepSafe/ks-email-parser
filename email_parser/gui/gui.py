@@ -25,8 +25,6 @@ import logging
 import sys
 from multiprocessing import Manager
 
-import json
-
 RESOURCE_PACKAGE = 'email_parser.resources.gui'
 
 DOCUMENT_TIMEOUT = 24 * 60 * 60  # 24 hours
@@ -161,7 +159,7 @@ def _unplaceholder(placeholders):
 
 
 def _get_email_locale_n_name(email_name):
-    match = re.match(r'([^/]+)/([^/]+)', email_name)
+    match = re.match(r'([^/]+)/([^/]+)' + TEMPLATE_EXTENSION, email_name)
     return match.group(1, 2)
 
 
@@ -394,12 +392,6 @@ class InlineFormRenderer(GenericRenderer):
             values=replacer.make_value_list(), )
         return xml
 
-        if self.settings.save:
-            abspath = os.path.abspath(os.path.join(self.settings.source, email_name))
-            return subprocess.check_output([self.settings.save, abspath], stderr=subprocess.STDOUT)
-        else:
-            return None
-
     def content_to_validate(self, *args, **kwargs):
         kwargs['ommit_global_placeholders'] = False
         return self.content_to_save(*args, **kwargs)
@@ -533,21 +525,6 @@ class Server(object):
             ])
 
     @cherrypy.expose
-    def push(self, *paths, **_ignored):
-        email_name = '/'.join(paths)
-        email_path = os.path.join(self.settings.source, email_name)
-
-        try:
-            res = _push_email_to_cms_service(self.settings, email_name, email_path)
-            messages = ['SUCCES', res]
-        except service.TimeoutError as e:
-            messages = ['ERROR', str(e)]
-        except service.ServiceError as e:
-            messages = ['ERROR', 'Service respond with: <code>%s</code><br/><code>%s</code>' % (e.status, e.text)]
-
-        return self.edit_renderer.question(messages[0], messages[1], [['Go back', '/email/{}'.format(email_name)], ])
-
-    @cherrypy.expose
     def pull(self, *paths, **_ignored):
         email_name = '/'.join(paths)
 
@@ -584,7 +561,7 @@ class Server(object):
         for name in sorted(os.listdir(root_path)):
             name_path = os.path.join(root_path, name)
             if os.path.isdir(name_path):
-                available_locale_dict[name] = name_path
+                available_locale_dict[name] = name
 
         extra_args = {
             'availableLocaleDict': available_locale_dict
@@ -688,11 +665,9 @@ class Server(object):
             html, subject = self.final_renderer.render_email(email)
             return self.edit_renderer.question(
                 title=html_escape(subject),
-                # description=_get_body_content_string(html),
+                description=_get_body_content_string(html),
                 actions=[
-                    ['Edit', '/alter/{}'.format(email_name)],
-                    ['Push to repository', '/push/{}'.format(email_name)],
-                    ['Update from repository', '/pull/{}'.format(email_name)],
+                    ['OK', '/'],
                 ])
 
     @cherrypy.expose
@@ -722,65 +697,47 @@ class Server(object):
 
     @cherrypy.expose
     def save(self, working_name, *paths, **args):
-        rel_path = '/'.join(paths)
-        full_path = os.path.join(self.settings.source, rel_path)
+        rel_path = '/'.join([args['localePath'], args['templateFilename']])
 
         document = _extract_document({}, working_name)
         if not document.template_name:
             raise cherrypy.HTTPRedirect('/timeout')
 
-        overwrite = args.pop(OVERWRITE_PARAM_NAME, False)
-        placeholders_change = False
-        placeholders_messages = []
+        email_path = os.path.join(self.settings.source, rel_path)
 
-        if overwrite or not os.path.exists(full_path):
-            # Create and save
-            try:
-                output = self.final_renderer.save(rel_path, document.template_name, document.styles, **document.args)
-                if output:
-                    output = str(output, 'utf-8')
-                    return self.final_renderer.question(
-                        title='Saved & postprocessed email: {}'.format(rel_path),
-                        description=html_escape(output),
-                        actions=[['View', '/email/{}'.format(rel_path), 2000], ])
-
-            except subprocess.CalledProcessError as err:
-                output = str(err.output, 'utf-8') if err.output else 'Error #{}'.format(err.returncode)
-                return self.final_renderer.error(
-                    title='Postprocessing failed for email: {}'.format(rel_path),
+        try:
+            output = self.final_renderer.save(rel_path, document.template_name, document.styles, **document.args)
+            if output:
+                output = str(output, 'utf-8')
+                return self.final_renderer.question(
+                    title='Saved & postprocessed email: {}'.format(rel_path),
                     description=html_escape(output),
-                    actions=[['View', '/email/{}'.format(rel_path)], ])
+                    actions=[['View', '/email/{}'.format(rel_path), 2000], ])
 
-            # No postprocessing performed/requested
-            raise cherrypy.HTTPRedirect('/email/{}'.format(rel_path))
-        elif os.path.isdir(full_path):
-            # Show directory or allow user to create new file
-            html = self.edit_renderer.directory(
-                'Select save name/directory: ' + rel_path,
-                self.settings.source,
-                rel_path, (lambda path: '/save/{0}/{1}'.format(working_name, path)),
-                old_filename=os.path.basename(document.email_name) if document.email_name else '',
-                actions=[
-                    ['Save', '/saveas/{0}/{1}'.format(working_name, rel_path)],
-                    ['Return to Edit', '/edit/{}'.format(working_name)],
-                ])
-            return html
-        else:
-            # File already exists or placeholders change: overwrite?
-            question_str = 'Are you sure you want to overwrite the existing email <code>{}</code>?'.format(rel_path)
-            if placeholders_change:
-                question_str = 'Are you sure you want to overwrite the existing email <code>{0}</code>?\
-                                <blockquote><b>WARNING</b><br/>{1}\
-                                </blockquote>'.format(rel_path, '<br/>'.join(placeholders_messages))
+        except subprocess.CalledProcessError as err:
+            output = str(err.output, 'utf-8') if err.output else 'Error #{}'.format(err.returncode)
+            return self.final_renderer.error(
+                title='Postprocessing failed for email: {}'.format(rel_path),
+                description=html_escape(output),
+                actions=[['View', '/email/{}'.format(rel_path)], ])
 
-            # File already exists: overwrite?
-            return self.edit_renderer.question('Overwriting ' + rel_path, question_str, [
-                ['No, save as a new file', '/save/{0}/{1}'.format(working_name, os.path.dirname(rel_path))],
-                [
-                    'Yes, how dare you question me!', '/save/{0}/{1}?{2}=1'.format(working_name, rel_path,
-                                                                                   OVERWRITE_PARAM_NAME)
-                ],
-            ])
+        try:
+            create_template_action = ['Create new email', '/template/{}'.format(document.template_name)]
+            res = _push_email_to_cms_service(self.settings, rel_path, email_path)
+
+        except service.TimeoutError as e:
+            return self.edit_renderer.question('ERROR',
+                                               str(e),
+                                               [create_template_action, ])
+        except service.ServiceError as e:
+            message = 'Service respond with: Status: <code>%s</code><br/><code>%s</code><br/>' % (
+                e.status, e.text)
+            return self.edit_renderer.question('ERROR',
+                                               message,
+                                               [create_template_action, ])
+
+        # No postprocessing performed/requested
+        raise cherrypy.HTTPRedirect('/email/{}'.format(rel_path))
 
     @classmethod
     def _make_save_url(cls, document):

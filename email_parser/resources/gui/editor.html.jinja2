@@ -11,7 +11,7 @@
                 var incomplete_form = true;
                 var validationElem = "<li class='list-group-item list-group-item-warning'>[MSG]</li>";
 
-                function validate_placeholders() {
+                function validate_placeholders(serialized) {
                     $('#validationInfoList').empty();
                     return $.post('{{ validation_url }}', serialized, function (data) {
                         if (data.hasOwnProperty('validationErrors') && data.validationErrors.length > 0) {
@@ -53,7 +53,7 @@
                             last_serialized = serialized;
                         }, 'html').then(function () {
                             if (!incomplete_form) {
-                                validate_placeholders();
+                                validate_placeholders(serialized);
                             }
                         });
                     }
@@ -111,7 +111,7 @@
                                     formaction="{{ save_url|e }}"
                                     id="gui-submit-save"
                                     disabled="disabled">
-                                Submit
+                                Save
                             </button>
                             </div>
                         </div>
