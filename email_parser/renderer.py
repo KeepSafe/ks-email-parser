@@ -10,12 +10,8 @@ import inlinestyler.utils as inline_styler
 import xml.etree.ElementTree as ET
 from collections import OrderedDict
 
-from . import markdown_ext, errors, fs, link_shortener
-
-TEXT_EMAIL_PLACEHOLDER_SEPARATOR = '\n\n'
-HTML_PARSER = 'lxml'
-SUBJECTS_PLACEHOLDERS = ['subject', 'subject_a', 'subject_b', 'subject_resend']
-LINK_LOCALE = '{link_locale}'
+from . import markdown_ext, fs, link_shortener, const
+from .model import *
 
 logger = logging.getLogger(__name__)
 
@@ -28,8 +24,8 @@ def _md_to_html(text, base_url=None):
 
 
 def _split_subjects(placeholders):
-    return ([placeholders.get(subject) for subject in SUBJECTS_PLACEHOLDERS], OrderedDict(
-        (k, v) for k, v in placeholders.items() if k not in SUBJECTS_PLACEHOLDERS))
+    return ([placeholders.get(subject) for subject in const.SUBJECTS_PLACEHOLDERS], OrderedDict(
+        (k, v) for k, v in placeholders.items() if k not in const.SUBJECTS_PLACEHOLDERS))
 
 
 def _map_link_locale(email, link_locale_mappings):
@@ -94,7 +90,7 @@ class HtmlRenderer(object):
     def _render_placeholder(self, placeholder, css):
         if not placeholder.strip():
             return placeholder
-        html = _md_to_html(placeholder.replace(LINK_LOCALE, self.link_locale), self.settings.images)
+        html = _md_to_html(placeholder.replace(const.LINK_LOCALE, self.link_locale), self.settings.images)
         return self._inline_css(html, css)
 
     def _concat_parts(self, subject, parts):
@@ -111,7 +107,7 @@ class HtmlRenderer(object):
         except pystache.context.KeyNotFoundError as e:
             message = 'template {} for locale {} has missing placeholders: {}'.format(self.template.name, self.locale,
                                                                                       e)
-            raise errors.MissingTemplatePlaceholderError(message) from e
+            raise MissingTemplatePlaceholderError(message) from e
 
     def render(self, placeholders):
         subject, contents = _split_subjects(placeholders)
@@ -134,7 +130,7 @@ class TextRenderer(object):
         self.email = email
 
     def _html_to_text(self, html):
-        soup = bs4.BeautifulSoup(html, HTML_PARSER)
+        soup = bs4.BeautifulSoup(html, const.HTML_PARSER)
 
         # replace the value in <a> with the href because soup.get_text() takes the value inside <a> instead or href
         anchors = soup.find_all('a')
@@ -167,10 +163,10 @@ class TextRenderer(object):
     def render(self, placeholders):
         _, contents = _split_subjects(placeholders)
         parts = [
-            self._md_to_text(v.replace(LINK_LOCALE, self.link_locale)) for k, v in contents.items()
+            self._md_to_text(v.replace(const.LINK_LOCALE, self.link_locale)) for k, v in contents.items()
             if k not in self.ignored_plceholder_names
         ]
-        return TEXT_EMAIL_PLACEHOLDER_SEPARATOR.join(v for v in filter(bool, parts))
+        return const.TEXT_EMAIL_PLACEHOLDER_SEPARATOR.join(v for v in filter(bool, parts))
 
 
 class SubjectRenderer(object):
@@ -181,7 +177,7 @@ class SubjectRenderer(object):
     def render(self, placeholders):
         subjects, _ = _split_subjects(placeholders)
         if subjects[0] is None:
-            raise errors.MissingSubjectError('Subject is required for every email')
+            raise MissingSubjectError('Subject is required for every email')
         return subjects
 
 
@@ -195,8 +191,8 @@ def render(email, template, placeholders, ignored_plceholder_names, link_locale_
     html_renderer = HtmlRenderer(template, link_locale_mappings, email, settings)
     try:
         html = html_renderer.render(placeholders)
-    except errors.MissingTemplatePlaceholderError as e:
-        raise errors.RenderingError(
+    except MissingTemplatePlaceholderError as e:
+        raise RenderingError(
             'failed to generate html content for {} with message: {}'.format(email.full_path, e)) from e
 
     return subjects, text, html

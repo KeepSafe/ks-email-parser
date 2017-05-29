@@ -1,7 +1,7 @@
 import os
 from unittest import TestCase
 
-from email_parser import api
+import email_parser
 
 
 def read_fixture(filename):
@@ -19,17 +19,17 @@ class TestAPI(TestCase):
         }
 
     def test_get_email(self):
-        email = api.get_email(self.settings, 'en', 'email')
+        email = email_parser.get_email(self.settings, 'en', 'email')
         self.assertEqual(email, read_fixture('email.raw.html'))
 
     def test_parse_email(self):
-        subjects, text, html = api.parse_email(self.settings, 'en', 'email')
+        subjects, text, html = email_parser.parse_email(self.settings, 'en', 'email')
         self.assertEqual(subjects[0], read_fixture('email.subject').strip())
         self.assertEqual(html, read_fixture('email.html'))
         self.assertEqual(text, read_fixture('email.text').strip())
 
     def test_get_email_names(self):
-        names = api.get_email_names(self.settings)
+        names = email_parser.get_email_names(self.settings)
         self.assertEqual(
             list(names), [
                 'email', 'email_globale', 'email_subject_resend', 'email_subjects_ab', 'fallback',
@@ -37,6 +37,6 @@ class TestAPI(TestCase):
             ])
 
     def test_get_email_placeholders(self):
-        placeholders = api.get_email_placeholders(self.settings)
+        placeholders = email_parser.get_email_placeholders(self.settings)
         self.assertEqual(len(placeholders.keys()), 7)
         self.assertEqual(placeholders['placeholder'], ['placeholder'])

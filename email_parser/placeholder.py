@@ -4,21 +4,19 @@ import json
 import re
 import logging
 
-from . import fs, reader
-
-PLACEHOLDERS_FILENAME = 'placeholders_config.json'
+from . import fs, reader, const
 
 logger = logging.getLogger(__name__)
 
 
 @lru_cache(maxsize=None)
 def _read_placeholders_file(src_dir):
-    content = fs.read_file(src_dir, PLACEHOLDERS_FILENAME)
+    content = fs.read_file(src_dir, const.PLACEHOLDERS_FILENAME)
     return json.loads(content)
 
 
 def _save_placeholders_file(placeholders, src_dir, indent=4):
-    fs.save_file(json.dumps(placeholders, sort_keys=True, indent=indent), src_dir, PLACEHOLDERS_FILENAME)
+    fs.save_file(json.dumps(placeholders, sort_keys=True, indent=indent), src_dir, const.PLACEHOLDERS_FILENAME)
 
 
 def _read_email_placeholders(email_name, src_dir):

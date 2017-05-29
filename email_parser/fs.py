@@ -8,29 +8,20 @@ import parse
 import re
 from pathlib import Path
 from string import Formatter
-from collections import namedtuple
 
-from . import errors
+from . import const
+from .model import *
 
-SUBJECT_EXTENSION = '.subject'
-SUBJECT_RESEND_EXTENSION = '.resend.subject'
-SUBJECT_A_EXTENSION = '.a.subject'
-SUBJECT_B_EXTENSION = '.b.subject'
-TEXT_EXTENSION = '.text'
-HTML_EXTENSION = '.html'
-GLOBAL_PLACEHOLDERS_EMAIL_NAME = 'global'
-
-Email = namedtuple('Email', ['name', 'locale', 'path', 'full_path'])
 logger = logging.getLogger(__name__)
 
 
 def _parse_params(pattern):
     params = [p for p in map(lambda e: e[1], Formatter().parse(pattern)) if p]
     if 'name' not in params:
-        raise errors.MissingPatternParamError(
+        raise MissingPatternParamError(
             '{{name}} is a required parameter in the pattern but it is not present in {}'.format(pattern))
     if 'locale' not in params:
-        raise errors.MissingPatternParamError(
+        raise MissingPatternParamError(
             '{{name}} is a required parameter in the pattern but it is not present in {}'.format(pattern))
     return params
 
@@ -45,7 +36,7 @@ def _emails(src_dir, pattern, params, exclusive_path=None, include_global=False)
     else:
         glob_path = Path(src_dir).glob(wildcard_pattern)
 
-    global_email_pattern = re.compile('/%s\.xml$' % GLOBAL_PLACEHOLDERS_EMAIL_NAME)
+    global_email_pattern = re.compile('/%s\.xml$' % const.GLOBAL_PLACEHOLDERS_EMAIL_NAME)
     for path in sorted(glob_path, key=lambda path: str(path)):
         if not path.is_dir() and (not exclusive_path or _has_correct_ext(path, pattern)):
             str_path = str(path.relative_to(src_dir))
@@ -162,15 +153,15 @@ def save(email, subjects, text, html, dest_dir, fallback_locale=None):
     locale = fallback_locale if fallback_locale else email.locale
 
     os.makedirs(os.path.join(dest_dir, locale), exist_ok=True)
-    save_file(subjects[0], dest_dir, locale, email.name + SUBJECT_EXTENSION)
+    save_file(subjects[0], dest_dir, locale, email.name + const.SUBJECT_EXTENSION)
     if len(subjects) > 1 and subjects[1] is not None:
-        save_file(subjects[1], dest_dir, locale, email.name + SUBJECT_A_EXTENSION)
+        save_file(subjects[1], dest_dir, locale, email.name + const.SUBJECT_A_EXTENSION)
     if len(subjects) > 2 and subjects[2] is not None:
-        save_file(subjects[2], dest_dir, locale, email.name + SUBJECT_B_EXTENSION)
+        save_file(subjects[2], dest_dir, locale, email.name + const.SUBJECT_B_EXTENSION)
     if len(subjects) > 3 and subjects[3] is not None:
-        save_file(subjects[3], dest_dir, locale, email.name + SUBJECT_RESEND_EXTENSION)
-    save_file(text, dest_dir, locale, email.name + TEXT_EXTENSION)
-    save_file(html, dest_dir, locale, email.name + HTML_EXTENSION)
+        save_file(subjects[3], dest_dir, locale, email.name + const.SUBJECT_RESEND_EXTENSION)
+    save_file(text, dest_dir, locale, email.name + const.TEXT_EXTENSION)
+    save_file(html, dest_dir, locale, email.name + const.HTML_EXTENSION)
 
 
 def resolve_path(src_dir, pattern, locale, template_name):

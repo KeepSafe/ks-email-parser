@@ -8,108 +8,86 @@
     :license: Apache, see LICENSE for more details.
 """
 
-import logging
-import sys
-import shutil
-import asyncio
-import concurrent.futures
-from itertools import islice
-from functools import reduce
-from multiprocessing import Manager
-from . import cmd, fs, reader, renderer, placeholder, utils
-
-logger = logging.getLogger(__name__)
-loop = asyncio.get_event_loop()
-loop.set_debug(False)
+from . import placeholder, fs, reader, renderer
+from .model import *
 
 
-def _render_email(email, link_locale_mappings, settings, fallback_locale=None):
+def _update_settings(settings=None):
+    settings = settings or {}
+    dsettings = default_settings()._asdict()
+    dsettings.update(settings)
+    return Settings(**dsettings)
+
+
+def get_email(settings, locale, email_name):
+    settings = _update_settings(settings)
+    email = fs.master_email(settings.source, settings.pattern, email_name, locale, True)
+    if not email:
+        return None
     if not placeholder.validate_email(settings, email) and not settings.force:
-        return False
-
-    template, placeholders, ignored_plceholder_names = reader.read(email, settings)
-    if template:
-        subjects, text, html = renderer.render(email, template, placeholders, ignored_plceholder_names,
-                                               link_locale_mappings, settings)
-        fs.save(email, subjects, text, html, settings.destination, fallback_locale)
-        return True
-    else:
-        return False
+        return None
+    template, _, _ = reader.read(email, settings)
+    return template.content
 
 
-def _parse_email(email, link_locale_mappings, settings):
-    if _render_email(email, link_locale_mappings, settings):
-        logger.info('.', extra={'same_line': True})
-        return True
-    else:
-        # TODO create default_locale_email function in fs module
-        default_locale_email = next(
-            fs.email(settings.source, settings.pattern, email.name, settings.default_locale), None)
-        if default_locale_email and _render_email(default_locale_email, link_locale_mappings, settings, email.locale):
-            logger.info('F', extra={'same_line': True})
-            logger.warn('Email %s/%s substituted by %s/%s' %
-                        (email.locale, email.name, default_locale_email.locale, default_locale_email.name))
-        else:
-            logger.info('E', extra={'same_line': True})
-        return False
-
-
-def _parse_emails_batch(emails, link_locale_mappings, settings):
-    results = [_parse_email(email, link_locale_mappings, settings) for email in emails]
-    result = reduce(lambda acc, res: acc and res, results)
-    return result
-
-
-def _parse_emails(settings):
-    if not settings.exclusive:
-        shutil.rmtree(settings.destination, ignore_errors=True)
-
+def parse_email(settings, locale, email_name):
+    settings = _update_settings(settings)
+    email = fs.master_email(settings.source, settings.pattern, email_name, locale, True)
+    if not email:
+        return None
+    if not placeholder.validate_email(settings, email) and not settings.force:
+        return None
     link_locale_mappings = reader.read_link_locale_mappings(settings)
     if not link_locale_mappings and not settings.force:
-        return False
+        return None
 
-    emails = iter(fs.emails(settings.source, settings.pattern, settings.exclusive))
-
-    executor = concurrent.futures.ProcessPoolExecutor(max_workers=settings.workers_pool)
-    tasks = []
-
-    emails_batch = list(islice(emails, settings.workers_pool))
-    while emails_batch:
-        task = loop.run_in_executor(executor, _parse_emails_batch, emails_batch, link_locale_mappings, settings)
-        tasks.append(task)
-        emails_batch = list(islice(emails, settings.workers_pool))
-    results = yield from asyncio.gather(*tasks)
-    result = reduce(lambda acc, result: True if acc and result else False, results)
-    return result
+    template, placeholders, ignored_placeholder_names = reader.read(email, settings)
+    if template:
+        return renderer.render(email, template, placeholders, ignored_placeholder_names, link_locale_mappings, settings)
 
 
-def parse_emails(settings):
-    result = loop.run_until_complete(_parse_emails(settings))
-    return result
+def get_template(settings, locale, template_name):
+    settings = _update_settings(settings)
+    email = fs.master_email(settings.source, settings.pattern, template_name, locale, True)
+    return fs.read_file(email.full_path)
 
 
-def init_log(verbose):
-    log_level = logging.DEBUG if verbose else logging.INFO
-    error_msgs_queue = Manager().Queue()
-    warning_msgs_queue = Manager().Queue()
-    handler = utils.ProgressConsoleHandler(error_msgs_queue, warning_msgs_queue, stream=sys.stdout)
-    logger.setLevel(log_level)
-    logger.addHandler(handler)
+def delete_template(settings, template_name):
+    settings = _update_settings(settings)
+    emails = fs.master_email(settings.source, settings.pattern, template_name, None, True)
+    files = []
+    for email in emails:
+        files.append(email.full_path)
+        fs.delete_file(email.full_path)
+    placeholder.generate_config(settings)
+    return files
 
 
-def main():
-    args = cmd.read_args()
-    if args.version:
-        result = cmd.print_version()
-    elif args.command:
-        result = cmd.execute_command(args)
-    else:
-        settings = cmd.read_settings(args)
-        init_log(settings.verbose)
-        result = parse_emails(settings)
-    logger.info('\nAll done', extra={'flush_errors': True})
-    sys.exit(0) if result else sys.exit(1)
+def save_template(settings, locale, template_name, template):
+    settings = _update_settings(settings)
+    path = fs.resolve_path(settings.source, settings.pattern, locale, template_name)
+    fs.save_file(template, path)
+    placeholder.generate_config(settings)
+    return path
 
 
-if __name__ == '__main__':
-    main()
+def get_email_names(settings):
+    settings = _update_settings(settings)
+    return (email.name for email in fs.emails(settings.source, settings.pattern, settings.exclusive))
+
+
+def get_email_placeholders(settings):
+    settings = _update_settings(settings)
+    names = (email.name for email in fs.emails(settings.source, settings.pattern, settings.exclusive))
+    return {name: placeholder.from_email_name(name, settings.source) for name in names}
+
+
+def save_email_placeholders(settings, placeholders):
+    settings = _update_settings(settings)
+    placeholder.generate_config(settings)
+    placeholder._read_placeholders_file.cache_clear()
+
+
+def placeholders_filepath(settings):
+    settings = _update_settings(settings)
+    return fs.path(settings.source, placeholder.PLACEHOLDERS_FILENAME)

@@ -3,8 +3,7 @@ import tempfile
 import shutil
 from unittest import TestCase
 
-import email_parser
-from email_parser import fs, cmd
+from email_parser import fs, cmd, cmd2
 
 
 def read_fixture(filename):
@@ -13,7 +12,6 @@ def read_fixture(filename):
 
 
 class TestParser(TestCase):
-
     def setUp(self):
         self.dest = tempfile.mkdtemp()
         settings = cmd.default_settings()._asdict()
@@ -29,7 +27,7 @@ class TestParser(TestCase):
 
     def _run_and_assert(self, actual_filename, expected_filename=None):
         expected_filename = expected_filename or actual_filename
-        email_parser.parse_emails(self.settings)
+        cmd2.parse_emails(self.settings)
         expected = read_fixture(expected_filename).strip()
         actual = fs.read_file(self.dest, 'en', actual_filename).strip()
         self.assertEqual(expected, actual)
@@ -71,16 +69,16 @@ class TestParser(TestCase):
         self._run_and_assert('email.html', 'email.rtl.html')
 
     def test_placeholder(self):
-        email_parser.parse_emails(self.settings)
+        cmd2.parse_emails(self.settings)
         fs.read_file(self.dest, 'en', 'placeholder.html')
 
     def test_missing_placeholder(self):
-        email_parser.parse_emails(self.settings)
+        cmd2.parse_emails(self.settings)
         with self.assertRaises(FileNotFoundError):
             fs.read_file(self.dest, 'en', 'missing_placeholder.html')
 
     def test_template_fallback(self):
-        email_parser.parse_emails(self.settings)
+        cmd2.parse_emails(self.settings)
         expected = fs.read_file(self.dest, 'en', 'fallback.html').strip()
         actual = fs.read_file(self.dest, 'fr', 'fallback.html').strip()
         self.assertEqual(expected, actual)
@@ -88,5 +86,5 @@ class TestParser(TestCase):
     def remove_dest_folder_before_parsing(self):
         _, filepath = tempfile.mkstemp(dir=self.dest, text='dummy')
         self.assertTrue(os.path.exists(filepath))
-        email_parser.parse_emails(self.settings)
+        cmd2.parse_emails(self.settings)
         self.assertFalse(os.path.exists(filepath))

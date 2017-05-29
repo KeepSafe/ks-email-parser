@@ -5,17 +5,11 @@ Extracts email information from an email file.
 import logging
 import json
 import re
-from collections import namedtuple, OrderedDict
+from collections import OrderedDict
 from xml.etree import ElementTree
-from . import fs
 
-LINK_LOCALE_MAPPINGS_FILENAME = 'link_locale_mappings.json'
-
-SEGMENT_REGEX = r'\<string[^>]*>'
-SEGMENT_NAME_REGEX = r' name="([^"]+)"'
-SUBJECTS_PLACEHOLDERS = ['subject_b', 'subject_a', 'subject_resend', 'subject']
-
-Template = namedtuple('Template', ['name', 'styles', 'content', 'placeholders_order'])
+from . import fs, const
+from .model import *
 
 logger = logging.getLogger(__name__)
 
@@ -23,8 +17,10 @@ logger = logging.getLogger(__name__)
 def _ignored_placeholder_names(tree, prefix=''):
     if tree is None:
         return []
-    return ['{0}{1}'.format(prefix, element.get('name')) for
-            element in tree.findall('./string') if element.get('isText') == 'false']
+    return [
+        '{0}{1}'.format(prefix, element.get('name')) for element in tree.findall('./string')
+        if element.get('isText') == 'false'
+    ]
 
 
 def _placeholders(tree, prefix=''):
@@ -40,7 +36,7 @@ def _all_email_placeholders(tree, global_tree):
 
 
 def _ordered_placeholders(names, placeholders):
-    for subject in SUBJECTS_PLACEHOLDERS:
+    for subject in const.SUBJECTS_PLACEHOLDERS:
         if subject in placeholders and subject not in names:
             names.insert(0, subject)
 
@@ -73,16 +69,16 @@ def _find_parse_error(file_path, exception):
     with open(file_path) as f:
         lines = f.read().splitlines()
         error_line = lines[pos[0] - 1]
-        node_matches = re.findall(SEGMENT_REGEX, error_line[:pos[1]])
+        node_matches = re.findall(const.SEGMENT_REGEX, error_line[:pos[1]])
         segment_id = None
 
         if not len(node_matches):
             prev_line = pos[0] - 1
             search_part = ''.join(lines[:prev_line])
-            node_matches = re.findall(SEGMENT_REGEX, search_part)
+            node_matches = re.findall(const.SEGMENT_REGEX, search_part)
 
         if len(node_matches):
-            name_matches = re.findall(SEGMENT_NAME_REGEX, node_matches[-1])
+            name_matches = re.findall(const.SEGMENT_NAME_REGEX, node_matches[-1])
             if len(name_matches):
                 segment_id = name_matches[-1]
 
@@ -91,20 +87,15 @@ def _find_parse_error(file_path, exception):
 
 def _handle_xml_parse_error(path, e):
     line, segment_id = _find_parse_error(path, e)
-    logger.exception(
-        'Unable to read content from %s\n%s\nSegment ID: %s\n_______________\n%s\n%s\n',
-        path,
-        e,
-        segment_id,
-        line.replace('\t', '  '),
-        " " * e.position[1] + "^")
+    logger.exception('Unable to read content from %s\n%s\nSegment ID: %s\n_______________\n%s\n%s\n', path, e,
+                     segment_id, line.replace('\t', '  '), " " * e.position[1] + "^")
 
 
 def global_placeholders(email, settings):
     # read global placeholders email
     try:
         global_email_path = settings.pattern.replace('{locale}', email.locale)
-        global_email_path = global_email_path.replace('{name}', fs.GLOBAL_PLACEHOLDERS_EMAIL_NAME)
+        global_email_path = global_email_path.replace('{name}', const.GLOBAL_PLACEHOLDERS_EMAIL_NAME)
         global_email_fullpath = fs.path(settings.source, global_email_path)
         if fs.is_file(global_email_fullpath):
             global_tree = ElementTree.parse(global_email_fullpath)
@@ -133,7 +124,7 @@ def read(email, settings):
     # read global placeholders email
     try:
         global_email_path = settings.pattern.replace('{locale}', email.locale)
-        global_email_path = global_email_path.replace('{name}', fs.GLOBAL_PLACEHOLDERS_EMAIL_NAME)
+        global_email_path = global_email_path.replace('{name}', const.GLOBAL_PLACEHOLDERS_EMAIL_NAME)
         global_email_fullpath = fs.path(settings.source, global_email_path)
         if fs.is_file(global_email_fullpath):
             global_tree = ElementTree.parse(global_email_fullpath)
@@ -150,7 +141,7 @@ def read(email, settings):
     # check extra placeholders
     email_placeholders = set(_placeholders(tree))
     template_placeholders = set(template.placeholders_order)
-    extra_placeholders = email_placeholders - template_placeholders - set(SUBJECTS_PLACEHOLDERS)
+    extra_placeholders = email_placeholders - template_placeholders - set(const.SUBJECTS_PLACEHOLDERS)
     if extra_placeholders:
         logger.warn('There are extra placeholders %s in email %s/%s, missing in template %s' %
                     (extra_placeholders, email.locale, email.name, template.name))
@@ -163,9 +154,9 @@ def read(email, settings):
 
 def read_link_locale_mappings(settings):
     try:
-        content = fs.read_file(settings.source, LINK_LOCALE_MAPPINGS_FILENAME)
+        content = fs.read_file(settings.source, const.LINK_LOCALE_MAPPINGS_FILENAME)
         return json.loads(content)
     except FileNotFoundError:
-        logger.error('Link locale mapping (%s) could not be found at: %s' % (LINK_LOCALE_MAPPINGS_FILENAME,
+        logger.error('Link locale mapping (%s) could not be found at: %s' % (const.LINK_LOCALE_MAPPINGS_FILENAME,
                                                                              settings.source))
     return {}
