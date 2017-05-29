@@ -90,13 +90,6 @@ def read_args(argsargs=argparse.ArgumentParser):
     config_parser = subparsers.add_parser('config')
     config_parser.add_argument('config_name', help='Name of config to generate. Available: `placeholders`')
 
-    gui_parser = subparsers.add_parser('gui')
-    gui_parser.add_argument('-P', '--port', type=int, help='Port to serve on', default=8080)
-    gui_parser.add_argument(
-        '-I', '--local-images', type=str, help='Server image directory', default='templates_html/img')
-    gui_parser.add_argument('--save', type=str, help='Shell script to call after save action')
-    gui_parser.add_argument('-s', '--cms-service-host', type=str, help='email-service\'s URL')
-
     return args.parse_args()
 
 
@@ -128,8 +121,4 @@ def generate_config(args):
 def execute_command(args):
     if args.command == 'config':
         return generate_config(args)
-    elif args.command == 'gui':
-        from .gui.gui import serve
-        serve(args)
-        return True
     return False
