@@ -91,7 +91,7 @@ def email(src_dir, pattern, email_name, locale=None, include_global=False):
         yield Email(**result.named)
 
 
-def master_email(src_dir, pattern, email_name, locale=None, include_global=False):
+def email_in_locale(src_dir, pattern, email_name, locale=None, include_global=False):
     """
     Gets a single email by name
 

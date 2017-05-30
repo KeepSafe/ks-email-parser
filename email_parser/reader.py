@@ -64,7 +64,7 @@ def _template(tree, settings):
     return Template(name, styles, content, placeholders)
 
 
-def _find_parse_error(file_path, exception):
+def _handle_xml_parse_error(file_path, exception):
     pos = exception.position
     with open(file_path) as f:
         lines = f.read().splitlines()
@@ -81,14 +81,8 @@ def _find_parse_error(file_path, exception):
             name_matches = re.findall(const.SEGMENT_NAME_REGEX, node_matches[-1])
             if len(name_matches):
                 segment_id = name_matches[-1]
-
-        return error_line, segment_id
-
-
-def _handle_xml_parse_error(path, e):
-    line, segment_id = _find_parse_error(path, e)
-    logger.exception('Unable to read content from %s\n%s\nSegment ID: %s\n_______________\n%s\n%s\n', path, e,
-                     segment_id, line.replace('\t', '  '), " " * e.position[1] + "^")
+    logger.exception('Unable to read content from %s\n%s\nSegment ID: %s\n_______________\n%s\n%s\n', file_path,
+                     exception, segment_id, error_line.replace('\t', '  '), " " * exception.position[1] + "^")
 
 
 def global_placeholders(email, settings):
@@ -109,9 +103,9 @@ def global_placeholders(email, settings):
 
 def read(email, settings):
     """
-    Reads an email from the path.
+    Reads an email from a path.
 
-    :param email_path: full path to an email
+    :param email_path: a full path to an email
     :returns: tuple of email template, a collection of placeholders and ignored_placeholder_names
     """
     # read email

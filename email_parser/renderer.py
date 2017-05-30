@@ -105,8 +105,7 @@ class HtmlRenderer(object):
             # add subject for rendering as we have it in html
             return renderer.render(html, placeholders)
         except pystache.context.KeyNotFoundError as e:
-            message = 'template {} for locale {} has missing placeholders: {}'.format(self.template.name, self.locale,
-                                                                                      e)
+            message = 'template %s for locale %s has missing placeholders: %s' % (self.template.name, self.locale, e)
             raise MissingTemplatePlaceholderError(message) from e
 
     def render(self, placeholders):
