@@ -47,11 +47,27 @@ CONTENT_TYPES = {
     '.jpeg': 'image/jpeg',
 }
 
+TEMPLATE_EXTENSION = '.xml'
+
 # Dealing with documents, in our cache & invented from POST params
 
 Document = namedtuple('Document', ['working_name', 'email_name', 'template_name', 'styles', 'args'])
 
 RECENT_DOCUMENTS = dict()
+
+logger = logging.getLogger(__name__)
+error_msgs_queue = Manager().Queue()
+warning_msgs_queue = Manager().Queue()
+default_logger_handler = utils.ProgressConsoleHandler(error_msgs_queue, warning_msgs_queue, stream=sys.stdout)
+logger.setLevel(logging.INFO)
+logger.addHandler(default_logger_handler)
+
+
+def merge_two_dicts(x, y):
+    """Given two dicts, merge them into a new dict as a shallow copy."""
+    z = x.copy()
+    z.update(y)
+    return z
 
 
 def _clean_documents():
@@ -150,7 +166,7 @@ def _unplaceholder(placeholders):
 
 
 def _get_email_locale_n_name(email_name):
-    match = re.match(r'([^/]+)/([^/]+).xml', email_name)
+    match = re.match(r'([^/]+)/([^/]+)' + TEMPLATE_EXTENSION, email_name)
     return match.group(1, 2)
 
 
@@ -172,16 +188,6 @@ def _push_email_to_cms_service(settings, email_name, email_path):
     req = client.push_template(locale, name, email_path)
     res = loop.run_until_complete(req)
     return res
-
-
-def _set_logging_handler():
-    logger = logging.getLogger(__name__)
-    error_msgs_queue = Manager().Queue()
-    warning_msgs_queue = Manager().Queue()
-    handler = utils.ProgressConsoleHandler(error_msgs_queue, warning_msgs_queue, stream=sys.stdout)
-    logger.setLevel(logging.INFO)
-    logger.addHandler(handler)
-    return handler
 
 
 def _get_email(email_name, settings):
@@ -393,12 +399,6 @@ class InlineFormRenderer(GenericRenderer):
             values=replacer.make_value_list(), )
         return xml
 
-        if self.settings.save:
-            abspath = os.path.abspath(os.path.join(self.settings.source, email_name))
-            return subprocess.check_output([self.settings.save, abspath], stderr=subprocess.STDOUT)
-        else:
-            return None
-
     def content_to_validate(self, *args, **kwargs):
         kwargs['ommit_global_placeholders'] = False
         return self.content_to_save(*args, **kwargs)
@@ -418,13 +418,15 @@ class InlineFormRenderer(GenericRenderer):
         replacer = InlineFormReplacer.make(self.settings, args, template_name)
 
         edit_html = replacer.html
-        edit_column = _get_body_content_string(edit_html).strip()
+        edit_column_tpl = '<form name=\"gui-edit-content-form\">{0}</form>'
+        edit_column = edit_column_tpl.format(_get_body_content_string(edit_html).strip())
         image_attrs = self._find_image_attrs(edit_html)
         image_filenames = self._find_images()
 
         return self.gui_template(
             "editor.html.jinja2",
             view_url=actions.get('preview_fragment'),
+            validation_url=actions.get('validation_status'),
             title='Editing {}'.format(template_name),
             subject=args.get('subject', ''),
             content=edit_column,
@@ -485,6 +487,21 @@ class InlineFormRenderer(GenericRenderer):
 
 
 # Server
+def get_availble_locale(root_path):
+    """
+    extracts list of directories from given root_path
+    directories are assumed to be locale names
+
+    :return:
+    """
+
+    available_locale_dict = {}
+    for name in sorted(os.listdir(root_path)):
+        name_path = os.path.join(root_path, name)
+        if os.path.isdir(name_path):
+            available_locale_dict[name] = name
+
+    return available_locale_dict
 
 
 class Server(object):
@@ -501,6 +518,7 @@ class Server(object):
             'save': '{}{}'.format(cls._make_save_url(document), qargs),
             'edit': '/edit/{}{}'.format(document.working_name, qargs),
             'preview_fragment': '/preview_fragment/{}{}'.format(document.working_name, qargs),
+            'validation_status': '/validation_status/{}{}'.format(document.working_name, qargs),
         }
 
     @cherrypy.expose
@@ -528,21 +546,6 @@ class Server(object):
                 ['Create new', '/template'],
                 ['Edit', '/email'],
             ])
-
-    @cherrypy.expose
-    def push(self, *paths, **_ignored):
-        email_name = '/'.join(paths)
-        email_path = os.path.join(self.settings.source, email_name)
-
-        try:
-            res = _push_email_to_cms_service(self.settings, email_name, email_path)
-            messages = ['SUCCES', res]
-        except service.TimeoutError as e:
-            messages = ['ERROR', str(e)]
-        except service.ServiceError as e:
-            messages = ['ERROR', 'Service respond with: <code>%s</code><br/><code>%s</code>' % (e.status, e.text)]
-
-        return self.edit_renderer.question(messages[0], messages[1], [['Go back', '/email/{}'.format(email_name)], ])
 
     @cherrypy.expose
     def pull(self, *paths, **_ignored):
@@ -575,6 +578,10 @@ class Server(object):
     def template(self, *paths, **_ignored):
         template_name = '/'.join(paths)
         template_path = os.path.join(self.settings.templates, template_name)
+        extra_args = {
+            'availableLocaleDict': get_availble_locale(self.settings.source)
+        }
+
         if os.path.isdir(template_path):
             return self.edit_renderer.directory('Contents of ' + (template_name or 'template directory'),
                                                 self.settings.templates, template_name, '/template/{}'.format,
@@ -586,7 +593,8 @@ class Server(object):
             return self.edit_renderer.render_editor(
                 document.template_name,
                 document.styles,
-                actions=self._actions(document, **{TEMPLATE_PARAM_NAME: template_name}), )
+                actions=self._actions(document, **{TEMPLATE_PARAM_NAME: template_name}),
+                **extra_args)
 
     @cherrypy.expose
     def preview(self, working_name, **args):
@@ -597,6 +605,33 @@ class Server(object):
         #  Could use `edit_renderer` here to serve images from local host
         html, _ = self.final_renderer.render_preview(document.template_name, document.styles, **document.args)
         return html
+
+    def get_placeholder_validation_errors(self, path, template_name, styles, **args):
+        content_to_validate = self.final_renderer.content_to_validate(path, template_name, styles, **args)
+        locale, name = _get_email_locale_n_name(path)
+        if not place_holders.validate_email_content(locale, name, content_to_validate, self.settings.source):
+            return list(default_logger_handler.error_msgs())
+        return []
+
+    @cherrypy.expose
+    @cherrypy.tools.json_out()
+    def validation_status(self, working_name, **args):
+        path = '/'.join([args['localePath'], args['templateFilename']])
+        errors_list = []
+        try:
+            document = _extract_document(args, working_name)
+            errors_list = self.get_placeholder_validation_errors(path,
+                                                                 document.template_name,
+                                                                 document.styles,
+                                                                 **document.args)
+        except Exception as ex:
+            logger.warning('Could not validate template %s' % ex)
+
+        res = {
+            'validationErrors': errors_list
+        }
+
+        return res
 
     @cherrypy.expose
     def preview_fragment(self, working_name, **args):
@@ -650,9 +685,8 @@ class Server(object):
                 title=html_escape(subject),
                 description=_get_body_content_string(html),
                 actions=[
+                    ['OK', '/'],
                     ['Edit', '/alter/{}'.format(email_name)],
-                    ['Push to repository', '/push/{}'.format(email_name)],
-                    ['Update from repository', '/pull/{}'.format(email_name)],
                 ])
 
     @cherrypy.expose
@@ -661,6 +695,13 @@ class Server(object):
         email = _get_email(email_name, self.settings)
         template, placeholders, _ = reader_read(email, self.settings)
         args = _unplaceholder(placeholders)
+        extra_args = {
+            'availableLocaleDict': {
+                email.locale: email.locale
+            },
+            'localePath': email.locale,
+            'templateFilename': email.name + TEMPLATE_EXTENSION
+        }
         document = _extract_document(
             args, email_name=email_name, template_name=template.name, template_styles=template.styles)
 
@@ -668,85 +709,63 @@ class Server(object):
             document.template_name,
             document.styles,
             actions=self._actions(document, **{EMAIL_PARAM_NAME: email_name}),
-            **document.args)
+            **merge_two_dicts(extra_args, document.args))
 
     @cherrypy.expose
     def saveas(self, working_name, *email_paths, **args):
         email_name = '/'.join(email_paths)
-        saveas = args.pop(SAVEAS_PARAM_NAME, None)
-        if saveas:
-            email_name = '/'.join((email_name, saveas))
+        saveas_filename = args.pop(SAVEAS_PARAM_NAME, None)
+        if saveas_filename:
+            saveas_filename += TEMPLATE_EXTENSION if not saveas_filename[-4:] == TEMPLATE_EXTENSION else ''
+            parts = (email_name, saveas_filename)
+            email_name = '/'.join(parts)
         raise cherrypy.HTTPRedirect('/save/{0}/{1}'.format(working_name, email_name))
 
     @cherrypy.expose
     def save(self, working_name, *paths, **args):
-        rel_path = '/'.join(paths)
-        full_path = os.path.join(self.settings.source, rel_path)
+        rel_path = '/'.join([args['localePath'], args['templateFilename']])
+
         document = _extract_document({}, working_name)
         if not document.template_name:
             raise cherrypy.HTTPRedirect('/timeout')
 
-        overwrite = args.pop(OVERWRITE_PARAM_NAME, False)
-        placeholders_change = False
-        placeholders_messages = []
+        email_path = os.path.join(self.settings.source, rel_path)
 
-        if os.path.exists(full_path) and not os.path.isdir(full_path):
-            handler = _set_logging_handler()
-            validating_content = self.final_renderer.content_to_validate(rel_path, document.template_name,
-                                                                         document.styles, **document.args)
-            locale, name = _get_email_locale_n_name(rel_path)
-            placeholders_change = not place_holders.validate_email_content(locale, name, validating_content,
-                                                                           self.settings.source)
-            placeholders_messages = list(handler.error_msgs())
-
-        if overwrite or not os.path.exists(full_path):
-            # Create and save
-            try:
-                output = self.final_renderer.save(rel_path, document.template_name, document.styles, **document.args)
-                if output:
-                    output = str(output, 'utf-8')
-                    return self.final_renderer.question(
-                        title='Saved & postprocessed email: {}'.format(rel_path),
-                        description=html_escape(output),
-                        actions=[['View', '/email/{}'.format(rel_path), 2000], ])
-
-            except subprocess.CalledProcessError as err:
-                output = str(err.output, 'utf-8') if err.output else 'Error #{}'.format(err.returncode)
-                return self.final_renderer.error(
-                    title='Postprocessing failed for email: {}'.format(rel_path),
+        try:
+            output = self.final_renderer.save(rel_path, document.template_name, document.styles, **document.args)
+            if output:
+                output = str(output, 'utf-8')
+                return self.final_renderer.question(
+                    title='Saved & postprocessed email: {}'.format(rel_path),
                     description=html_escape(output),
-                    actions=[['View', '/email/{}'.format(rel_path)], ])
+                    actions=[['View', '/email/{}'.format(rel_path), 2000], ])
 
-            # No postprocessing performed/requested
-            raise cherrypy.HTTPRedirect('/email/{}'.format(rel_path))
-        elif os.path.isdir(full_path):
-            # Show directory or allow user to create new file
-            html = self.edit_renderer.directory(
-                'Select save name/directory: ' + rel_path,
-                self.settings.source,
-                rel_path, (lambda path: '/save/{0}/{1}'.format(working_name, path)),
-                old_filename=os.path.basename(document.email_name) if document.email_name else '',
-                actions=[
-                    ['Save', '/saveas/{0}/{1}'.format(working_name, rel_path)],
-                    ['Return to Edit', '/edit/{}'.format(working_name)],
-                ])
-            return html
-        else:
-            # File already exists or placeholders change: overwrite?
-            question_str = 'Are you sure you want to overwrite the existing email <code>{}</code>?'.format(rel_path)
-            if placeholders_change:
-                question_str = 'Are you sure you want to overwrite the existing email <code>{0}</code>?\
-                                <blockquote><b>WARNING</b><br/>{1}\
-                                </blockquote>'.format(rel_path, '<br/>'.join(placeholders_messages))
+        except subprocess.CalledProcessError as err:
+            output = str(err.output, 'utf-8') if err.output else 'Error #{}'.format(err.returncode)
+            return self.final_renderer.error(
+                title='Postprocessing failed for email: {}'.format(rel_path),
+                description=html_escape(output),
+                actions=[['View', '/email/{}'.format(rel_path)], ])
 
-            # File already exists: overwrite?
-            return self.edit_renderer.question('Overwriting ' + rel_path, question_str, [
-                ['No, save as a new file', '/save/{0}/{1}'.format(working_name, os.path.dirname(rel_path))],
-                [
-                    'Yes, how dare you question me!', '/save/{0}/{1}?{2}=1'.format(working_name, rel_path,
-                                                                                   OVERWRITE_PARAM_NAME)
-                ],
-            ])
+        try:
+            res = None
+            create_template_action = ['Create new email', '/template/{}'.format(document.template_name)]
+            res = _push_email_to_cms_service(self.settings, rel_path, email_path)
+
+        except service.TimeoutError as e:
+            return self.edit_renderer.question('ERROR',
+                                               str(e),
+                                               [create_template_action, ])
+        except service.ServiceError as e:
+            message = 'Service respond with: Status: ' \
+                      '<code>%s</code><br/><code>%s</code><br/>' % (e.status, e.text)
+            message += 'Response: <code>%s</code><br/>' if res else ''
+            return self.edit_renderer.question('ERROR',
+                                               message,
+                                               [create_template_action, ])
+
+        # No postprocessing performed/requested
+        raise cherrypy.HTTPRedirect('/email/{}'.format(rel_path))
 
     @classmethod
     def _make_save_url(cls, document):

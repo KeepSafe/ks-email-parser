@@ -22,6 +22,8 @@ The goal is to provide a friendlier interface to make it somewhat easier to gene
 `ks-email-parser gui` in root folder.  This will (by default) fire up a local HTTP server on port 8080.  You should
 then visit <http://localhost:8080> in a modern web browser to interact with the app.
 
+Optionally fetch emails repo git@github.com:KeepSafe/emails.git in order to have current templates and run it with 
+specific parameters: `ks-email-parser -s emails/src -d emails/target -t emails/templates_html gui`
 
 ### Options
 

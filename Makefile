@@ -5,6 +5,9 @@ PIP=venv/bin/pip
 EI=venv/bin/easy_install
 NOSE=venv/bin/nosetests
 FLAKE=venv/bin/flake8
+EMAILS_TEMPLATES_URI=git@github.com:KeepSafe/emails.git
+EMAILS_PATH=emails
+GUI_BIN=ks-email-parser
 FLAGS=
 
 
@@ -21,6 +24,10 @@ dev:
 
 install:
 	$(PYTHON) ./setup.py install
+
+rungui:
+	test -e $(EMAILS_PATH) && echo Emails templates already cloned || git clone $(EMAILS_TEMPLATES_URI) $(EMAILS_PATH);
+	$(GUI_BIN) -s $(EMAILS_PATH)/src -d $(EMAILS_PATH)/target -t $(EMAILS_PATH)/templates_html gui
 
 flake:
 	$(FLAKE) email_parser tests

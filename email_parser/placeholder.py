@@ -120,7 +120,7 @@ def validate_email_content(locale, name, content, src_dir=''):
         email_placeholders = parse_string_placeholders(content)
         return _validate_email_placeholders(name, locale, email_placeholders, all_placeholders)
     except FileNotFoundError:
-        # If the file does not exist skip validation
+        logger.debug('No placeholder config file found, skipping validation..')
         return True
 
 
