@@ -63,6 +63,13 @@ logger.setLevel(logging.INFO)
 logger.addHandler(default_logger_handler)
 
 
+def merge_two_dicts(x, y):
+    """Given two dicts, merge them into a new dict as a shallow copy."""
+    z = x.copy()
+    z.update(y)
+    return z
+
+
 def _clean_documents():
     expired_keys = set()
     for key, value in RECENT_DOCUMENTS.items():
@@ -702,7 +709,7 @@ class Server(object):
             document.template_name,
             document.styles,
             actions=self._actions(document, **{EMAIL_PARAM_NAME: email_name}),
-            **{**extra_args, **document.args})
+            **merge_two_dicts(extra_args, document.args))
 
     @cherrypy.expose
     def saveas(self, working_name, *email_paths, **args):
