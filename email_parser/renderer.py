@@ -6,6 +6,7 @@ import logging
 import markdown
 import bs4
 import pystache
+import json
 import inlinestyler.utils as inline_styler
 import xml.etree.ElementTree as ET
 from collections import OrderedDict
@@ -28,11 +29,22 @@ def _split_subjects(placeholders):
         (k, v) for k, v in placeholders.items() if k not in const.SUBJECTS_PLACEHOLDERS))
 
 
-def _map_link_locale(email, link_locale_mappings):
+def _read_link_locale_mappings(settings):
+    try:
+        content = fs.read_file(settings.source, const.LINK_LOCALE_MAPPINGS_FILENAME)
+        return json.loads(content)
+    except FileNotFoundError:
+        logger.error('Link locale mapping (%s) could not be found at: %s', const.LINK_LOCALE_MAPPINGS_FILENAME,
+                     settings.source)
+    return {}
+
+
+def _map_link_locale(email, settings):
+    link_locale_mappings = _read_link_locale_mappings(settings)
     link_locale = link_locale_mappings.get(email.locale)
     if not link_locale:
-        logger.warn('Link locale mapping not found for %s/%s, "en" used' % (email.locale, email.name))
-        return 'en'
+        logger.warn('Link locale mapping not found for %s/%s, "en" used', email.locale, email.name)
+        return const.DEFAULT_LOCALE
     else:
         return link_locale
 
@@ -42,11 +54,11 @@ class HtmlRenderer(object):
     Renders email' body as html.
     """
 
-    def __init__(self, template, link_locale_mappings, email, settings):
+    def __init__(self, template, email, settings):
         self.template = template
         self.settings = settings
         self.locale = email.locale
-        self.link_locale = _map_link_locale(email, link_locale_mappings)
+        self.link_locale = _map_link_locale(email, settings)
 
     def _read_template(self):
         return self.template.content
@@ -122,10 +134,10 @@ class TextRenderer(object):
     Renders email's body as text.
     """
 
-    def __init__(self, ignored_plceholder_names, link_locale_mappings, email, shortener_config=None):
+    def __init__(self, ignored_plceholder_names, email, settings):
         self.ignored_plceholder_names = ignored_plceholder_names
-        self.shortener = link_shortener.shortener(shortener_config)
-        self.link_locale = _map_link_locale(email, link_locale_mappings)
+        self.shortener = link_shortener.shortener(settings.shortener)
+        self.link_locale = _map_link_locale(email, settings)
         self.email = email
 
     def _html_to_text(self, html):
@@ -180,14 +192,14 @@ class SubjectRenderer(object):
         return subjects
 
 
-def render(email, template, placeholders, ignored_plceholder_names, link_locale_mappings, settings):
+def render(email, template, placeholders, ignored_plceholder_names, settings):
     subject_renderer = SubjectRenderer()
     subjects = subject_renderer.render(placeholders)
 
-    text_renderer = TextRenderer(ignored_plceholder_names, link_locale_mappings, email, settings.shortener)
+    text_renderer = TextRenderer(ignored_plceholder_names, email, settings)
     text = text_renderer.render(placeholders)
 
-    html_renderer = HtmlRenderer(template, link_locale_mappings, email, settings)
+    html_renderer = HtmlRenderer(template, email, settings)
     try:
         html = html_renderer.render(placeholders)
     except MissingTemplatePlaceholderError as e:

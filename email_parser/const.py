@@ -20,3 +20,5 @@ TEXT_EMAIL_PLACEHOLDER_SEPARATOR = '\n\n'
 HTML_PARSER = 'lxml'
 SUBJECTS_PLACEHOLDERS = ['subject', 'subject_a', 'subject_b', 'subject_resend']
 LINK_LOCALE = '{link_locale}'
+
+DEFAULT_LOCALE = 'en'

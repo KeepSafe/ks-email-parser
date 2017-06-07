@@ -34,14 +34,10 @@ class Parser:
             return None
         if not placeholder.validate_email(self._settings, email) and not self._settings.force:
             return None
-        link_locale_mappings = reader.read_link_locale_mappings(self._settings)
-        if not link_locale_mappings and not self._settings.force:
-            return None
 
         template, placeholders, ignored_placeholder_names = reader.read(email, self._settings)
         if template:
-            return renderer.render(email, template, placeholders, ignored_placeholder_names, link_locale_mappings,
-                                   self._settings)
+            return renderer.render(email, template, placeholders, ignored_placeholder_names, self._settings)
 
     def get_template(self, locale, template_name):
         email = fs.email(self._settings.source, self._settings.pattern, template_name, locale, True)
