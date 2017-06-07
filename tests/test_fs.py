@@ -79,7 +79,6 @@ class TestFs(TestCase):
             MockPath('src/locale1/name1.xml'), MockPath('src/locale1/global.xml'), MockPath('src/locale2/global.xml')
         ]
 
-        actual = list(fs.email('dummy_path', 'src/{locale}/{name}.xml', 'global', 'locale1', True))
-        self.assertEqual(1, len(actual))
-        self.assertEqual('global', actual[0].name)
-        self.assertEqual('locale1', actual[0].locale)
+        actual = fs.email('dummy_path', 'src/{locale}/{name}.xml', 'global', 'locale1', True)
+        self.assertEqual('global', actual.name)
+        self.assertEqual('locale1', actual.locale)

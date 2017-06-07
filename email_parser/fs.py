@@ -69,31 +69,9 @@ def emails(src_dir, pattern, exclusive_path=None):
         yield Email(**result.named)
 
 
-def email(src_dir, pattern, email_name, locale=None, include_global=False):
+def email(src_dir, pattern, email_name, locale, include_global=False):
     """
-    Gets an email by name. Used for clients which should produce a single file for all locales.
-
-    :param src_dir: base dir for the search
-    :param pattern: search pattern
-    :param email_name: email name
-    :param locale: locale name or None for all locales
-
-    :returns: generator for the emails with email_name
-    """
-    single_email_pattern = pattern.replace('{name}', email_name)
-    if locale:
-        single_email_pattern = single_email_pattern.replace('{locale}', locale)
-    params = _parse_params(pattern)
-    for result in _emails(src_dir, single_email_pattern, params, None, include_global):
-        result.named['name'] = email_name
-        if locale:
-            result.named['locale'] = locale
-        yield Email(**result.named)
-
-
-def email_in_locale(src_dir, pattern, email_name, locale=None, include_global=False):
-    """
-    Gets a single email by name
+    Gets an email by name and locale
 
     :param src_dir: base dir for the search
     :param pattern: search pattern

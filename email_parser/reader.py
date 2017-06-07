@@ -134,14 +134,14 @@ def read(email, settings):
 
     # check extra placeholders
     email_placeholders = set(_placeholders(tree))
-    template_placeholders = set(template.placeholders_order)
+    template_placeholders = set(template.placeholders)
     extra_placeholders = email_placeholders - template_placeholders - set(const.SUBJECTS_PLACEHOLDERS)
     if extra_placeholders:
         logger.warn('There are extra placeholders %s in email %s/%s, missing in template %s' %
                     (extra_placeholders, email.locale, email.name, template.name))
 
     placeholders, ignored_plceholder_names = _all_email_placeholders(tree, global_tree)
-    ordered_placeholders = _ordered_placeholders(template.placeholders_order, placeholders)
+    ordered_placeholders = _ordered_placeholders(template.placeholders, placeholders)
 
     return template, ordered_placeholders, ignored_plceholder_names
 

@@ -5,7 +5,8 @@ Settings = namedtuple('Settings', [
     'exclusive', 'default_locale', 'local_images', 'workers_pool', 'shortener', 'save', 'cms_service_host'
 ])
 Email = namedtuple('Email', ['name', 'locale', 'path', 'full_path'])
-Template = namedtuple('Template', ['name', 'styles', 'content', 'placeholders_order'])
+Template = namedtuple('Template', ['name', 'styles', 'content', 'placeholders'])
+Placeholders = namedtuple('Placeholders', ['local', 'general', 'ignored'])
 
 
 class MissingPatternParamError(Exception):

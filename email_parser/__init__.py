@@ -20,7 +20,7 @@ class Parser:
         self._settings = Settings(**dsettings)
 
     def get_email(self, locale, email_name):
-        email = fs.email_in_locale(self._settings.source, self._settings.pattern, email_name, locale, True)
+        email = fs.email(self._settings.source, self._settings.pattern, email_name, locale, True)
         if not email:
             return None
         if not placeholder.validate_email(self._settings, email) and not settings.force:
@@ -29,7 +29,7 @@ class Parser:
         return template.content
 
     def parse_email(self, locale, email_name):
-        email = fs.email_in_locale(self._settings.source, self._settings.pattern, email_name, locale, True)
+        email = fs.email(self._settings.source, self._settings.pattern, email_name, locale, True)
         if not email:
             return None
         if not placeholder.validate_email(self._settings, email) and not self._settings.force:
@@ -44,11 +44,11 @@ class Parser:
                                    self._settings)
 
     def get_template(self, locale, template_name):
-        email = fs.email_in_locale(self._settings.source, self._settings.pattern, template_name, locale, True)
+        email = fs.email(self._settings.source, self._settings.pattern, template_name, locale, True)
         return fs.read_file(email.full_path)
 
     def delete_template(self, template_name):
-        emails = fs.email_in_locale(self._settings.source, self._settings.pattern, template_name, None, True)
+        emails = fs.email(self._settings.source, self._settings.pattern, template_name, None, True)
         files = []
         for email in emails:
             files.append(email.full_path)

@@ -102,10 +102,7 @@ class TestSubjectRenderer(TestCase):
 class TestHtmlRenderer(TestCase):
     def _get_renderer(self, template_html, template_placeholders, **kwargs):
         template = Template(
-            name='template_name',
-            styles=['template_style'],
-            content=template_html,
-            placeholders_order=template_placeholders)
+            name='template_name', styles=['template_style'], content=template_html, placeholders=template_placeholders)
         return renderer.HtmlRenderer(template,
                                      kwargs.get('link_locale_mappings', {}),
                                      kwargs.get('email', self.email), kwargs.get('settings', self.settings))

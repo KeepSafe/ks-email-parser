@@ -104,8 +104,7 @@ def _parse_email(email, link_locale_mappings, settings):
         return True
     else:
         # TODO create default_locale_email function in fs module
-        default_locale_email = next(
-            fs.email(settings.source, settings.pattern, email.name, settings.default_locale), None)
+        default_locale_email = fs.email(settings.source, settings.pattern, email.name, settings.default_locale)
         if default_locale_email and _render_email(default_locale_email, link_locale_mappings, settings, email.locale):
             logger.info('F', extra={'same_line': True})
             logger.warn('Email %s/%s substituted by %s/%s' %

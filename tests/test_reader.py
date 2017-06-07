@@ -7,7 +7,6 @@ from email_parser import reader, fs
 
 
 class TestReader(TestCase):
-
     def setUp(self):
         self.email = fs.Email(name='dummy', locale='dummy', path='dummy', full_path='dummy')
         self.email_element = ElementTree.fromstring("""
@@ -24,16 +23,12 @@ class TestReader(TestCase):
         </resources>
         """)
         self.template_str = "<html><head></head><body>{{content}}</body></html>"
-        self.settings = MagicMock(pattern='{locale}/{name}.xml',
-                                  source='src/',
-                                  templates='temp/')
+        self.settings = MagicMock(pattern='{locale}/{name}.xml', source='src/', templates='temp/')
 
         self.patch_etree = patch('email_parser.reader.ElementTree')
         self.mock_etree = self.patch_etree.start()
-        self.mock_etree.parse.side_effect = iter([
-            ElementTree.ElementTree(self.email_element),
-            ElementTree.ElementTree(self.global_email_element)
-        ])
+        self.mock_etree.parse.side_effect = iter(
+            [ElementTree.ElementTree(self.email_element), ElementTree.ElementTree(self.global_email_element)])
 
         self.patch_read = patch('email_parser.fs.read_file')
         self.mock_read = self.patch_read.start()
@@ -50,10 +45,11 @@ class TestReader(TestCase):
         self.patch_isf.stop()
 
     def test_template(self):
-        expected_template = reader.Template(name='dummy_template.html',
-                                            styles=['dummy_template.css'],
-                                            content=self.template_str,
-                                            placeholders_order=['subject', 'content'])
+        expected_template = reader.Template(
+            name='dummy_template.html',
+            styles=['dummy_template.css'],
+            content=self.template_str,
+            placeholders=['subject', 'content'])
 
         template, _, _ = reader.read(self.email, self.settings)
 
@@ -64,9 +60,7 @@ class TestReader(TestCase):
 
         self.mock_read.side_effect = iter([template_str])
 
-        expected = OrderedDict([('subject', 'dummy subject'),
-                                ('greeting', 'dummy you'),
-                                ('content', 'dummy content')])
+        expected = OrderedDict([('subject', 'dummy subject'), ('greeting', 'dummy you'), ('content', 'dummy content')])
 
         _, placeholders, _ = reader.read(self.email, self.settings)
 
@@ -77,8 +71,7 @@ class TestReader(TestCase):
 
         self.mock_read.side_effect = iter([template_str])
 
-        expected = OrderedDict([('subject', 'dummy subject'),
-                                ('global_content', 'dummy global'),
+        expected = OrderedDict([('subject', 'dummy subject'), ('global_content', 'dummy global'),
                                 ('content', 'dummy content')])
 
         _, placeholders, _ = reader.read(self.email, self.settings)
@@ -92,10 +85,8 @@ class TestReader(TestCase):
             <string name="content">dummy content</string>
         </resources>
         """)
-        self.mock_etree.parse.side_effect = iter([
-            ElementTree.ElementTree(email_element),
-            ElementTree.ElementTree(self.global_email_element)
-        ])
+        self.mock_etree.parse.side_effect = iter(
+            [ElementTree.ElementTree(email_element), ElementTree.ElementTree(self.global_email_element)])
 
         template, _, _ = reader.read(self.email, self.settings)
 
@@ -109,10 +100,8 @@ class TestReader(TestCase):
             <string name="color" isText="false">blue</string>
         </resources>
         """)
-        self.mock_etree.parse.side_effect = iter([
-            ElementTree.ElementTree(email_element),
-            ElementTree.ElementTree(self.global_email_element)
-        ])
+        self.mock_etree.parse.side_effect = iter(
+            [ElementTree.ElementTree(email_element), ElementTree.ElementTree(self.global_email_element)])
 
         expected = set(['color', 'global_order'])
 
@@ -123,12 +112,11 @@ class TestReader(TestCase):
 
     @patch('email_parser.reader.logger.warn')
     def test_warn_on_extra_placeholders(self, mock_warn):
-        self.mock_etree.parse.side = iter([
-            ElementTree.ElementTree(self.email_element),
-            ElementTree.ElementTree(self.global_email_element)
-        ])
+        self.mock_etree.parse.side = iter(
+            [ElementTree.ElementTree(self.email_element), ElementTree.ElementTree(self.global_email_element)])
 
         reader.read(self.email, self.settings)
         expected_warn = "There are extra placeholders {'greeting'} in email dummy/dummy, \
 missing in template dummy_template.html"
+
         mock_warn.assert_called_with(expected_warn)
