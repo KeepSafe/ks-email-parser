@@ -9,7 +9,7 @@ def read_fixture(filename):
         return fp.read()
 
 
-class TestAPI(TestCase):
+class TestParser(TestCase):
     def setUp(self):
         self.settings = {
             'source': 'tests',

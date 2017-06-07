@@ -8,6 +8,8 @@
     :license: Apache, see LICENSE for more details.
 """
 
+import os
+
 from . import placeholder, fs, reader, renderer
 from .model import *
 
@@ -72,4 +74,4 @@ class Parser:
         placeholder._read_placeholders_file.cache_clear()
 
     def placeholders_filepath(self):
-        return fs.path(self._settings.source, placeholder.PLACEHOLDERS_FILENAME)
+        return os.path.join(self._settings.source, placeholder.PLACEHOLDERS_FILENAME)

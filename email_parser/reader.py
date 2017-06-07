@@ -13,45 +13,27 @@ from .model import *
 logger = logging.getLogger(__name__)
 
 
-def _ignored_placeholder_names(tree, prefix=''):
-    if tree is None:
-        return []
-    return [
-        '{0}{1}'.format(prefix, element.get('name')) for element in tree.findall('./string')
-        if element.get('isText') == 'false'
-    ]
-
-
 def _placeholders(tree, prefix=''):
     if tree is None:
         return {}
-    return {'{0}{1}'.format(prefix, element.get('name')): element.text for element in tree.findall('./string')}
+    result = OrderedDict()
+    for element in tree.findall('./string'):
+        name = '{0}{1}'.format(prefix, element.get('name'))
+        result[name] = Placeholder(name, element.text, element.get('isText', 'true') == 'true')
+    return result
 
 
-def _all_email_placeholders(tree, global_tree):
-    placeholders = dict(_placeholders(tree).items() | _placeholders(global_tree, 'global_').items())
-    ignored_placeholder_names = _ignored_placeholder_names(tree) + _ignored_placeholder_names(global_tree, 'global_')
-    return placeholders, ignored_placeholder_names
-
-
-def _ordered_placeholders(names, placeholders):
-    for subject in const.SUBJECTS_PLACEHOLDERS:
-        if subject in placeholders and subject not in names:
-            names.insert(0, subject)
-
-    return OrderedDict((name, placeholders[name]) for name in names)
-
-
-def _template(tree, settings):
+def _template(tree):
     content = None
     placeholders = []
     styles = []
 
-    name = tree.getroot().get('template')
-    if name:
-        content = fs.read_file(settings.templates, name)
+    template_name = tree.getroot().get('template')
+    if template_name:
+        content = fs.template(template_name)
         placeholders = [m.group(1) for m in re.finditer(r'\{\{(\w+)\}\}', content)]
 
+    # TODO sad panda, refactor
     # base_url placeholder is not a content block
     while 'base_url' in placeholders:
         placeholders.remove('base_url')
@@ -59,8 +41,22 @@ def _template(tree, settings):
     style_element = tree.getroot().get('style')
     if style_element:
         styles = style_element.split(',')
+        css = [fs.style(f) or ' ' for f in styles]
+        styles = '\n'.join(css)
+        styles = '<style>%s</style>' % styles
+    else:
+        styles = ''
 
-    return Template(name, styles, content, placeholders)
+    # TODO either read all or leave just names for content and styles
+    return Template(template_name, styles, content, placeholders)
+
+
+def _globals_path(email):
+    email_globals = fs.email(const.GLOBALS_EMAIL_NAME, email.locale, const.DEFAULT_PATTERN)
+    if email_globals:
+        return email_globals.full_path
+    else:
+        return None
 
 
 def _handle_xml_parse_error(file_path, exception):
@@ -84,62 +80,30 @@ def _handle_xml_parse_error(file_path, exception):
                      exception, segment_id, error_line.replace('\t', '  '), " " * exception.position[1] + "^")
 
 
-def global_placeholders(email, settings):
-    # read global placeholders email
-    try:
-        global_email_path = settings.pattern.replace('{locale}', email.locale)
-        global_email_path = global_email_path.replace('{name}', const.GLOBAL_PLACEHOLDERS_EMAIL_NAME)
-        global_email_fullpath = fs.path(settings.source, global_email_path)
-        if fs.is_file(global_email_fullpath):
-            global_tree = ElementTree.parse(global_email_fullpath)
-        else:
-            global_tree = None
-    except ElementTree.ParseError as e:
-        _handle_xml_parse_error(global_email_path, e)
+def _read_xml(path):
+    if not path:
         return {}
-    return _placeholders(global_tree, 'global_')
+    try:
+        return ElementTree.parse(path)
+    except ElementTree.ParseError as e:
+        _handle_xml_parse_error(path, e)
+        return {}
 
 
-def read(email, settings):
+def read(email):
     """
     Reads an email from a path.
 
     :param email_path: a full path to an email
-    :returns: tuple of email template, a collection of placeholders and ignored_placeholder_names
+    :returns: tuple of email template, a collection of placeholders
     """
-    # read email
-    try:
-        tree = ElementTree.parse(email.full_path)
-    except ElementTree.ParseError as e:
-        _handle_xml_parse_error(email.full_path, e)
-        return None, {}, []
+    email_xml = _read_xml(email.full_path)
+    template = _template(email_xml)
 
-    # read global placeholders email
-    try:
-        global_email_path = settings.pattern.replace('{locale}', email.locale)
-        global_email_path = global_email_path.replace('{name}', const.GLOBAL_PLACEHOLDERS_EMAIL_NAME)
-        global_email_fullpath = fs.path(settings.source, global_email_path)
-        if fs.is_file(global_email_fullpath):
-            global_tree = ElementTree.parse(global_email_fullpath)
-        else:
-            global_tree = None
-    except ElementTree.ParseError as e:
-        _handle_xml_parse_error(global_email_path, e)
-        return None, {}, []
-
-    template = _template(tree, settings)
     if not template.name:
         logger.error('no HTML template name define for %s', email.path)
 
-    # check extra placeholders
-    email_placeholders = set(_placeholders(tree))
-    template_placeholders = set(template.placeholders)
-    extra_placeholders = email_placeholders - template_placeholders - set(const.SUBJECTS_PLACEHOLDERS)
-    if extra_placeholders:
-        logger.warn('There are extra placeholders %s in email %s/%s, missing in template %s' %
-                    (extra_placeholders, email.locale, email.name, template.name))
+    globals_xml = _read_xml(_globals_path(email))
+    placeholders = OrderedDict(_placeholders(email_xml).items() | _placeholders(globals_xml, 'global_').items())
 
-    placeholders, ignored_plceholder_names = _all_email_placeholders(tree, global_tree)
-    ordered_placeholders = _ordered_placeholders(template.placeholders, placeholders)
-
-    return template, ordered_placeholders, ignored_plceholder_names
+    return template, placeholders

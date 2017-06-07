@@ -10,7 +10,7 @@ import inlinestyler.utils as inline_styler
 import xml.etree.ElementTree as ET
 from collections import OrderedDict
 
-from . import markdown_ext, fs, link_shortener, const, utils
+from . import markdown_ext, const, utils
 from .model import *
 
 logger = logging.getLogger(__name__)
@@ -33,23 +33,13 @@ class HtmlRenderer(object):
     Renders email' body as html.
     """
 
-    def __init__(self, template, email, settings):
+    def __init__(self, template, email):
         self.template = template
-        self.settings = settings
         self.locale = utils.normalize_locale(email.locale)
 
-    def _read_template(self):
-        return self.template.content
-
-    def _read_css(self):
-        css = [fs.read_file(self.settings.templates, f) or ' ' for f in self.template.styles]
-        return ''.join(['<style>{}</style>'.format(c) for c in css])
-
     def _inline_css(self, html, css):
-        if not self.template.styles:
-            return html
-
         # an empty style will cause an error in inline_styler so we use a space instead
+        css = css or ' '
         html_with_css = inline_styler.inline_css(css + html)
 
         # inline_styler will return a complete html filling missing html and body tags which we don't want
@@ -65,7 +55,7 @@ class HtmlRenderer(object):
         return body.strip()
 
     def _wrap_with_text_direction(self, html):
-        if self.locale in self.settings.right_to_left:
+        if self.locale in const.DEFAULT_RTL_LOCALES:
             soup = bs4.BeautifulSoup(html, 'html.parser')
             for element in soup.contents:
                 try:
@@ -77,33 +67,28 @@ class HtmlRenderer(object):
         else:
             return html
 
-    def _render_placeholder(self, placeholder, css):
-        if not placeholder.strip():
+    def _render_placeholder(self, placeholder):
+        if not placeholder.content.strip():
             return placeholder
-        content = placeholder.replace(const.LOCALE_PLACEHOLDER, self.locale)
-        html = _md_to_html(content, self.settings.images)
-        return self._inline_css(html, css)
+        content = placeholder.content.replace(const.LOCALE_PLACEHOLDER, self.locale)
+        html = _md_to_html(content, const.DEFAULT_IMAGES_URL)
+        return self._inline_css(html, self.template.styles)
 
     def _concat_parts(self, subject, parts):
-        html = self._read_template()
-        placeholders = dict(parts.items() | {'subject': subject[0]}.items() | {'base_url': self.settings.images
-                                                                               }.items())
-
+        placeholders = dict(parts.items() | {'subject': subject[0], 'base_url': const.DEFAULT_IMAGES_URL}.items())
         try:
-            strict = 'strict' if self.settings.strict else 'ignore'
             # pystache escapes html by default, we pass escape option to disable this
-            renderer = pystache.Renderer(escape=lambda u: u, missing_tags=strict)
+            renderer = pystache.Renderer(escape=lambda u: u, missing_tags='strict')
             # add subject for rendering as we have it in html
-            return renderer.render(html, placeholders)
+            return renderer.render(self.template.content, placeholders)
         except pystache.context.KeyNotFoundError as e:
             message = 'template %s for locale %s has missing placeholders: %s' % (self.template.name, self.locale, e)
             raise MissingTemplatePlaceholderError(message) from e
 
     def render(self, placeholders):
-        subject, contents = _split_subjects(placeholders)
-        css = self._read_css()
-        parts = {k: self._render_placeholder(v, css) for k, v in contents.items()}
-        html = self._concat_parts(subject, parts)
+        subjects, contents = _split_subjects(placeholders)
+        parts = {k: self._render_placeholder(v) for k, v in contents.items()}
+        html = self._concat_parts(subjects, parts)
         html = self._wrap_with_text_direction(html)
         return html
 
@@ -113,10 +98,8 @@ class TextRenderer(object):
     Renders email's body as text.
     """
 
-    def __init__(self, ignored_plceholder_names, email, settings):
-        self.ignored_plceholder_names = ignored_plceholder_names
-        self.shortener = link_shortener.shortener(settings.shortener)
-        self.email = email
+    def __init__(self, email):
+        # self.shortener = link_shortener.shortener(settings.shortener)
         self.locale = utils.normalize_locale(email.locale)
 
     def _html_to_text(self, html):
@@ -127,7 +110,7 @@ class TextRenderer(object):
         for anchor in anchors:
             text = anchor.string or ''
             href = anchor.get('href') or text
-            href = self.shortener.shorten(href)
+            # href = self.shortener.shorten(href)
             if href != text:
                 anchor.replace_with('{} ({})'.format(text, href))
             elif href:
@@ -153,8 +136,8 @@ class TextRenderer(object):
     def render(self, placeholders):
         _, contents = _split_subjects(placeholders)
         parts = [
-            self._md_to_text(v.replace(const.LOCALE_PLACEHOLDER, self.locale)) for k, v in contents.items()
-            if k not in self.ignored_plceholder_names
+            self._md_to_text(v.content.replace(const.LOCALE_PLACEHOLDER, self.locale)) for k, v in contents.items()
+            if v.is_text
         ]
         return const.TEXT_EMAIL_PLACEHOLDER_SEPARATOR.join(v for v in filter(bool, parts))
 
@@ -168,14 +151,14 @@ class SubjectRenderer(object):
         subjects, _ = _split_subjects(placeholders)
         if subjects[0] is None:
             raise MissingSubjectError('Subject is required for every email')
-        return subjects
+        return list(map(lambda s: s.content if s else None, subjects))
 
 
-def render(email, template, placeholders, ignored_plceholder_names, settings):
+def render(email, template, placeholders, ignored_placeholder_names, settings):
     subject_renderer = SubjectRenderer()
     subjects = subject_renderer.render(placeholders)
 
-    text_renderer = TextRenderer(ignored_plceholder_names, email, settings)
+    text_renderer = TextRenderer(ignored_placeholder_names, email, settings)
     text = text_renderer.render(placeholders)
 
     html_renderer = HtmlRenderer(template, email, settings)

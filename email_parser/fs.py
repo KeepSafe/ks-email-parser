@@ -22,41 +22,36 @@ def _parse_params(pattern):
             '{{name}} is a required parameter in the pattern but it is not present in {}'.format(pattern))
     if 'locale' not in params:
         raise MissingPatternParamError(
-            '{{name}} is a required parameter in the pattern but it is not present in {}'.format(pattern))
+            '{{locale}} is a required parameter in the pattern but it is not present in {}'.format(pattern))
     return params
-
-
-def _emails(src_dir, pattern, params, exclusive_path=None, include_global=False):
-    wildcard_params = {k: '*' for k in params}
-    wildcard_pattern = pattern.format(**wildcard_params)
-    parser = parse.compile(pattern)
-
-    if exclusive_path:
-        glob_path = Path(src_dir).glob(exclusive_path)
-    else:
-        glob_path = Path(src_dir).glob(wildcard_pattern)
-
-    global_email_pattern = re.compile('/%s\.xml$' % const.GLOBAL_PLACEHOLDERS_EMAIL_NAME)
-    for path in sorted(glob_path, key=lambda path: str(path)):
-        if not path.is_dir() and (not exclusive_path or _has_correct_ext(path, pattern)):
-            str_path = str(path.relative_to(src_dir))
-            result = parser.parse(str_path)
-            if result:  # HACK: result can be empty when pattern doesnt cotain any placeholder
-                result.named['path'] = str_path
-                result.named['full_path'] = str(path.resolve())
-                if not re.findall(global_email_pattern, str_path) or include_global:
-                    logger.debug('loading email %s', result.named['full_path'])
-                    yield result
 
 
 def _has_correct_ext(path, pattern):
     return os.path.splitext(str(path))[1] == os.path.splitext(pattern)[1]
 
 
-def emails(src_dir, pattern, exclusive_path=None):
+def _emails(pattern, params):
+    wildcard_params = {k: '*' for k in params}
+    wildcard_pattern = pattern.format(**wildcard_params)
+    parser = parse.compile(pattern)
+    glob_path = Path(const.DIR_SOURCE).glob(wildcard_pattern)
+    global_email_pattern = re.compile('/%s\.xml$' % const.GLOBALS_EMAIL_NAME)
+    for path in sorted(glob_path, key=lambda path: str(path)):
+        if not path.is_dir() and _has_correct_ext(path, pattern):
+            str_path = str(path.relative_to(const.DIR_SOURCE))
+            result = parser.parse(str_path)
+            if result:  # HACK: result can be empty when pattern doesn't contain any placeholder
+                result.named['path'] = str_path
+                result.named['full_path'] = str(path.resolve())
+                if not re.findall(global_email_pattern, str_path):
+                    logger.debug('loading email %s', result.named['full_path'])
+                    yield result
+
+
+# TODO eliminate pattern
+def emails(pattern, locale=None):
     """
-    Resolves a pattern to a collection of emails. The pattern needs to have 'name' and 'locale' as this is used later
-    to produce the results.
+    Resolves a pattern to a collection of emails. 
 
     :param src_dir: base dir for the search
     :param pattern: search pattern
@@ -65,11 +60,13 @@ def emails(src_dir, pattern, exclusive_path=None):
     :returns: generator for the emails matching the pattern
     """
     params = _parse_params(pattern)
-    for result in _emails(src_dir, pattern, params, exclusive_path):
+    if locale:
+        pattern = pattern.replace('{locale}', locale)
+    for result in _emails(pattern, params):
         yield Email(**result.named)
 
 
-def email(src_dir, pattern, email_name, locale, include_global=False):
+def email(email_name, locale, pattern):
     """
     Gets an email by name and locale
 
@@ -80,14 +77,12 @@ def email(src_dir, pattern, email_name, locale, include_global=False):
 
     :returns: generator for the emails with email_name
     """
-    single_email_pattern = pattern.replace('{name}', email_name)
-    if locale:
-        single_email_pattern = single_email_pattern.replace('{locale}', locale)
     params = _parse_params(pattern)
-    for result in _emails(src_dir, single_email_pattern, params, None, include_global):
+    pattern = pattern.replace('{name}', email_name)
+    pattern = pattern.replace('{locale}', locale)
+    for result in _emails(pattern, params):
         result.named['name'] = email_name
-        if locale:
-            result.named['locale'] = locale
+        result.named['locale'] = locale
         return Email(**result.named)
     return None
 
@@ -118,7 +113,7 @@ def delete_file(*path_parts):
     os.remove(path)
 
 
-def save(email, subjects, text, html, dest_dir, fallback_locale=None):
+def save_email(email, subjects, text, html):
     """
     Saves an email. The locale and name are taken from email tuple.
 
@@ -128,8 +123,7 @@ def save(email, subjects, text, html, dest_dir, fallback_locale=None):
     :param html: email's body as html
     :param dest_dir: root destination directory
     """
-    locale = fallback_locale if fallback_locale else email.locale
-
+    locale = email.locale or const.DEFAULT_LOCALE
     os.makedirs(os.path.join(dest_dir, locale), exist_ok=True)
     save_file(subjects[0], dest_dir, locale, email.name + const.SUBJECT_EXTENSION)
     if len(subjects) > 1 and subjects[1] is not None:
@@ -142,15 +136,15 @@ def save(email, subjects, text, html, dest_dir, fallback_locale=None):
     save_file(html, dest_dir, locale, email.name + const.HTML_EXTENSION)
 
 
-def resolve_path(src_dir, pattern, locale, template_name):
-    pattern = pattern.replace('{locale}', locale)
+def resolve_path(template_name, locale):
+    pattern = const.DEFAULT_PATTERN.replace('{locale}', locale)
     pattern = pattern.replace('{name}', template_name)
-    return path(src_dir, pattern)
+    return os.path.join(const.DIR_SOURCE, pattern)
 
 
-def path(*path_parts):
-    return os.path.join(*path_parts)
+def template(name):
+    pass
 
 
-def is_file(path):
-    return os.path.isfile(path)
+def style(name):
+    pass
