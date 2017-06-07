@@ -14,13 +14,21 @@
                 function validate_placeholders(serialized) {
                     $('#validationInfoList').empty();
                     return $.post('{{ validation_url }}', serialized, function (data) {
-                        if (data.hasOwnProperty('validationErrors') && data.validationErrors.length > 0) {
+                        if (data.hasOwnProperty('validationWarnings')) {
+                            data.validationWarnings.forEach(function (warning) {
+                                $('#validationInfoList').append(validationElem.replace('[MSG]', warning))
+                            })
+                        }
+                        if (data.hasOwnProperty('validationErrors')) {
                             data.validationErrors.forEach(function (error) {
                                 $('#validationInfoList').append(validationElem.replace('[MSG]', error))
                             })
+                        }
+                        if (data.validationErrors.length > 0 || data.validationWarnings.length > 0) {
                             $('#validationInfoBox').removeClass('hidden');
                         } else {
                             $('#validationInfoBox').addClass('hidden');
+                            $('#validationInfoList').empty();
                         }
                     }, 'json');
                 }
@@ -80,11 +88,13 @@
                                        placeholder="Template filename"
                                        aria-describedby="helpBlock2"
                                        value="{{ values.get('templateFilename', '') }}"
-                                       {{ 'readonly' if values.get('templateFilename', None) else 'false'}}
                                        required
                                 >
-                                <span id="helpBlock2" class="help-block">
-                                    File name should end with <b>.xml</b> extension
+                                <span class="help-block">
+                                    <b>Hint:</b> File name should end with <b>.xml</b> extension
+                                </span>
+                                <span class="help-block {{ 'hidden' if not values.get('templateFilename', None) else '' }}">
+                                    <b>Hint:</b> In order to save current work as new file just change file name.
                                 </span>
                             </div>
                             <div class="form-group">

@@ -618,6 +618,12 @@ class Server(object):
     def validation_status(self, working_name, **args):
         path = '/'.join([args['localePath'], args['templateFilename']])
         errors_list = []
+        warnings_list = []
+
+        if os.path.exists('/'.join([self.settings.source, path])):
+            file_exists_msg = 'File {0} exists, by saving with current name you will overwrite it'
+            warnings_list.append(file_exists_msg.format(args['templateFilename']))
+
         try:
             document = _extract_document(args, working_name)
             errors_list = self.get_placeholder_validation_errors(path,
@@ -628,7 +634,8 @@ class Server(object):
             logger.warning('Could not validate template %s' % ex)
 
         res = {
-            'validationErrors': errors_list
+            'validationErrors': errors_list,
+            'validationWarnings': warnings_list
         }
 
         return res
