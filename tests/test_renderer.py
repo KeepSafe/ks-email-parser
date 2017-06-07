@@ -14,14 +14,6 @@ class TestTextRenderer(TestCase):
         self.email = Email('name', 'locale', 'path', 'full_path')
         self.renderer = renderer.TextRenderer([], self.email, self.settings)
 
-        self.patch_link_local = patch('email_parser.renderer._read_link_locale_mappings')
-        self.mock_link_local = self.patch_link_local.start()
-        self.mock_link_local.return_value = {}
-
-    def tearDown(self):
-        super().tearDown()
-        self.mock_link_local.stop()
-
     def test_happy_path(self):
         placeholders = {'content': 'dummy content'}
         actual = self.renderer.render(placeholders)
@@ -57,14 +49,14 @@ class TestTextRenderer(TestCase):
     def test_default_link_locale_for_links(self):
         placeholders = {'content': 'dummy [link_text](http://link_url?locale={link_locale}) content'}
         actual = self.renderer.render(placeholders)
-        self.assertEqual('dummy link_text (http://link_url?locale=en) content', actual)
+        self.assertEqual('dummy link_text (http://link_url?locale=locale) content', actual)
 
     def test_link_locale_for_links(self):
-        self.mock_link_local.return_value = {'locale': 'zh'}
+        self.email = Email('name', 'pt-BR', 'path', 'full_path')
         placeholders = {'content': 'dummy [link_text](http://link_url?locale={link_locale}) content'}
         r = renderer.TextRenderer(['ignore'], self.email, self.settings)
         actual = r.render(placeholders)
-        self.assertEqual('dummy link_text (http://link_url?locale=zh) content', actual)
+        self.assertEqual('dummy link_text (http://link_url?locale=pt) content', actual)
 
     def test_use_text_if_href_is_empty(self):
         placeholders = {'content': 'dummy [http://link_url]() content'}
@@ -127,17 +119,12 @@ class TestHtmlRenderer(TestCase):
         self.email = Email('name', 'locale', 'path', 'full_path')
         self.global_email = '<?xml version="1.0" encoding="UTF-8" ?><resources></resources>'
 
-        self.patch_link_local = patch('email_parser.renderer._read_link_locale_mappings')
-        self.mock_link_local = self.patch_link_local.start()
-        self.mock_link_local.return_value = {}
-
         self.patch_read = patch('email_parser.fs.read_file')
         self.mock_read = self.patch_read.start()
         self.mock_read.return_value = {}
 
     def tearDown(self):
         super().tearDown()
-        self.mock_link_local.stop()
         self.mock_read.stop()
 
     def test_happy_path(self):

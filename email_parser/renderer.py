@@ -6,12 +6,11 @@ import logging
 import markdown
 import bs4
 import pystache
-import json
 import inlinestyler.utils as inline_styler
 import xml.etree.ElementTree as ET
 from collections import OrderedDict
 
-from . import markdown_ext, fs, link_shortener, const
+from . import markdown_ext, fs, link_shortener, const, utils
 from .model import *
 
 logger = logging.getLogger(__name__)
@@ -29,26 +28,6 @@ def _split_subjects(placeholders):
         (k, v) for k, v in placeholders.items() if k not in const.SUBJECTS_PLACEHOLDERS))
 
 
-def _read_link_locale_mappings(settings):
-    try:
-        content = fs.read_file(settings.source, const.LINK_LOCALE_MAPPINGS_FILENAME)
-        return json.loads(content)
-    except FileNotFoundError:
-        logger.error('Link locale mapping (%s) could not be found at: %s', const.LINK_LOCALE_MAPPINGS_FILENAME,
-                     settings.source)
-    return {}
-
-
-def _map_link_locale(email, settings):
-    link_locale_mappings = _read_link_locale_mappings(settings)
-    link_locale = link_locale_mappings.get(email.locale)
-    if not link_locale:
-        logger.warn('Link locale mapping not found for %s/%s, "en" used', email.locale, email.name)
-        return const.DEFAULT_LOCALE
-    else:
-        return link_locale
-
-
 class HtmlRenderer(object):
     """
     Renders email' body as html.
@@ -57,8 +36,7 @@ class HtmlRenderer(object):
     def __init__(self, template, email, settings):
         self.template = template
         self.settings = settings
-        self.locale = email.locale
-        self.link_locale = _map_link_locale(email, settings)
+        self.locale = utils.normalize_locale(email.locale)
 
     def _read_template(self):
         return self.template.content
@@ -102,7 +80,8 @@ class HtmlRenderer(object):
     def _render_placeholder(self, placeholder, css):
         if not placeholder.strip():
             return placeholder
-        html = _md_to_html(placeholder.replace(const.LINK_LOCALE, self.link_locale), self.settings.images)
+        content = placeholder.replace(const.LOCALE_PLACEHOLDER, self.locale)
+        html = _md_to_html(content, self.settings.images)
         return self._inline_css(html, css)
 
     def _concat_parts(self, subject, parts):
@@ -137,8 +116,8 @@ class TextRenderer(object):
     def __init__(self, ignored_plceholder_names, email, settings):
         self.ignored_plceholder_names = ignored_plceholder_names
         self.shortener = link_shortener.shortener(settings.shortener)
-        self.link_locale = _map_link_locale(email, settings)
         self.email = email
+        self.locale = utils.normalize_locale(email.locale)
 
     def _html_to_text(self, html):
         soup = bs4.BeautifulSoup(html, const.HTML_PARSER)
@@ -174,7 +153,7 @@ class TextRenderer(object):
     def render(self, placeholders):
         _, contents = _split_subjects(placeholders)
         parts = [
-            self._md_to_text(v.replace(const.LINK_LOCALE, self.link_locale)) for k, v in contents.items()
+            self._md_to_text(v.replace(const.LOCALE_PLACEHOLDER, self.locale)) for k, v in contents.items()
             if k not in self.ignored_plceholder_names
         ]
         return const.TEXT_EMAIL_PLACEHOLDER_SEPARATOR.join(v for v in filter(bool, parts))
