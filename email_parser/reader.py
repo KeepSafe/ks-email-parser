@@ -7,7 +7,7 @@ import re
 from collections import OrderedDict
 from xml.etree import ElementTree
 
-from . import fs, const
+from . import fs, const, config
 from .model import *
 
 logger = logging.getLogger(__name__)
@@ -52,7 +52,7 @@ def _template(tree):
 
 
 def _globals_path(email):
-    email_globals = fs.email(const.GLOBALS_EMAIL_NAME, email.locale, const.DEFAULT_PATTERN)
+    email_globals = fs.email(const.GLOBALS_EMAIL_NAME, email.locale, config.pattern)
     if email_globals:
         return email_globals.path
     else:
@@ -104,6 +104,7 @@ def read(email):
         logger.error('no HTML template name define for email %s locale %s', email.name, email.locale)
 
     globals_xml = _read_xml(_globals_path(email))
-    placeholders = OrderedDict(_placeholders(email_xml).items() | _placeholders(globals_xml, 'global_').items())
+    placeholders = OrderedDict(
+        _placeholders(email_xml).items() | _placeholders(globals_xml, const.GLOBALS_PLACEHOLDER_PREFIX).items())
 
     return template, placeholders

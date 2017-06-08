@@ -4,7 +4,7 @@ import json
 import re
 import logging
 
-from . import fs, reader, const
+from . import fs, reader, const, config
 
 logger = logging.getLogger(__name__)
 
@@ -78,7 +78,7 @@ def for_email(email_name):
 
 
 def generate_config(indent=4):
-    emails = fs.emails(const.DEFAULT_PATTERN, const.DEFAULT_LOCALE)
+    emails = fs.emails(config.pattern, const.DEFAULT_LOCALE)
     placeholders = {email.name: _email_placeholders(email) for email in emails}
     if placeholders:
         fs.save_file(json.dumps(placeholders, sort_keys=True, indent=indent), const.PLACEHOLDERS_FILENAME)

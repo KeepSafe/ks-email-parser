@@ -7,7 +7,7 @@ HTML_EXTENSION = '.html'
 SUBJECTS_PLACEHOLDERS = ['subject', 'subject_a', 'subject_b', 'subject_resend']
 
 GLOBALS_EMAIL_NAME = 'global'
-GLOBAL_PLACEHOLDER_PREFIX = 'global_'
+GLOBALS_PLACEHOLDER_PREFIX = 'global_'
 PLACEHOLDERS_FILENAME = 'placeholders_config.json'
 
 INLINE_TEXT_PATTERN = r'\[{2}(.+)\]{2}'
@@ -20,12 +20,4 @@ HTML_PARSER = 'lxml'
 LOCALE_PLACEHOLDER = '{link_locale}'
 
 DEFAULT_LOCALE = 'en'
-DEFAULT_PATTERN = '{locale}/{name}.xml'
-DEFAULT_IMAGES_URL = 'http://www.getkeepsafe.com/emails/img'
-DEFAULT_RTL_LOCALES = ['ar', 'he']
 DEFAULT_WORKER_POOL = 10
-
-DIR_SOURCE = 'src'
-DIR_DESTINATION = 'target'
-DIR_TEMPLATES = 'templates_html'
-DIR_IMAGES = 'templates_html/img'

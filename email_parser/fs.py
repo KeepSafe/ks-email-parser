@@ -9,7 +9,7 @@ import re
 from pathlib import Path
 from string import Formatter
 
-from . import const
+from . import const, config
 from .model import *
 
 logger = logging.getLogger(__name__)
@@ -30,15 +30,16 @@ def _has_correct_ext(path, pattern):
     return os.path.splitext(str(path))[1] == os.path.splitext(pattern)[1]
 
 
+# TODO extract globals
 def _emails(pattern, params):
     wildcard_params = {k: '*' for k in params}
     wildcard_pattern = pattern.format(**wildcard_params)
     parser = parse.compile(pattern)
-    glob_path = Path(const.DIR_SOURCE).glob(wildcard_pattern)
+    glob_path = Path(config.paths.source).glob(wildcard_pattern)
     global_email_pattern = re.compile('/%s\.xml$' % const.GLOBALS_EMAIL_NAME)
     for path in sorted(glob_path, key=lambda path: str(path)):
         if not path.is_dir() and _has_correct_ext(path, pattern):
-            str_path = str(path.relative_to(const.DIR_SOURCE))
+            str_path = str(path.relative_to(config.paths.source))
             result = parser.parse(str_path)
             if result:  # HACK: result can be empty when pattern doesn't contain any placeholder
                 result.named['path'] = str(path.resolve())
@@ -90,7 +91,7 @@ def read_file(*path_parts, **kwargs):
     """
     Helper for reading files
     """
-    path = os.path.join(*path_parts)
+    path = os.path.join(config.paths.root, *path_parts)
     logger.debug('reading file from %s', path)
     with open(path, **kwargs) as fp:
         return fp.read()
@@ -100,14 +101,14 @@ def save_file(content, *path_parts):
     """
     Helper for saving files
     """
-    path = os.path.join(*path_parts)
+    path = os.path.join(config.paths.root, *path_parts)
     logger.debug('saving file to %s', path)
     with open(path, 'w') as fp:
         return fp.write(content)
 
 
 def delete_file(*path_parts):
-    path = os.path.join(*path_parts)
+    path = os.path.join(config.paths.root, *path_parts)
     logger.debug('deleting file to %s', path)
     os.remove(path)
 
@@ -123,22 +124,22 @@ def save_email(email, subjects, text, html):
     :param dest_dir: root destination directory
     """
     locale = email.locale or const.DEFAULT_LOCALE
-    os.makedirs(os.path.join(dest_dir, locale), exist_ok=True)
-    save_file(subjects[0], dest_dir, locale, email.name + const.SUBJECT_EXTENSION)
+    os.makedirs(os.path.join(config.paths.destination, locale), exist_ok=True)
+    save_file(subjects[0], config.paths.destination, locale, email.name + const.SUBJECT_EXTENSION)
     if len(subjects) > 1 and subjects[1] is not None:
-        save_file(subjects[1], dest_dir, locale, email.name + const.SUBJECT_A_EXTENSION)
+        save_file(subjects[1], config.paths.destination, locale, email.name + const.SUBJECT_A_EXTENSION)
     if len(subjects) > 2 and subjects[2] is not None:
-        save_file(subjects[2], dest_dir, locale, email.name + const.SUBJECT_B_EXTENSION)
+        save_file(subjects[2], config.paths.destination, locale, email.name + const.SUBJECT_B_EXTENSION)
     if len(subjects) > 3 and subjects[3] is not None:
-        save_file(subjects[3], dest_dir, locale, email.name + const.SUBJECT_RESEND_EXTENSION)
-    save_file(text, dest_dir, locale, email.name + const.TEXT_EXTENSION)
-    save_file(html, dest_dir, locale, email.name + const.HTML_EXTENSION)
+        save_file(subjects[3], config.paths.destination, locale, email.name + const.SUBJECT_RESEND_EXTENSION)
+    save_file(text, config.paths.destination, locale, email.name + const.TEXT_EXTENSION)
+    save_file(html, config.paths.destination, locale, email.name + const.HTML_EXTENSION)
 
 
 def resolve_path(template_name, locale):
-    pattern = const.DEFAULT_PATTERN.replace('{locale}', locale)
+    pattern = config.pattern.replace('{locale}', locale)
     pattern = pattern.replace('{name}', template_name)
-    return os.path.join(const.DIR_SOURCE, pattern)
+    return os.path.join(config.paths.source, pattern)
 
 
 def template(name):

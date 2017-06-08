@@ -10,7 +10,7 @@ import inlinestyler.utils as inline_styler
 import xml.etree.ElementTree as ET
 from collections import OrderedDict
 
-from . import markdown_ext, const, utils
+from . import markdown_ext, const, utils, config
 from .model import *
 
 logger = logging.getLogger(__name__)
@@ -55,7 +55,7 @@ class HtmlRenderer(object):
         return body.strip()
 
     def _wrap_with_text_direction(self, html):
-        if self.locale in const.DEFAULT_RTL_LOCALES:
+        if self.locale in config.rtl_locales:
             soup = bs4.BeautifulSoup(html, 'html.parser')
             for element in soup.contents:
                 try:
@@ -71,11 +71,11 @@ class HtmlRenderer(object):
         if not placeholder.content.strip():
             return placeholder
         content = placeholder.content.replace(const.LOCALE_PLACEHOLDER, self.locale)
-        html = _md_to_html(content, const.DEFAULT_IMAGES_URL)
+        html = _md_to_html(content, config.base_img_path)
         return self._inline_css(html, self.template.styles)
 
     def _concat_parts(self, subject, parts):
-        placeholders = dict(parts.items() | {'subject': subject[0], 'base_url': const.DEFAULT_IMAGES_URL}.items())
+        placeholders = dict(parts.items() | {'subject': subject[0], 'base_url': config.base_img_path}.items())
         try:
             # pystache escapes html by default, we pass escape option to disable this
             renderer = pystache.Renderer(escape=lambda u: u, missing_tags='strict')

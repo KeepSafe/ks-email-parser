@@ -15,11 +15,8 @@ from .model import *
 
 
 class Parser:
-    def __init__(self, settings=None):
-        settings = settings or {}
-        dsettings = default_settings()._asdict()
-        dsettings.update(settings)
-        self._settings = Settings(**dsettings)
+    def __init__(self):
+        pass
 
     def get_email(self, locale, email_name):
         email = fs.email(self._settings.source, self._settings.pattern, email_name, locale, True)
