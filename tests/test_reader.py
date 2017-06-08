@@ -9,7 +9,7 @@ from email_parser.model import *
 class TestReader(TestCase):
     def setUp(self):
         super().setUp()
-        self.email = Email(name='dummy', locale='dummy', path='dummy', full_path='dummy')
+        self.email = Email(name='dummy', locale='dummy', path='dummy')
         email_xml = ET.fromstring("""
         <resources template="dummy_template.html" style="dummy_template.css">
             <string name="subject">dummy subject</string>

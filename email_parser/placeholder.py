@@ -1,4 +1,4 @@
-from collections import defaultdict, Counter
+from collections import Counter
 from functools import lru_cache
 import json
 import re
@@ -55,7 +55,7 @@ def validate_email(email):
     try:
         expected_placeholders = _expected_placeholders(email.name)
         email_placeholders = _email_placeholders(email)
-        logger.debug('validating placeholders for %s', email.path)
+        logger.debug('validating placeholders for email %s locale %s', email.name, email.locale)
         return _validate_placeholders(email, email_placeholders, expected_placeholders)
     except FileNotFoundError:
         # If the file does not exist skip validation
@@ -65,7 +65,7 @@ def validate_email(email):
 def validate_template(template, email):
     template_placeholders = set(_extract_placeholders(template))
     email_placeholders = set(_email_placeholders(email))
-    extra_placeholders = placeholders - template_placeholders
+    extra_placeholders = email_placeholders - template_placeholders
     if extra_placeholders:
         logger.warn('There are extra placeholders %s in email %s/%s, not used in template' %
                     (extra_placeholders, email.locale, email.name))

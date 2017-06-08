@@ -32,7 +32,7 @@ class TestFs(TestCase):
         self.patch_path.stop()
 
     def test_emails_happy_path(self):
-        expected = Email('name1', 'locale1', 'src/locale1/name1.xml', 'src/locale1/name1.xml')
+        expected = Email('name1', 'locale1', 'src/locale1/name1.xml')
         self.mock_path.return_value.glob.return_value = [MockPath(expected.path)]
         actual = list(fs.emails('src/{locale}/{name}.xml'))
         self.assertEqual([expected], actual)

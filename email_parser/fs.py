@@ -41,17 +41,16 @@ def _emails(pattern, params):
             str_path = str(path.relative_to(const.DIR_SOURCE))
             result = parser.parse(str_path)
             if result:  # HACK: result can be empty when pattern doesn't contain any placeholder
-                result.named['path'] = str_path
-                result.named['full_path'] = str(path.resolve())
+                result.named['path'] = str(path.resolve())
                 if not re.findall(global_email_pattern, str_path):
-                    logger.debug('loading email %s', result.named['full_path'])
+                    logger.debug('loading email %s', result.named['path'])
                     yield result
 
 
 # TODO eliminate pattern
 def emails(pattern, locale=None):
     """
-    Resolves a pattern to a collection of emails. 
+    Resolves a pattern to a collection of emails.
 
     :param src_dir: base dir for the search
     :param pattern: search pattern

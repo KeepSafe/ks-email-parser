@@ -43,14 +43,14 @@ class Parser:
 
     def get_template(self, locale, template_name):
         email = fs.email(self._settings.source, self._settings.pattern, template_name, locale, True)
-        return fs.read_file(email.full_path)
+        return fs.read_file(email.path)
 
     def delete_template(self, template_name):
         emails = fs.email(self._settings.source, self._settings.pattern, template_name, None, True)
         files = []
         for email in emails:
-            files.append(email.full_path)
-            fs.delete_file(email.full_path)
+            files.append(email.path)
+            fs.delete_file(email.path)
         placeholder.generate_config(settings)
         return files
 

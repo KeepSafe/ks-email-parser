@@ -6,7 +6,7 @@ from email_parser import renderer, const
 
 class TestTextRenderer(TestCase):
     def setUp(self):
-        self.email = Email('name', 'locale', 'path', 'full_path')
+        self.email = Email('name', 'locale', 'path')
         self.r = renderer.TextRenderer(self.email)
 
     def test_happy_path(self):
@@ -58,7 +58,7 @@ class TestTextRenderer(TestCase):
         self.assertEqual('dummy link_text (http://link_url?locale=locale) content', actual)
 
     def test_link_locale_for_links(self):
-        self.email = Email('name', 'pt-BR', 'path', 'full_path')
+        self.email = Email('name', 'pt-BR', 'path')
         placeholders = {
             'content': Placeholder('content', 'dummy [link_text](http://link_url?locale={link_locale}) content')
         }
@@ -124,7 +124,7 @@ class TestSubjectRenderer(TestCase):
 
 class TestHtmlRenderer(TestCase):
     def setUp(self):
-        self.email = Email('name', 'locale', 'path', 'full_path')
+        self.email = Email('name', 'locale', 'path')
 
     def test_happy_path(self):
         placeholders = {'content1': Placeholder('content1', 'text1')}
@@ -160,7 +160,7 @@ class TestHtmlRenderer(TestCase):
             r.render(placeholders)
 
     def test_rtl_locale(self):
-        email = Email('name', 'ar', 'path', 'full_path')
+        email = Email('name', 'ar', 'path')
         template = Template('dummy', '<style>body {}</style>', '<body>{{content}}</body>', ['content'])
         r = renderer.HtmlRenderer(template, email)
         placeholders = {'content': Placeholder('content', 'dummy_content')}
@@ -169,7 +169,7 @@ class TestHtmlRenderer(TestCase):
         self.assertEqual('<body dir="rtl">\n <p>\n  dummy_content\n </p>\n</body>', actual)
 
     def test_rtl_two_placeholders(self):
-        email = Email('name', 'ar', 'path', 'full_path')
+        email = Email('name', 'ar', 'path')
         template = Template('dummy', '<style>body {}</style>',
                             '<body><div>{{content1}}</div><div>{{content2}}</div></body>', ['content1', 'content2'])
         r = renderer.HtmlRenderer(template, email)

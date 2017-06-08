@@ -54,7 +54,7 @@ def _template(tree):
 def _globals_path(email):
     email_globals = fs.email(const.GLOBALS_EMAIL_NAME, email.locale, const.DEFAULT_PATTERN)
     if email_globals:
-        return email_globals.full_path
+        return email_globals.path
     else:
         return None
 
@@ -97,11 +97,11 @@ def read(email):
     :param email_path: a full path to an email
     :returns: tuple of email template, a collection of placeholders
     """
-    email_xml = _read_xml(email.full_path)
+    email_xml = _read_xml(email.path)
     template = _template(email_xml)
 
     if not template.name:
-        logger.error('no HTML template name define for %s', email.path)
+        logger.error('no HTML template name define for email %s locale %s', email.name, email.locale)
 
     globals_xml = _read_xml(_globals_path(email))
     placeholders = OrderedDict(_placeholders(email_xml).items() | _placeholders(globals_xml, 'global_').items())

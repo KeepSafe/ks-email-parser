@@ -1,8 +1,8 @@
 from unittest import TestCase
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 import json
 
-from email_parser import placeholder, fs, cmd
+from email_parser import placeholder, fs
 from email_parser.model import *
 
 
@@ -23,7 +23,7 @@ class TestGenerator(TestCase):
         self.patch_reader.stop()
 
     def test_happy_path(self):
-        self.mock_fs.emails.return_value = iter([Email('test_name', 'en', 'path', 'full_path')])
+        self.mock_fs.emails.return_value = iter([Email('test_name', 'en', 'path')])
         self.mock_reader.read.return_value = ('', {'segment': Placeholder('segment', '{{placeholder}}')})
         placeholder.generate_config(None)
         self.mock_fs.save_file.assert_called_with('{"test_name": {"placeholder": 1}}', 'placeholders_config.json')
@@ -36,7 +36,7 @@ class TestGenerator(TestCase):
 
 class TestValidate(TestCase):
     def setUp(self):
-        self.email = fs.Email('test_name', 'en', 'path', 'full_path')
+        self.email = fs.Email('test_name', 'en', 'path')
         placeholder._expected_placeholders_file.cache_clear()
 
         self.patch_fs = patch('email_parser.placeholder.fs')
