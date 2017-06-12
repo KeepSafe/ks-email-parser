@@ -1,10 +1,10 @@
 from collections import Counter
 from functools import lru_cache
-import json
 import re
+import json
 import logging
 
-from . import fs, reader, const, config
+from . import reader, fs, const
 
 logger = logging.getLogger(__name__)
 
@@ -14,17 +14,13 @@ def _extract_placeholders(text):
 
 
 @lru_cache(maxsize=None)
-def _expected_placeholders_file():
-    content = fs.read_file(const.PLACEHOLDERS_FILENAME)
+def expected_placeholders_file(root_path):
+    content = fs.read_file(root_path, const.PLACEHOLDERS_FILENAME)
     return json.loads(content)
 
 
-def _expected_placeholders(email_name):
-    return _expected_placeholders_file().get(email_name, {})
-
-
-def _email_placeholders(email):
-    _, contents = reader.read(email)
+def _email_placeholders(root_path, email):
+    _, contents = reader.read(root_path, email)
     content = ''.join(map(lambda c: c.content, contents.values()))
     return _extract_placeholders(content)
 
@@ -51,10 +47,9 @@ def _validate_placeholders(email, email_placeholders, expected_placeholders):
     return result
 
 
-def validate_email(email):
+def validate_email(root_path, email, expected_placeholders):
     try:
-        expected_placeholders = _expected_placeholders(email.name)
-        email_placeholders = _email_placeholders(email)
+        email_placeholders = _email_placeholders(root_path, email)
         logger.debug('validating placeholders for email %s locale %s', email.name, email.locale)
         return _validate_placeholders(email, email_placeholders, expected_placeholders)
     except FileNotFoundError:
@@ -73,14 +68,7 @@ def validate_template(template, email):
     return True
 
 
-def for_email(email_name):
-    return list(_expected_placeholders(email_name))
-
-
-def generate_config(indent=4):
-    emails = fs.emails(config.pattern, const.DEFAULT_LOCALE)
-    placeholders = {email.name: _email_placeholders(email) for email in emails}
-    if placeholders:
-        fs.save_file(json.dumps(placeholders, sort_keys=True, indent=indent), const.PLACEHOLDERS_FILENAME)
-        return True
-    return False
+def generate_config(root_path):
+    emails = fs.emails(root_path, locale=const.DEFAULT_LOCALE)
+    placeholders = {email.name: _email_placeholders(root_path, email) for email in emails}
+    return placeholders

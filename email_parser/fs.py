@@ -5,7 +5,6 @@ All filesystem interaction.
 import logging
 import os
 import parse
-import re
 from pathlib import Path
 from string import Formatter
 
@@ -31,25 +30,24 @@ def _has_correct_ext(path, pattern):
 
 
 # TODO extract globals
-def _emails(pattern, params):
+def _emails(root_path, pattern, params):
+    source_path = os.path.join(root_path, config.paths.source)
     wildcard_params = {k: '*' for k in params}
     wildcard_pattern = pattern.format(**wildcard_params)
     parser = parse.compile(pattern)
-    glob_path = Path(config.paths.source).glob(wildcard_pattern)
-    global_email_pattern = re.compile('/%s\.xml$' % const.GLOBALS_EMAIL_NAME)
+    glob_path = Path(source_path).glob(wildcard_pattern)
     for path in sorted(glob_path, key=lambda path: str(path)):
         if not path.is_dir() and _has_correct_ext(path, pattern):
-            str_path = str(path.relative_to(config.paths.source))
+            str_path = str(path.relative_to(source_path))
             result = parser.parse(str_path)
             if result:  # HACK: result can be empty when pattern doesn't contain any placeholder
                 result.named['path'] = str(path.resolve())
-                if not re.findall(global_email_pattern, str_path):
+                if not str_path.endswith(const.GLOBALS_EMAIL_NAME + const.SOURCE_EXTENSION):
                     logger.debug('loading email %s', result.named['path'])
                     yield result
 
 
-# TODO eliminate pattern
-def emails(pattern, locale=None):
+def emails(root_path, email_name=None, locale=None):
     """
     Resolves a pattern to a collection of emails.
 
@@ -59,14 +57,21 @@ def emails(pattern, locale=None):
 
     :returns: generator for the emails matching the pattern
     """
-    params = _parse_params(pattern)
+    params = _parse_params(config.pattern)
+    pattern = config.pattern
+    if email_name:
+        pattern = pattern.replace('{name}', email_name)
     if locale:
         pattern = pattern.replace('{locale}', locale)
-    for result in _emails(pattern, params):
+    for result in _emails(root_path, pattern, params):
+        if email_name:
+            result.named['name'] = email_name
+        if locale:
+            result.named['locale'] = locale
         yield Email(**result.named)
 
 
-def email(email_name, locale, pattern):
+def email(root_path, email_name, locale):
     """
     Gets an email by name and locale
 
@@ -77,23 +82,28 @@ def email(email_name, locale, pattern):
 
     :returns: generator for the emails with email_name
     """
-    params = _parse_params(pattern)
-    pattern = pattern.replace('{name}', email_name)
+    params = _parse_params(config.pattern)
+    pattern = config.pattern.replace('{name}', email_name)
     pattern = pattern.replace('{locale}', locale)
-    for result in _emails(pattern, params):
+    for result in _emails(root_path, pattern, params):
         result.named['name'] = email_name
         result.named['locale'] = locale
         return Email(**result.named)
     return None
 
 
-def read_file(*path_parts, **kwargs):
+def global_email(root_path, locale):
+    path = os.path.join(root_path, config.paths.source, locale, const.GLOBALS_EMAIL_NAME + const.SOURCE_EXTENSION)
+    return Email(const.GLOBALS_EMAIL_NAME, locale, path)
+
+
+def read_file(*path_parts):
     """
     Helper for reading files
     """
-    path = os.path.join(config.paths.root, *path_parts)
+    path = os.path.join(*path_parts)
     logger.debug('reading file from %s', path)
-    with open(path, **kwargs) as fp:
+    with open(path) as fp:
         return fp.read()
 
 
@@ -101,19 +111,29 @@ def save_file(content, *path_parts):
     """
     Helper for saving files
     """
-    path = os.path.join(config.paths.root, *path_parts)
+    path = os.path.join(*path_parts)
     logger.debug('saving file to %s', path)
     with open(path, 'w') as fp:
         return fp.write(content)
 
 
 def delete_file(*path_parts):
-    path = os.path.join(config.paths.root, *path_parts)
+    """
+    Helper for deleting files
+    """
+    path = os.path.join(*path_parts)
     logger.debug('deleting file to %s', path)
     os.remove(path)
 
 
-def save_email(email, subjects, text, html):
+def save_email(root_path, content, email_name, locale):
+    pattern = config.pattern.replace('{locale}', locale)
+    pattern = pattern.replace('{name}', template_name)
+    path = os.path.join(config.paths.source, pattern)
+    save_file(content, path)
+
+
+def save_parsed_email(root_path, email, subjects, text, html):
     """
     Saves an email. The locale and name are taken from email tuple.
 
@@ -124,27 +144,14 @@ def save_email(email, subjects, text, html):
     :param dest_dir: root destination directory
     """
     locale = email.locale or const.DEFAULT_LOCALE
-    os.makedirs(os.path.join(config.paths.destination, locale), exist_ok=True)
-    save_file(subjects[0], config.paths.destination, locale, email.name + const.SUBJECT_EXTENSION)
+    folder = os.path.join(root_path, config.paths.destination, locale)
+    os.makedirs(folder, exist_ok=True)
+    save_file(subjects[0], folder, email.name + const.SUBJECT_EXTENSION)
     if len(subjects) > 1 and subjects[1] is not None:
-        save_file(subjects[1], config.paths.destination, locale, email.name + const.SUBJECT_A_EXTENSION)
+        save_file(subjects[1], folder, email.name + const.SUBJECT_A_EXTENSION)
     if len(subjects) > 2 and subjects[2] is not None:
-        save_file(subjects[2], config.paths.destination, locale, email.name + const.SUBJECT_B_EXTENSION)
+        save_file(subjects[2], folder, email.name + const.SUBJECT_B_EXTENSION)
     if len(subjects) > 3 and subjects[3] is not None:
-        save_file(subjects[3], config.paths.destination, locale, email.name + const.SUBJECT_RESEND_EXTENSION)
-    save_file(text, config.paths.destination, locale, email.name + const.TEXT_EXTENSION)
-    save_file(html, config.paths.destination, locale, email.name + const.HTML_EXTENSION)
-
-
-def resolve_path(template_name, locale):
-    pattern = config.pattern.replace('{locale}', locale)
-    pattern = pattern.replace('{name}', template_name)
-    return os.path.join(config.paths.source, pattern)
-
-
-def template(name):
-    pass
-
-
-def style(name):
-    pass
+        save_file(subjects[3], folder, email.name + const.SUBJECT_RESEND_EXTENSION)
+    save_file(text, folder, email.name + const.TEXT_EXTENSION)
+    save_file(html, folder, email.name + const.HTML_EXTENSION)

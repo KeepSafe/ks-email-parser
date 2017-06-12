@@ -19,18 +19,19 @@ def _placeholders(tree, prefix=''):
     result = OrderedDict()
     for element in tree.findall('./string'):
         name = '{0}{1}'.format(prefix, element.get('name'))
-        result[name] = Placeholder(name, element.text, element.get('isText', 'true') == 'true')
+        result[name] = Placeholder(name, element.text,
+                                   element.get('isText', 'true') == 'true', prefix == const.GLOBALS_PLACEHOLDER_PREFIX)
     return result
 
 
-def _template(tree):
+def _template(root_path, tree):
     content = None
     placeholders = []
     styles = []
 
     template_name = tree.getroot().get('template')
     if template_name:
-        content = fs.template(template_name)
+        content = fs.read_file(root_path, config.paths.templates, template_name)
         placeholders = [m.group(1) for m in re.finditer(r'\{\{(\w+)\}\}', content)]
 
     # TODO sad panda, refactor
@@ -41,7 +42,7 @@ def _template(tree):
     style_element = tree.getroot().get('style')
     if style_element:
         styles = style_element.split(',')
-        css = [fs.style(f) or ' ' for f in styles]
+        css = [fs.read_file(root_path, config.paths.templates, f) or ' ' for f in styles]
         styles = '\n'.join(css)
         styles = '<style>%s</style>' % styles
     else:
@@ -49,14 +50,6 @@ def _template(tree):
 
     # TODO either read all or leave just names for content and styles
     return Template(template_name, styles, content, placeholders)
-
-
-def _globals_path(email):
-    email_globals = fs.email(const.GLOBALS_EMAIL_NAME, email.locale, config.pattern)
-    if email_globals:
-        return email_globals.path
-    else:
-        return None
 
 
 def _handle_xml_parse_error(file_path, exception):
@@ -82,15 +75,15 @@ def _handle_xml_parse_error(file_path, exception):
 
 def _read_xml(path):
     if not path:
-        return {}
+        return None
     try:
         return ElementTree.parse(path)
     except ElementTree.ParseError as e:
         _handle_xml_parse_error(path, e)
-        return {}
+        return None
 
 
-def read(email):
+def read(root_path, email):
     """
     Reads an email from a path.
 
@@ -98,13 +91,18 @@ def read(email):
     :returns: tuple of email template, a collection of placeholders
     """
     email_xml = _read_xml(email.path)
-    template = _template(email_xml)
+    if not email_xml and email.locale != const.DEFAULT_LOCALE:
+        email = fs.email(root_path, email.name, const.DEFAULT_LOCALE)
+        email_xml = _read_xml(email.path)
+    if not email_xml:
+        return None, None
+    template = _template(root_path, email_xml)
 
     if not template.name:
         logger.error('no HTML template name define for email %s locale %s', email.name, email.locale)
 
-    globals_xml = _read_xml(_globals_path(email))
-    placeholders = OrderedDict(
-        _placeholders(email_xml).items() | _placeholders(globals_xml, const.GLOBALS_PLACEHOLDER_PREFIX).items())
+    globals_xml = _read_xml(fs.global_email(root_path, email.locale).path)
+    placeholders = OrderedDict(_placeholders(globals_xml, const.GLOBALS_PLACEHOLDER_PREFIX).items())
+    placeholders.update(_placeholders(email_xml).items())
 
     return template, placeholders

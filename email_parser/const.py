@@ -4,6 +4,7 @@ SUBJECT_A_EXTENSION = '.a.subject'
 SUBJECT_B_EXTENSION = '.b.subject'
 TEXT_EXTENSION = '.text'
 HTML_EXTENSION = '.html'
+SOURCE_EXTENSION = '.xml'
 SUBJECTS_PLACEHOLDERS = ['subject', 'subject_a', 'subject_b', 'subject_resend']
 
 GLOBALS_EMAIL_NAME = 'global'

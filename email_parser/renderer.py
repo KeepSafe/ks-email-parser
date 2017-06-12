@@ -75,7 +75,8 @@ class HtmlRenderer(object):
         return self._inline_css(html, self.template.styles)
 
     def _concat_parts(self, subject, parts):
-        placeholders = dict(parts.items() | {'subject': subject[0], 'base_url': config.base_img_path}.items())
+        subject = subject[0].content if subject[0] is not None else ''
+        placeholders = dict(parts.items() | {'subject': subject, 'base_url': config.base_img_path}.items())
         try:
             # pystache escapes html by default, we pass escape option to disable this
             renderer = pystache.Renderer(escape=lambda u: u, missing_tags='strict')
@@ -98,8 +99,9 @@ class TextRenderer(object):
     Renders email's body as text.
     """
 
-    def __init__(self, email):
+    def __init__(self, template, email):
         # self.shortener = link_shortener.shortener(settings.shortener)
+        self.template = template
         self.locale = utils.normalize_locale(email.locale)
 
     def _html_to_text(self, html):
@@ -136,8 +138,8 @@ class TextRenderer(object):
     def render(self, placeholders):
         _, contents = _split_subjects(placeholders)
         parts = [
-            self._md_to_text(v.content.replace(const.LOCALE_PLACEHOLDER, self.locale)) for k, v in contents.items()
-            if v.is_text
+            self._md_to_text(contents[p].content.replace(const.LOCALE_PLACEHOLDER, self.locale))
+            for p in self.template.placeholders if p in contents and contents[p].is_text
         ]
         return const.TEXT_EMAIL_PLACEHOLDER_SEPARATOR.join(v for v in filter(bool, parts))
 
@@ -154,14 +156,14 @@ class SubjectRenderer(object):
         return list(map(lambda s: s.content if s else None, subjects))
 
 
-def render(email, template, placeholders, ignored_placeholder_names, settings):
+def render(email, template, placeholders):
     subject_renderer = SubjectRenderer()
     subjects = subject_renderer.render(placeholders)
 
-    text_renderer = TextRenderer(ignored_placeholder_names, email, settings)
+    text_renderer = TextRenderer(template, email)
     text = text_renderer.render(placeholders)
 
-    html_renderer = HtmlRenderer(template, email, settings)
+    html_renderer = HtmlRenderer(template, email)
     try:
         html = html_renderer.render(placeholders)
     except MissingTemplatePlaceholderError as e:

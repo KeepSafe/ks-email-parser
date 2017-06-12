@@ -1,13 +1,15 @@
 from unittest import TestCase
 
 from email_parser.model import *
-from email_parser import renderer, const
+from email_parser import renderer, const, config
 
 
 class TestTextRenderer(TestCase):
     def setUp(self):
         self.email = Email('name', 'locale', 'path')
-        self.r = renderer.TextRenderer(self.email)
+        self.template = Template('dummy', '<style>body {}</style>', '<body>{{content1}}</body>',
+                                 ['content', 'content1', 'content2'])
+        self.r = renderer.TextRenderer(self.template, self.email)
 
     def test_happy_path(self):
         placeholders = {'content': Placeholder('content', 'dummy content')}
@@ -41,7 +43,7 @@ class TestTextRenderer(TestCase):
             'content': Placeholder('content', 'dummy content'),
             'ignore': Placeholder('ignore', 'test', False)
         }
-        r = renderer.TextRenderer(self.email)
+        r = renderer.TextRenderer(self.template, self.email)
         actual = r.render(placeholders)
         self.assertEqual('dummy content', actual)
 
@@ -62,7 +64,7 @@ class TestTextRenderer(TestCase):
         placeholders = {
             'content': Placeholder('content', 'dummy [link_text](http://link_url?locale={link_locale}) content')
         }
-        r = renderer.TextRenderer(self.email)
+        r = renderer.TextRenderer(self.template, self.email)
         actual = r.render(placeholders)
         self.assertEqual('dummy link_text (http://link_url?locale=pt) content', actual)
 
@@ -125,6 +127,10 @@ class TestSubjectRenderer(TestCase):
 class TestHtmlRenderer(TestCase):
     def setUp(self):
         self.email = Email('name', 'locale', 'path')
+        config.init(_base_img_path='images_base')
+
+    def tearDown(self):
+        config.init()
 
     def test_happy_path(self):
         placeholders = {'content1': Placeholder('content1', 'text1')}
@@ -148,7 +154,7 @@ class TestHtmlRenderer(TestCase):
         r = renderer.HtmlRenderer(template, self.email)
 
         actual = r.render(placeholders)
-        self.assertEqual('<body>http://www.getkeepsafe.com/emails/img</body>', actual)
+        self.assertEqual('<body>images_base</body>', actual)
 
     def test_fail_on_missing_placeholders(self):
         template = Template('dummy', '<style>body {}</style>', '<body>{{content}}{{missing}}</body>',
