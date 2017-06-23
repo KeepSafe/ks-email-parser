@@ -310,14 +310,18 @@ class GenericRenderer(object):
     def __init__(self, settings):
         self.settings = settings
         self._resource_cache = dict()
+        self.jinja_env = jinja2.Environment(loader=jinja2.PackageLoader('email_parser.resources', 'gui'),
+                                            trim_blocks=True,
+                                            lstrip_blocks=True,
+                                            newline_sequence='\n')
 
     def resource(self, resource_name):
         resource = pkgutil.get_data(RESOURCE_PACKAGE, resource_name).decode('utf-8')
         return resource
 
     def gui_template(self, template_name, **args):
-        resource = self.resource(template_name)
-        return jinja2.Template(resource).render(**args)
+        tpl = self.jinja_env.get_template(template_name)
+        return tpl.render(**args)
 
     def directory(self,
                   description,
@@ -387,6 +391,7 @@ class InlineFormRenderer(GenericRenderer):
         fs.save_file(xml, self.settings.source, email_name)
         place_holders.generate_config(self.settings)
         place_holders._read_placeholders_file.cache_clear()
+        return xml
 
     def content_to_save(self, email_name, template_name, styles, ommit_global_placeholders=True, **args):
         replacer = InlineFormReplacer.make(
@@ -740,12 +745,7 @@ class Server(object):
 
         try:
             output = self.final_renderer.save(rel_path, document.template_name, document.styles, **document.args)
-            if output:
-                output = str(output, 'utf-8')
-                return self.final_renderer.question(
-                    title='Saved & postprocessed email: {}'.format(rel_path),
-                    description=html_escape(output),
-                    actions=[['View', '/email/{}'.format(rel_path), 2000], ])
+            logger.info("saved email %s", output)
 
         except subprocess.CalledProcessError as err:
             output = str(err.output, 'utf-8') if err.output else 'Error #{}'.format(err.returncode)
