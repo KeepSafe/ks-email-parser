@@ -7,8 +7,9 @@
     :copyright: (c) 2014 by KeepSafe.
     :license: Apache, see LICENSE for more details.
 """
+import json
 
-from . import placeholder, fs, reader, renderer
+from . import placeholder, fs, reader, renderer, const
 from .model import *
 
 
@@ -67,6 +68,6 @@ class Parser:
         placeholders_config = placeholder.generate_config(self.root_path)
         if placeholders_config:
             fs.save_file(
-                json.dumps(placeholders_config, sort_keys=True, indent=indent), self.root_path,
+                json.dumps(placeholders_config, sort_keys=True, indent=const.JSON_INDENT), self.root_path,
                 const.PLACEHOLDERS_FILENAME)
             placeholder.expected_placeholders_file.cache_clear()

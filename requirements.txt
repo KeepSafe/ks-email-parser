@@ -1,6 +1,5 @@
 jinja2>=2.7
 Markdown==2.4.1
-cherrypy==3.8.0
 beautifulsoup4==4.4.1
 cssutils==1.0.1
 inlinestyler==0.2.0
