@@ -9,6 +9,7 @@ SUBJECTS_PLACEHOLDERS = ['subject', 'subject_a', 'subject_b', 'subject_resend']
 
 GLOBALS_EMAIL_NAME = 'global'
 GLOBALS_PLACEHOLDER_PREFIX = 'global_'
+REPO_SRC_PATH = 'src'
 PLACEHOLDERS_FILENAME = 'placeholders_config.json'
 
 INLINE_TEXT_PATTERN = r'\[{2}(.+)\]{2}'

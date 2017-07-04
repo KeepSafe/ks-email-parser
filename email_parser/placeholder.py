@@ -15,7 +15,7 @@ def _extract_placeholders(text):
 
 @lru_cache(maxsize=None)
 def expected_placeholders_file(root_path):
-    content = fs.read_file(root_path, const.PLACEHOLDERS_FILENAME)
+    content = fs.read_file(root_path, const.REPO_SRC_PATH, const.PLACEHOLDERS_FILENAME)
     return json.loads(content)
 
 
