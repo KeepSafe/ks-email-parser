@@ -1,7 +1,8 @@
 import os
 from unittest import TestCase
 
-from email_parser import api
+import email_parser
+from email_parser import config
 
 
 def read_fixture(filename):
@@ -9,34 +10,32 @@ def read_fixture(filename):
         return fp.read()
 
 
-class TestAPI(TestCase):
+class TestParser(TestCase):
     def setUp(self):
-        self.settings = {
-            'source': 'tests',
-            'templates': 'tests/templates_html',
-            'images': 'images_base',
-            'pattern': 'src/{locale}/{name}.xml'
-        }
+        self.parser = email_parser.Parser('./tests')
 
-    def test_get_email(self):
-        email = api.get_email(self.settings, 'en', 'email')
+    def tearDown(self):
+        config.init()
+
+    def test_get_template_for_email(self):
+        email = self.parser.get_template_for_email('email', 'en')
         self.assertEqual(email, read_fixture('email.raw.html'))
 
     def test_parse_email(self):
-        subjects, text, html = api.parse_email(self.settings, 'en', 'email')
+        subjects, text, html = self.parser.render('email', 'en')
         self.assertEqual(subjects[0], read_fixture('email.subject').strip())
         self.assertEqual(html, read_fixture('email.html'))
         self.assertEqual(text, read_fixture('email.text').strip())
 
     def test_get_email_names(self):
-        names = api.get_email_names(self.settings)
+        names = self.parser.get_email_names()
         self.assertEqual(
             list(names), [
                 'email', 'email_globale', 'email_subject_resend', 'email_subjects_ab', 'fallback',
-                'missing_placeholder', 'placeholder', 'email', 'fallback', 'missing_placeholder', 'placeholder'
+                'missing_placeholder', 'placeholder'
             ])
 
     def test_get_email_placeholders(self):
-        placeholders = api.get_email_placeholders(self.settings)
-        self.assertEqual(len(placeholders.keys()), 7)
+        placeholders = self.parser.get_email_placeholders()
+        self.assertEqual(len(placeholders.keys()), 2)
         self.assertEqual(placeholders['placeholder'], ['placeholder'])

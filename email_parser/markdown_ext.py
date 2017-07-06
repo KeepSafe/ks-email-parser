@@ -3,16 +3,14 @@ from markdown.blockprocessors import BlockProcessor
 from markdown.extensions import Extension
 import re
 
-INLINE_TEXT_PATTERN = r'\[{2}(.+)\]{2}'
-IMAGE_PATTERN = '![{}]({}/{})'
+from . import const
 
 
 class InlineBlockProcessor(BlockProcessor):
-
     """
     Inlines the content instead of parsing it as markdown.
     """
-    RE = re.compile(INLINE_TEXT_PATTERN)
+    RE = re.compile(const.INLINE_TEXT_PATTERN)
 
     def test(self, parent, block):
         return bool(self.RE.match(block))
@@ -26,7 +24,6 @@ class InlineBlockProcessor(BlockProcessor):
 
 
 class BaseUrlImagePattern(Pattern):
-
     """
     Adds base url to images which have relative path.
     """
@@ -37,7 +34,8 @@ class BaseUrlImagePattern(Pattern):
         r'localhost|'  # localhost...
         r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})'  # ...or ip
         r'(?::\d+)?'  # optional port
-        r'(?:/?|[/?]\S+)$', re.IGNORECASE)
+        r'(?:/?|[/?]\S+)$',
+        re.IGNORECASE)
 
     def __init__(self, images_dir, *args):
         super().__init__(*args)
@@ -55,20 +53,18 @@ class BaseUrlImagePattern(Pattern):
         if self._is_url(m.group(10)):
             image = m.string
         else:
-            image = IMAGE_PATTERN.format(m.group(2), self.images_dir, m.group(10).strip('/'))
+            image = const.IMAGE_PATTERN.format(m.group(2), self.images_dir, m.group(10).strip('/'))
         pattern = re.compile("^(.*?)%s(.*?)$" % self.image_pattern.pattern, re.DOTALL | re.UNICODE)
         match = re.match(pattern, ' ' + image + ' ')
         return self.image_pattern.handleMatch(match)
 
 
 class InlineTextExtension(Extension):
-
     def extendMarkdown(self, md, md_globals):
         md.parser.blockprocessors.add('inline_text', InlineBlockProcessor(md.parser), '<paragraph')
 
 
 class BaseUrlExtension(Extension):
-
     def __init__(self, images_dir):
         super().__init__()
         self.images_dir = images_dir

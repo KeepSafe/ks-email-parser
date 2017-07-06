@@ -1,9 +1,0 @@
-{% if customer.language == "en" %}
-Dummy content
-
-Dummy inline
-{% elsif customer.language == "fr" %}
-Dummy content fr
-
-Dummy inline fr
-{% endif %}
