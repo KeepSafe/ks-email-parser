@@ -1,4 +1,4 @@
-from markdown.inlinepatterns import Pattern, ImagePattern, IMAGE_LINK_RE
+from markdown.inlinepatterns import Pattern, ImagePattern, LinkPattern, LINK_RE, IMAGE_LINK_RE
 from markdown.blockprocessors import BlockProcessor
 from markdown.extensions import Extension
 import re
@@ -61,6 +61,18 @@ class BaseUrlImagePattern(Pattern):
         return self.image_pattern.handleMatch(match)
 
 
+class NoTrackingLinkPattern(LinkPattern):
+    def __init__(self, *args):
+        super().__init__(*args)
+
+    def handleMatch(self, m):
+        el = super().handleMatch(m)
+        if el.get('href') and el.get('href').startswith('!'):
+            el.set('href', el.get('href')[1:])
+            el.set('clicktracking', 'off')
+        return el
+
+
 class InlineTextExtension(Extension):
 
     def extendMarkdown(self, md, md_globals):
@@ -77,9 +89,21 @@ class BaseUrlExtension(Extension):
         md.inlinePatterns.add('base_url_image', BaseUrlImagePattern(self.images_dir, IMAGE_LINK_RE, md), '<image_link')
 
 
+class NoTrackingLinkExtension(Extension):
+    def __init__(self):
+        super().__init__()
+
+    def extendMarkdown(self, md, md_globals):
+        md.inlinePatterns.add('no_tracking_link', NoTrackingLinkPattern(LINK_RE, md), '<link')
+
+
 def inline_text():
     return InlineTextExtension()
 
 
 def base_url(base_url):
     return BaseUrlExtension(base_url)
+
+
+def no_tracking():
+    return NoTrackingLinkExtension()
