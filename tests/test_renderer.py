@@ -7,7 +7,6 @@ from email_parser.fs import Email
 
 
 class TestTextRenderer(TestCase):
-
     def setUp(self):
         self.email = Email('name', 'locale', 'path', 'full_path')
         self.renderer = renderer.TextRenderer([], {}, self.email)
@@ -109,7 +108,6 @@ class TestTextRenderer(TestCase):
 
 
 class TestSubjectRenderer(TestCase):
-
     def setUp(self):
         self.renderer = renderer.SubjectRenderer()
 
@@ -121,8 +119,7 @@ class TestSubjectRenderer(TestCase):
         self.assertEqual('dummy subject', actual[0])
 
     def test_ab(self):
-        placeholders = {'content': 'dummy content', 'subject': 'dummy subject',
-                        'subject_b': 'bbb', 'subject_a': 'aaa'}
+        placeholders = {'content': 'dummy content', 'subject': 'dummy subject', 'subject_b': 'bbb', 'subject_a': 'aaa'}
 
         actual = self.renderer.render(placeholders)
 
@@ -136,16 +133,15 @@ class TestSubjectRenderer(TestCase):
 
 
 class TestHtmlRenderer(TestCase):
-
     def _get_renderer(self, template_html, template_placeholders, **kwargs):
-        template = Template(name='template_name',
-                            styles=['template_style'],
-                            content=template_html,
-                            placeholders_order=template_placeholders)
+        template = Template(
+            name='template_name',
+            styles=['template_style'],
+            content=template_html,
+            placeholders_order=template_placeholders)
         return renderer.HtmlRenderer(template,
                                      kwargs.get('link_locale_mappings', {}),
-                                     kwargs.get('email', self.email),
-                                     kwargs.get('settings', self.settings))
+                                     kwargs.get('email', self.email), kwargs.get('settings', self.settings))
 
     def setUp(self):
         settings = cmd.default_settings()._asdict()
@@ -257,6 +253,7 @@ class TestHtmlRenderer(TestCase):
         actual = renderer.render(placeholders)
         expected = '<body dir="rtl">\n <div>\n  <p>\n   dummy_content1\n  </p>\n </div>\n <div>\n  <p>\n   dummy_content2\n  </p>\n </div>\
 \n</body>'
+
         self.assertEqual(expected, actual)
 
     @patch('email_parser.fs.read_file')
@@ -271,13 +268,17 @@ class TestHtmlRenderer(TestCase):
 
         self.assertEqual('<body><p style="color: red">dummy_content</p></body>', actual)
 
-    def test_no_tracking(self):
-        placeholders = {'content': Placeholder('content', '[link_title](!http://link.com)')}
-        template = Template('dummy', '<style>body {}</style>', '<body>{{content}}</body>', ['content'])
-        r = renderer.HtmlRenderer(template, self.email)
+    @patch('email_parser.fs.read_file')
+    def test_no_tracking(self, mock_read):
+        html = '<body>{{content}}</body>'
+        html_placeholders = ['content']
+        placeholders = {'content': '[link_title](!http://link.com)'}
+        mock_read.side_effect = iter([''])
         expected = """<body><p>
       <a clicktracking="off" href="http://link.com">link_title</a>
     </p></body>"""
 
+        r = self._get_renderer(html, html_placeholders)
         actual = r.render(placeholders)
+
         self.assertEqual(expected, actual)
