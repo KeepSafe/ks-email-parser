@@ -197,3 +197,14 @@ class TestHtmlRenderer(TestCase):
 
         actual = r.render(placeholders)
         self.assertEqual('<body><p style="color: red">dummy_content</p></body>', actual)
+
+    def test_no_tracking(self):
+        placeholders = {'content': Placeholder('content', '[link_title](!http://link.com)')}
+        template = Template('dummy', '<style>body {}</style>', '<body>{{content}}</body>', ['content'])
+        r = renderer.HtmlRenderer(template, self.email)
+        expected = """<body><p>
+      <a clicktracking="off" href="http://link.com">link_title</a>
+    </p></body>"""
+
+        actual = r.render(placeholders)
+        self.assertEqual(expected, actual)

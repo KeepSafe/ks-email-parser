@@ -67,6 +67,10 @@ If email locale will be `zh-TW-Hant`, then `[something](https://getkeepsafe.com/
 The parser will automatically add base_url to any image tag in markdown, so `![Alt text](/path/to/img.jpg)` and base url `base_url`
 will produce `<img alt="Alt text" src="base_url/path/to/img.jpg" />`
 
+#### No tracking for links in Sendgrid
+
+Click tracking interferes with our deep links by augmenting the link. To disable click tracking for specific links add `!` in front of a link like so `[Alt text](!keepsafe://)`
+
 ### Elements
 
 #### `resource`

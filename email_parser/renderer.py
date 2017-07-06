@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 def _md_to_html(text, base_url=None):
-    extensions = [markdown_ext.inline_text()]
+    extensions = [markdown_ext.inline_text(), markdown_ext.no_tracking()]
     if base_url:
         extensions.append(markdown_ext.base_url(base_url))
     return markdown.markdown(text, extensions=extensions)
