@@ -69,8 +69,8 @@ def get_email_names(settings):
 
 
 def get_emails(settings, locale='en'):
-    settings = _update_settings(settings)
     names = set(get_email_names(settings))
+    settings = _update_settings(settings)
     result = []
     for name in names:
         email = fs.master_email(settings.source, settings.pattern, name, locale, True)
