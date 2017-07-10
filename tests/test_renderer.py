@@ -6,10 +6,10 @@ from email_parser import renderer, const, config
 
 class TestTextRenderer(TestCase):
     def setUp(self):
-        self.email = Email('name', 'locale', 'path')
+        self.email_locale = 'locale'
         self.template = Template('dummy', '<style>body {}</style>', '<body>{{content1}}</body>',
                                  ['content', 'content1', 'content2'])
-        self.r = renderer.TextRenderer(self.template, self.email)
+        self.r = renderer.TextRenderer(self.template, self.email_locale)
 
     def test_happy_path(self):
         placeholders = {'content': Placeholder('content', 'dummy content')}
@@ -43,7 +43,7 @@ class TestTextRenderer(TestCase):
             'content': Placeholder('content', 'dummy content'),
             'ignore': Placeholder('ignore', 'test', False)
         }
-        r = renderer.TextRenderer(self.template, self.email)
+        r = renderer.TextRenderer(self.template, self.email_locale)
         actual = r.render(placeholders)
         self.assertEqual('dummy content', actual)
 
@@ -60,11 +60,11 @@ class TestTextRenderer(TestCase):
         self.assertEqual('dummy link_text (http://link_url?locale=locale) content', actual)
 
     def test_link_locale_for_links(self):
-        self.email = Email('name', 'pt-BR', 'path')
+        self.email_locale = 'pt-BR'
         placeholders = {
             'content': Placeholder('content', 'dummy [link_text](http://link_url?locale={link_locale}) content')
         }
-        r = renderer.TextRenderer(self.template, self.email)
+        r = renderer.TextRenderer(self.template, self.email_locale)
         actual = r.render(placeholders)
         self.assertEqual('dummy link_text (http://link_url?locale=pt) content', actual)
 
@@ -126,7 +126,7 @@ class TestSubjectRenderer(TestCase):
 
 class TestHtmlRenderer(TestCase):
     def setUp(self):
-        self.email = Email('name', 'locale', 'path')
+        self.email_locale = 'locale'
         config.init(_base_img_path='images_base')
 
     def tearDown(self):
@@ -135,7 +135,7 @@ class TestHtmlRenderer(TestCase):
     def test_happy_path(self):
         placeholders = {'content1': Placeholder('content1', 'text1')}
         template = Template('dummy', '<style>body {}</style>', '<body>{{content1}}</body>', ['content1'])
-        r = renderer.HtmlRenderer(template, self.email)
+        r = renderer.HtmlRenderer(template, self.email_locale)
 
         actual = r.render(placeholders)
         self.assertEqual('<body><p>text1</p></body>', actual)
@@ -143,7 +143,7 @@ class TestHtmlRenderer(TestCase):
     def test_empty_style(self):
         placeholders = {'content': Placeholder('content', 'dummy_content')}
         template = Template('dummy', '', '<body>{{content}}</body>', ['content1'])
-        r = renderer.HtmlRenderer(template, self.email)
+        r = renderer.HtmlRenderer(template, self.email_locale)
 
         actual = r.render(placeholders)
         self.assertEqual('<body><p>dummy_content</p></body>', actual)
@@ -151,7 +151,7 @@ class TestHtmlRenderer(TestCase):
     def test_include_base_url(self):
         template = Template('dummy', '<style>body {}</style>', '<body>{{base_url}}</body>', ['base_url'])
         placeholders = {}
-        r = renderer.HtmlRenderer(template, self.email)
+        r = renderer.HtmlRenderer(template, self.email_locale)
 
         actual = r.render(placeholders)
         self.assertEqual('<body>images_base</body>', actual)
@@ -159,26 +159,26 @@ class TestHtmlRenderer(TestCase):
     def test_fail_on_missing_placeholders(self):
         template = Template('dummy', '<style>body {}</style>', '<body>{{content}}{{missing}}</body>',
                             ['content', 'missing'])
-        r = renderer.HtmlRenderer(template, self.email)
+        r = renderer.HtmlRenderer(template, self.email_locale)
         placeholders = {'content': Placeholder('content', 'dummy_content')}
 
         with self.assertRaises(MissingTemplatePlaceholderError):
             r.render(placeholders)
 
     def test_rtl_locale(self):
-        email = Email('name', 'ar', 'path')
+        email_locale = 'ar'
         template = Template('dummy', '<style>body {}</style>', '<body>{{content}}</body>', ['content'])
-        r = renderer.HtmlRenderer(template, email)
+        r = renderer.HtmlRenderer(template, email_locale)
         placeholders = {'content': Placeholder('content', 'dummy_content')}
 
         actual = r.render(placeholders)
         self.assertEqual('<body dir="rtl">\n <p>\n  dummy_content\n </p>\n</body>', actual)
 
     def test_rtl_two_placeholders(self):
-        email = Email('name', 'ar', 'path')
+        email_locale = 'ar'
         template = Template('dummy', '<style>body {}</style>',
                             '<body><div>{{content1}}</div><div>{{content2}}</div></body>', ['content1', 'content2'])
-        r = renderer.HtmlRenderer(template, email)
+        r = renderer.HtmlRenderer(template, email_locale)
         placeholders = {
             'content1': Placeholder('content1', 'dummy_content1'),
             'content2': Placeholder('content2', 'dummy_content2')
@@ -192,7 +192,7 @@ class TestHtmlRenderer(TestCase):
 
     def test_inline_styles(self):
         template = Template('dummy', '<style>p {color:red;}</style>', '<body>{{content}}</body>', ['content'])
-        r = renderer.HtmlRenderer(template, self.email)
+        r = renderer.HtmlRenderer(template, self.email_locale)
         placeholders = {'content': Placeholder('content', 'dummy_content')}
 
         actual = r.render(placeholders)

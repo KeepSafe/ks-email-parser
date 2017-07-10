@@ -33,9 +33,9 @@ class HtmlRenderer(object):
     Renders email' body as html.
     """
 
-    def __init__(self, template, email):
+    def __init__(self, template, email_locale):
         self.template = template
-        self.locale = utils.normalize_locale(email.locale)
+        self.locale = utils.normalize_locale(email_locale)
 
     def _inline_css(self, html, css):
         # an empty style will cause an error in inline_styler so we use a space instead
@@ -99,10 +99,10 @@ class TextRenderer(object):
     Renders email's body as text.
     """
 
-    def __init__(self, template, email):
+    def __init__(self, template, email_locale):
         # self.shortener = link_shortener.shortener(settings.shortener)
         self.template = template
-        self.locale = utils.normalize_locale(email.locale)
+        self.locale = utils.normalize_locale(email_locale)
 
     def _html_to_text(self, html):
         soup = bs4.BeautifulSoup(html, const.HTML_PARSER)
@@ -156,17 +156,17 @@ class SubjectRenderer(object):
         return list(map(lambda s: s.content if s else None, subjects))
 
 
-def render(email, template, placeholders):
+def render(email_locale, template, placeholders):
     subject_renderer = SubjectRenderer()
     subjects = subject_renderer.render(placeholders)
 
-    text_renderer = TextRenderer(template, email)
+    text_renderer = TextRenderer(template, email_locale)
     text = text_renderer.render(placeholders)
 
-    html_renderer = HtmlRenderer(template, email)
+    html_renderer = HtmlRenderer(template, email_locale)
     try:
         html = html_renderer.render(placeholders)
     except MissingTemplatePlaceholderError as e:
-        raise RenderingError('failed to generate html content for {} with message: {}'.format(email.path, e)) from e
+        raise RenderingError('failed to generate html content for {} with message: {}'.format(email_locale.path, e)) from e
 
     return subjects, text, html

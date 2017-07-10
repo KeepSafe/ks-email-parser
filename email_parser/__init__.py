@@ -34,14 +34,14 @@ class Parser:
             return None
         template, placeholders = reader.read(self.root_path, email)
         if template:
-            return renderer.render(email, template, placeholders)
+            return renderer.render(email.locale, template, placeholders)
 
     def render_email(self, email):
         if not email:
             return None
         template, placeholders = reader.read(self.root_path, email)
         if template:
-            return renderer.render(email, template, placeholders)
+            return renderer.render(email.locale, template, placeholders)
 
     def get_email(self, email_name, locale):
         email = fs.email(self.root_path, email_name, locale)
