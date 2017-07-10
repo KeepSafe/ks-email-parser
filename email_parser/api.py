@@ -70,8 +70,7 @@ def get_email_names(settings):
 
 def get_emails(settings, locale='en'):
     settings = _update_settings(settings)
-    pattern = settings.pattern.replace('{locale}', locale)
-    return (email._asdict() for email in fs.emails(settings.source, pattern, settings.exclusive))
+    return (email._asdict() for email in fs.email(settings.source, settings.pattern, '{name}', locale))
 
 
 def get_email_placeholders(settings):
