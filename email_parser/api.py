@@ -68,9 +68,9 @@ def get_email_names(settings):
     return (email.name for email in fs.emails(settings.source, settings.pattern, settings.exclusive))
 
 
-def get_emails_paths(settings):
+def get_emails(settings):
     settings = _update_settings(settings)
-    return (email.full_path for email in fs.emails(settings.source, settings.pattern, settings.exclusive))
+    return (email._asdict() for email in fs.emails(settings.source, settings.pattern, settings.exclusive))
 
 
 def get_email_placeholders(settings):
