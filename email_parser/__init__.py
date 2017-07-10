@@ -67,6 +67,13 @@ class Parser:
         expected_placeholders = placeholder.expected_placeholders_file(self.root_path)
         return {k: list(v) for k, v in expected_placeholders.items()}
 
+    def get_placeholders_for_email(self, email_name, locale):
+        email = fs.email(self.root_path, email_name, locale)
+        if not email:
+            return None
+        template, placeholders = reader.read(self.root_path, email)
+        return placeholders
+
     def refresh_email_placeholders_config(self):
         placeholders_config = placeholder.generate_config(self.root_path)
         if placeholders_config:
