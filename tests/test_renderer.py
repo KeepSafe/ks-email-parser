@@ -201,7 +201,7 @@ class TestHtmlRenderer(TestCase):
     def test_no_tracking(self):
         placeholders = {'content': Placeholder('content', '[link_title](!http://link.com)')}
         template = Template('dummy', '<style>body {}</style>', '<body>{{content}}</body>', ['content'])
-        r = renderer.HtmlRenderer(template, self.email)
+        r = renderer.HtmlRenderer(template, self.email_locale)
         expected = """<body><p>
       <a clicktracking="off" href="http://link.com">link_title</a>
     </p></body>"""
