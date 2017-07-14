@@ -45,7 +45,7 @@ class TestReader(TestCase):
     def test_template(self):
         template_str = '<html><head></head><body>{{content}}</body></html>'
         self.mock_fs.read_file.side_effect = iter([template_str, 'test'])
-        expected_template = Template('dummy_template.html', ['dummy_template.css'],'<style>test</style>', template_str,
+        expected_template = Template('dummy_template.html', ['dummy_template.css'], '<style>test</style>', template_str,
                                      ['content'])
         template, _ = reader.read('.', self.email)
         self.assertEqual(expected_template, template)

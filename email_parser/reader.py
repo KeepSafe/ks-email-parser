@@ -125,4 +125,3 @@ def read(root_path, email):
     placeholders.update(_placeholders(email_xml).items())
 
     return template, placeholders
-
