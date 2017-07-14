@@ -167,6 +167,7 @@ def render(email_locale, template, placeholders):
     try:
         html = html_renderer.render(placeholders)
     except MissingTemplatePlaceholderError as e:
-        raise RenderingError('failed to generate html content for {} with message: {}'.format(email_locale.path, e)) from e
+        message = 'failed to generate html content for locale: {} with message: {}'.format(email_locale, e)
+        raise RenderingError(message) from e
 
     return subjects, text, html

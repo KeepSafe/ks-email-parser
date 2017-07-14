@@ -28,20 +28,21 @@ class Parser:
     def delete_template(self, email_name, locale):
         fs.delete_file(self.root_path, locale, email_name + const.SOURCE_EXTENSION)
 
-    def render(self, email_name, locale):
+    def render(self, email_name, locale, placeholders={}):
         email = fs.email(self.root_path, email_name, locale)
-        if not email:
-            return None
-        template, placeholders = reader.read(self.root_path, email)
-        if template:
-            return renderer.render(email.locale, template, placeholders)
+        return self.render_email(email, placeholders)
 
-    def render_email(self, email):
+    def render_email(self, email, placeholders={}):
         if not email:
             return None
-        template, placeholders = reader.read(self.root_path, email)
+        template, static_placeholders = reader.read(self.root_path, email)
+        for placeholder_name, placeholder_inst in static_placeholders.items():
+            if placeholder_name in placeholders:
+                updated_placeholder = placeholder_inst._asdict()
+                updated_placeholder['content'] = placeholders[placeholder_name]
+                static_placeholders[placeholder_name] = Placeholder(**updated_placeholder)
         if template:
-            return renderer.render(email.locale, template, placeholders)
+            return renderer.render(email.locale, template, static_placeholders)
 
     def get_email(self, email_name, locale):
         email = fs.email(self.root_path, email_name, locale)

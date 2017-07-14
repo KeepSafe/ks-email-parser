@@ -39,3 +39,11 @@ class TestParser(TestCase):
         placeholders = self.parser.get_email_placeholders()
         self.assertEqual(len(placeholders.keys()), 2)
         self.assertEqual(placeholders['placeholder'], ['placeholder'])
+
+    def test_render(self):
+        placeholders = {
+            'content': "SOME CONTENT {{placeholder}}"
+        }
+
+        subjects, text, html = self.parser.render('placeholder', 'en', placeholders)
+        self.assertEqual(text, 'SOME CONTENT {{placeholder}}\n\nDummy inline')
