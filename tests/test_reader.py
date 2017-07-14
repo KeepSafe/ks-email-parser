@@ -1,9 +1,15 @@
 from unittest import TestCase
 from unittest.mock import patch
 from xml.etree import ElementTree as ET
+import os.path
 
 from email_parser import reader
 from email_parser.model import *
+
+
+def read_fixture(filename):
+    with open(os.path.join('tests/fixtures', filename)) as fp:
+        return fp.read()
 
 
 class TestReader(TestCase):
@@ -39,7 +45,8 @@ class TestReader(TestCase):
     def test_template(self):
         template_str = '<html><head></head><body>{{content}}</body></html>'
         self.mock_fs.read_file.side_effect = iter([template_str, 'test'])
-        expected_template = Template('dummy_template.html', '<style>test</style>', template_str, ['content'])
+        expected_template = Template('dummy_template.html', ['dummy_template.css'],'<style>test</style>', template_str,
+                                     ['content'])
         template, _ = reader.read('.', self.email)
         self.assertEqual(expected_template, template)
 
@@ -63,3 +70,18 @@ class TestReader(TestCase):
         self.mock_etree.parse.side_effect = iter([ET.ElementTree(email_xml), ET.ElementTree(self.globals_xml)])
         template, _ = reader.read('.', self.email)
         self.assertEqual('<style>test\ntest</style>', template.styles)
+
+
+class TestWriter(TestCase):
+    def setUp(self):
+        self.maxDiff = None
+
+    def test_create_email_content(self):
+        expected = read_fixture('email.xml').strip()
+        placeholders = [
+            Placeholder('subject', 'dummy subject'),
+            Placeholder('content', 'dummy content'),
+        ]
+
+        result = reader.create_email_content('dummy_template_name.html', ['style1.css'], placeholders)
+        self.assertMultiLineEqual(expected, result.strip())

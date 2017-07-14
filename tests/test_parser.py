@@ -37,13 +37,34 @@ class TestParser(TestCase):
 
     def test_get_email_placeholders(self):
         placeholders = self.parser.get_email_placeholders()
-        self.assertEqual(len(placeholders.keys()), 2)
-        self.assertEqual(placeholders['placeholder'], ['placeholder'])
+        self.assertEqual(len(placeholders.keys()), 8)
+        self.assertCountEqual(placeholders['placeholder'], ['unsubscribe_link', 'placeholder'])
 
     def test_render(self):
+        subjects, text, html = self.parser.render('placeholder', 'en')
+        self.assertEqual(text, 'Dummy content {{placeholder}}\n\nDummy inline')
+
+    def test_create_email(self):
         placeholders = {
-            'content': "SOME CONTENT {{placeholder}}"
+            'subject': {
+                'content': "dummy subject",
+                'is_text': True,
+                'is_global': False
+            },
+            'content': {
+                'content': "dummy content",
+                'is_text': True,
+                'is_global': False
+            },
+            'global_content': {
+                'content': "global dummy content",
+                'is_text': True,
+                'is_global': True
+            },
         }
 
-        subjects, text, html = self.parser.render('placeholder', 'en', placeholders)
-        self.assertEqual(text, 'SOME CONTENT {{placeholder}}\n\nDummy inline')
+        email_name = 'dummy_email'
+        path = os.path.join('tests/src/en', email_name + email_parser.const.SOURCE_EXTENSION)
+        self.parser.create_email(email_name, 'en', 'basic_template.html', ['basic_template.css'], placeholders)
+        self.assertTrue(os.path.exists(path))
+        os.remove(path)

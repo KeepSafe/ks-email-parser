@@ -28,25 +28,35 @@ class Parser:
     def delete_template(self, email_name, locale):
         fs.delete_file(self.root_path, locale, email_name + const.SOURCE_EXTENSION)
 
-    def render(self, email_name, locale, placeholders={}):
+    def render(self, email_name, locale):
         email = fs.email(self.root_path, email_name, locale)
-        return self.render_email(email, placeholders)
+        return self.render_email(email)
 
-    def render_email(self, email, placeholders={}):
+    def render_email(self, email):
         if not email:
             return None
-        template, static_placeholders = reader.read(self.root_path, email)
-        for placeholder_name, placeholder_inst in static_placeholders.items():
-            if placeholder_name in placeholders:
-                updated_placeholder = placeholder_inst._asdict()
-                updated_placeholder['content'] = placeholders[placeholder_name]
-                static_placeholders[placeholder_name] = Placeholder(**updated_placeholder)
+        template, persisted_placeholders = reader.read(self.root_path, email)
         if template:
-            return renderer.render(email.locale, template, static_placeholders)
+            return renderer.render(email.locale, template, persisted_placeholders)
+
+    def preview_email(self, email_name, locale, new_placeholders):
+        email = fs.email(self.root_path, email_name, locale)
+        template, persisted_placeholders = reader.read(self.root_path, email)
+        for placeholder_name, placeholder_inst in persisted_placeholders.items():
+            if placeholder_name in new_placeholders:
+                updated_placeholder = placeholder_inst._asdict()
+                updated_placeholder['content'] = new_placeholders[placeholder_name]['content']
+                persisted_placeholders[placeholder_name] = Placeholder(**updated_placeholder)
+        return renderer.render(email.locale, template, persisted_placeholders)
 
     def get_email(self, email_name, locale):
         email = fs.email(self.root_path, email_name, locale)
         return fs.read_file(email.path)
+
+    def get_email_components(self, email_name, locale):
+        email = fs.email(self.root_path, email_name, locale)
+        template, persisted_placeholders = reader.read(self.root_path, email)
+        return template.name, template.styles_names, persisted_placeholders
 
     def delete_email(self, email_name):
         emails = fs.emails(self.root_path, email_name=email_name)
@@ -57,9 +67,18 @@ class Parser:
         self.refresh_email_placeholders_config()
         return files
 
-    def save_email(self, email_name, locale, template):
-        fs.save_email(self.root_path, template, email_name, locale)
+    def save_email(self, email_name, locale, content):
+        fs.save_email(self.root_path, content, email_name, locale)
         self.refresh_email_placeholders_config()
+
+    def create_email(self, email_name, locale, template_name, styles_names, placeholders):
+        placeholder_list = []
+        for placeholder_name, placeholder_props in placeholders.items():
+            if not placeholder_props['is_global']:
+                placeholder_list.append(Placeholder(placeholder_name, placeholder_props['content'], placeholder_props[
+                    'is_text'], placeholder_props['is_global']))
+        email_content = reader.create_email_content(template_name, styles_names, placeholder_list)
+        self.save_email(email_name, locale, email_content)
 
     def get_email_names(self):
         return (email.name for email in fs.emails(self.root_path, locale=const.DEFAULT_LOCALE))
@@ -80,5 +99,5 @@ class Parser:
         if placeholders_config:
             fs.save_file(
                 json.dumps(placeholders_config, sort_keys=True, indent=const.JSON_INDENT), self.root_path,
-                const.PLACEHOLDERS_FILENAME)
+                const.REPO_SRC_PATH, const.PLACEHOLDERS_FILENAME)
             placeholder.expected_placeholders_file.cache_clear()

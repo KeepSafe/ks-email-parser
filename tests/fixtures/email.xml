@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resource style="style1.css" template="dummy_template_name.html" xmlns:tools="http://schemas.android.com/tools">
+ <string isText="true" name="subject">
+  dummy subject
+ </string>
+ <string isText="true" name="content">
+  dummy content
+ </string>
+</resource>

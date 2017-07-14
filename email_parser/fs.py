@@ -128,8 +128,8 @@ def delete_file(*path_parts):
 
 def save_email(root_path, content, email_name, locale):
     pattern = config.pattern.replace('{locale}', locale)
-    pattern = pattern.replace('{name}', template_name)
-    path = os.path.join(config.paths.source, pattern)
+    pattern = pattern.replace('{name}', email_name)
+    path = os.path.join(root_path, config.paths.source, pattern)
     save_file(content, path)
 
 
