@@ -131,6 +131,7 @@ def save_email(root_path, content, email_name, locale):
     pattern = pattern.replace('{name}', email_name)
     path = os.path.join(root_path, config.paths.source, pattern)
     save_file(content, path)
+    return path
 
 
 def save_parsed_email(root_path, email, subjects, text, html):

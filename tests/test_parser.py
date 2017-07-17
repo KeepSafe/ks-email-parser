@@ -62,9 +62,14 @@ class TestParser(TestCase):
                 'is_global': True
             },
         }
-
-        email_name = 'dummy_email'
-        path = os.path.join('tests/src/en', email_name + email_parser.const.SOURCE_EXTENSION)
-        self.parser.create_email(email_name, 'en', 'basic_template.html', ['basic_template.css'], placeholders)
-        self.assertTrue(os.path.exists(path))
-        os.remove(path)
+        expected = '''<?xml version="1.0" encoding="utf-8"?>
+<resource style="basic_template.css" template="basic_template.html" xmlns:tools="http://schemas.android.com/tools">
+ <string isText="true" name="content">
+  dummy content
+ </string>
+ <string isText="true" name="subject">
+  dummy subject
+ </string>
+</resource>'''
+        content = self.parser.create_email('basic_template.html', ['basic_template.css'], placeholders)
+        self.assertMultiLineEqual(content.strip(), expected.strip())

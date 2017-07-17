@@ -8,6 +8,7 @@
     :license: Apache, see LICENSE for more details.
 """
 import json
+import os
 
 from . import placeholder, fs, reader, renderer, const
 from .model import *
@@ -68,17 +69,20 @@ class Parser:
         return files
 
     def save_email(self, email_name, locale, content):
-        fs.save_email(self.root_path, content, email_name, locale)
+        saved_path = fs.save_email(self.root_path, content, email_name, locale)
         self.refresh_email_placeholders_config()
+        return saved_path
 
-    def create_email(self, email_name, locale, template_name, styles_names, placeholders):
+    def create_email(self, template_name, styles_names, placeholders):
         placeholder_list = []
         for placeholder_name, placeholder_props in placeholders.items():
             if not placeholder_props['is_global']:
-                placeholder_list.append(Placeholder(placeholder_name, placeholder_props['content'], placeholder_props[
-                    'is_text'], placeholder_props['is_global']))
-        email_content = reader.create_email_content(template_name, styles_names, placeholder_list)
-        self.save_email(email_name, locale, email_content)
+                placeholder_inst = Placeholder(placeholder_name, placeholder_props['content'],
+                                               placeholder_props['is_text'],
+                                               placeholder_props['is_global'])
+                placeholder_list.append(placeholder_inst)
+        placeholder_list.sort(key=lambda item: item.name)
+        return reader.create_email_content(template_name, styles_names, placeholder_list)
 
     def get_email_names(self):
         return (email.name for email in fs.emails(self.root_path, locale=const.DEFAULT_LOCALE))
@@ -101,6 +105,9 @@ class Parser:
         placeholders_config = placeholder.generate_config(self.root_path)
         if placeholders_config:
             fs.save_file(
-                json.dumps(placeholders_config, sort_keys=True, indent=const.JSON_INDENT), self.root_path,
-                const.REPO_SRC_PATH, const.PLACEHOLDERS_FILENAME)
+                json.dumps(placeholders_config, sort_keys=True, indent=const.JSON_INDENT),
+                self.get_placeholders_filepath())
             placeholder.expected_placeholders_file.cache_clear()
+
+    def get_placeholders_filepath(self):
+        return os.path.join(self.root_path, const.REPO_SRC_PATH, const.PLACEHOLDERS_FILENAME)
