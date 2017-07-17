@@ -46,7 +46,7 @@ def get_template(settings, locale, template_name):
 
 def delete_template(settings, template_name):
     settings = _update_settings(settings)
-    emails = fs.master_email(settings.source, settings.pattern, template_name, None, True)
+    emails = fs.email(settings.source, settings.pattern, template_name, None, True)
     files = []
     for email in emails:
         files.append(email.full_path)
