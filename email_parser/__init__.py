@@ -111,3 +111,7 @@ class Parser:
 
     def get_placeholders_filepath(self):
         return os.path.join(self.root_path, const.REPO_SRC_PATH, const.PLACEHOLDERS_FILENAME)
+
+    def get_email_placeholders_validation_errors(self, email_name, locale):
+        email = fs.email(self.root_path, email_name, locale)
+        return placeholder.get_email_validation(self.root_path, email)['errors']
