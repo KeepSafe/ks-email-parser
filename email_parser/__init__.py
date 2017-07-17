@@ -83,6 +83,9 @@ class Parser:
     def get_email_names(self):
         return (email.name for email in fs.emails(self.root_path, locale=const.DEFAULT_LOCALE))
 
+    def get_emails(self, locale=const.DEFAULT_LOCALE):
+        return (email._asdict() for email in fs.emails(self.root_path, locale=locale))
+
     def get_email_placeholders(self):
         expected_placeholders = placeholder.expected_placeholders_file(self.root_path)
         return {k: list(v) for k, v in expected_placeholders.items()}
