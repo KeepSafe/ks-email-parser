@@ -1,4 +1,5 @@
 from unittest import TestCase
+from unittest.mock import patch
 
 from email_parser.model import *
 from email_parser import renderer, const, config
@@ -128,12 +129,11 @@ class TestHtmlRenderer(TestCase):
     def _get_renderer(self, template_html, template_placeholders, **kwargs):
         template = Template(
             name='template_name',
-            styles=['template_style'],
+            styles_names=['template_style.css', 'template_style2.css'],
+            styles='',
             content=template_html,
-            placeholders_order=template_placeholders)
-        return renderer.HtmlRenderer(template,
-                                     kwargs.get('link_locale_mappings', {}),
-                                     kwargs.get('email', self.email), kwargs.get('settings', self.settings))
+            placeholders=template_placeholders)
+        return renderer.HtmlRenderer(template, kwargs.get('email_locale', const.DEFAULT_LOCALE))
 
     def setUp(self):
         self.email_locale = 'locale'
@@ -208,18 +208,11 @@ class TestHtmlRenderer(TestCase):
         actual = r.render(placeholders)
         self.assertEqual('<body><p style="color: red">dummy_content</p></body>', actual)
 
-    def test_no_tracking(self):
-        placeholders = {'content': Placeholder('content', '[link_title](!http://link.com)')}
-        template = Template('dummy', [], '<style>body {}</style>', '<body>{{content}}</body>', ['content'])
-        r = renderer.HtmlRenderer(template, self.email_locale)
-
-        self.assertEqual('<body><p style="color: red">dummy_content</p></body>', actual)
-
     @patch('email_parser.fs.read_file')
     def test_no_tracking(self, mock_read):
         html = '<body>{{content}}</body>'
         html_placeholders = ['content']
-        placeholders = {'content': '[link_title](!http://link.com)'}
+        placeholders = {'content': Placeholder('content', '[link_title](!http://link.com)', True, False)}
         mock_read.side_effect = iter([''])
         expected = """<body><p>
       <a clicktracking="off" href="http://link.com">link_title</a>
