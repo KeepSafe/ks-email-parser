@@ -156,3 +156,23 @@ def save_parsed_email(root_path, email, subjects, text, html):
         save_file(subjects[3], folder, email.name + const.SUBJECT_RESEND_EXTENSION)
     save_file(text, folder, email.name + const.TEXT_EXTENSION)
     save_file(html, folder, email.name + const.HTML_EXTENSION)
+
+
+def resources(root_path):
+    """
+    Returns a tuple of lists: html templates list and css styles list
+    :param root_path:
+    :return:
+    """
+    templates = []
+    styles = []
+    templates_path = os.path.join(root_path, config.paths.templates)
+    glob_path = Path(templates_path).glob('*')
+    for path in sorted(glob_path, key=lambda path: str(path)):
+        if not path.is_dir():
+            str_path = str(path.relative_to(templates_path))
+            if str_path.endswith(const.HTML_EXTENSION):
+                templates.append(str_path)
+            if str_path.endswith(const.CSS_EXTENSION):
+                styles.append(str_path)
+    return templates, styles

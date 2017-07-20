@@ -59,3 +59,13 @@ class TestFs(TestCase):
         actual = fs.email('.', 'name2', 'locale1')
         self.assertEqual('name2', actual.name)
         self.assertEqual('locale1', actual.locale)
+
+    def test_resources(self):
+        template_name = 'name1.html'
+        css_name = 'name2.css'
+        self.mock_path.return_value.glob.return_value = [
+            MockPath(template_name), MockPath(css_name), MockPath('name2.xxx')
+        ]
+        templates, styles = fs.resources('.')
+        self.assertIn(template_name, templates)
+        self.assertIn(css_name, styles)

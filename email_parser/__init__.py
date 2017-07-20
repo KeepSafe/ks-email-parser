@@ -115,3 +115,6 @@ class Parser:
     def get_email_placeholders_validation_errors(self, email_name, locale):
         email = fs.email(self.root_path, email_name, locale)
         return placeholder.get_email_validation(self.root_path, email)['errors']
+
+    def get_resources(self):
+        return fs.resources(self.root_path)
