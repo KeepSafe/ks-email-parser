@@ -21,3 +21,4 @@ venv/
 
 # VS Code
 .vscode
+.coverage
