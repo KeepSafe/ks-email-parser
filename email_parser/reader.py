@@ -121,7 +121,9 @@ def read(root_path, email):
         logger.error('no HTML template name define for email %s locale %s', email.name, email.locale)
 
     globals_xml = _read_xml(fs.global_email(root_path, email.locale).path)
-    placeholders = OrderedDict(_placeholders(globals_xml, const.GLOBALS_PLACEHOLDER_PREFIX).items())
+    placeholders = OrderedDict({name: content for name, content
+                                in _placeholders(globals_xml, const.GLOBALS_PLACEHOLDER_PREFIX).items()
+                                if name in template.placeholders})
     placeholders.update(_placeholders(email_xml).items())
 
     return template, placeholders

@@ -51,9 +51,10 @@ class TestReader(TestCase):
         self.assertEqual(expected_template, template)
 
     def test_placeholders(self):
+        template_str = '<html><head></head><body>{{content}}{{global_content}}</body></html>'
+        self.mock_fs.read_file.side_effect = iter([template_str, 'test'])
         expected = {
             'global_content': Placeholder('global_content', 'dummy global', True, True),
-            'global_order': Placeholder('global_order', 'asc', False, True),
             'subject': Placeholder('subject', 'dummy subject'),
             'content': Placeholder('content', 'dummy content')
         }
