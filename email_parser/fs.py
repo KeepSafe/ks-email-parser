@@ -47,6 +47,13 @@ def _emails(root_path, pattern, params):
                     yield result
 
 
+def get_email_filepath(root_path, email_name, locale):
+    pattern = config.pattern.replace('{name}', email_name)
+    pattern = pattern.replace('{locale}', locale)
+    filepath = os.path.join(config.paths.source, pattern)
+    return filepath
+
+
 def emails(root_path, email_name=None, locale=None):
     """
     Resolves a pattern to a collection of emails.

@@ -69,3 +69,8 @@ class TestFs(TestCase):
         templates, styles = fs.resources('.')
         self.assertIn(template_name, templates)
         self.assertIn(css_name, styles)
+
+    def test_get_email_filepath(self):
+        expected = 'src/en/email.xml'
+        actual = fs.get_email_filepath('.', 'email', 'en')
+        self.assertEqual(expected, actual)
