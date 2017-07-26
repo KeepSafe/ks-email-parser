@@ -3,169 +3,127 @@ Extracts email information from an email file.
 """
 
 import logging
-import json
 import re
-from collections import namedtuple, OrderedDict
+from collections import OrderedDict
 from xml.etree import ElementTree
-from . import fs
 
-LINK_LOCALE_MAPPINGS_FILENAME = 'link_locale_mappings.json'
-
-SEGMENT_REGEX = r'\<string[^>]*>'
-SEGMENT_NAME_REGEX = r' name="([^"]+)"'
-SUBJECTS_PLACEHOLDERS = ['subject_b', 'subject_a', 'subject_resend', 'subject']
-
-Template = namedtuple('Template', ['name', 'styles', 'content', 'placeholders_order'])
+from bs4 import BeautifulSoup
+from . import fs, const, config
+from .model import *
 
 logger = logging.getLogger(__name__)
-
-
-def _ignored_placeholder_names(tree, prefix=''):
-    if tree is None:
-        return []
-    return ['{0}{1}'.format(prefix, element.get('name')) for
-            element in tree.findall('./string') if element.get('isText') == 'false']
 
 
 def _placeholders(tree, prefix=''):
     if tree is None:
         return {}
-    return {'{0}{1}'.format(prefix, element.get('name')): element.text for element in tree.findall('./string')}
+    result = OrderedDict()
+    for element in tree.findall('./string'):
+        name = '{0}{1}'.format(prefix, element.get('name'))
+        content = element.text or ''
+        is_text = element.get('isText', 'true') == 'true'
+        is_global = prefix == const.GLOBALS_PLACEHOLDER_PREFIX
+        result[name] = Placeholder(name, content.strip(), is_text, is_global)
+    return result
 
 
-def _all_email_placeholders(tree, global_tree):
-    placeholders = dict(_placeholders(tree).items() | _placeholders(global_tree, 'global_').items())
-    ignored_placeholder_names = _ignored_placeholder_names(tree) + _ignored_placeholder_names(global_tree, 'global_')
-    return placeholders, ignored_placeholder_names
-
-
-def _ordered_placeholders(names, placeholders):
-    for subject in SUBJECTS_PLACEHOLDERS:
-        if subject in placeholders and subject not in names:
-            names.insert(0, subject)
-
-    return OrderedDict((name, placeholders[name]) for name in names)
-
-
-def _template(tree, settings):
+def _template(root_path, tree):
     content = None
     placeholders = []
     styles = []
 
-    name = tree.getroot().get('template')
-    if name:
-        content = fs.read_file(settings.templates, name)
+    template_name = tree.getroot().get('template')
+    if template_name:
+        content = fs.read_file(root_path, config.paths.templates, template_name)
         placeholders = [m.group(1) for m in re.finditer(r'\{\{(\w+)\}\}', content)]
 
+    # TODO sad panda, refactor
     # base_url placeholder is not a content block
     while 'base_url' in placeholders:
         placeholders.remove('base_url')
 
     style_element = tree.getroot().get('style')
     if style_element:
-        styles = style_element.split(',')
+        styles_names = style_element.split(',')
+        css = [fs.read_file(root_path, config.paths.templates, f) or ' ' for f in styles_names]
+        styles = '\n'.join(css)
+        styles = '<style>%s</style>' % styles
+    else:
+        styles = ''
 
-    return Template(name, styles, content, placeholders)
+    # TODO either read all or leave just names for content and styles
+    return Template(template_name, styles_names, styles, content, placeholders)
 
 
-def _find_parse_error(file_path, exception):
+def _handle_xml_parse_error(file_path, exception):
     pos = exception.position
     with open(file_path) as f:
         lines = f.read().splitlines()
         error_line = lines[pos[0] - 1]
-        node_matches = re.findall(SEGMENT_REGEX, error_line[:pos[1]])
+        node_matches = re.findall(const.SEGMENT_REGEX, error_line[:pos[1]])
         segment_id = None
 
         if not len(node_matches):
             prev_line = pos[0] - 1
             search_part = ''.join(lines[:prev_line])
-            node_matches = re.findall(SEGMENT_REGEX, search_part)
+            node_matches = re.findall(const.SEGMENT_REGEX, search_part)
 
         if len(node_matches):
-            name_matches = re.findall(SEGMENT_NAME_REGEX, node_matches[-1])
+            name_matches = re.findall(const.SEGMENT_NAME_REGEX, node_matches[-1])
             if len(name_matches):
                 segment_id = name_matches[-1]
-
-        return error_line, segment_id
-
-
-def _handle_xml_parse_error(path, e):
-    line, segment_id = _find_parse_error(path, e)
-    logger.exception(
-        'Unable to read content from %s\n%s\nSegment ID: %s\n_______________\n%s\n%s\n',
-        path,
-        e,
-        segment_id,
-        line.replace('\t', '  '),
-        " " * e.position[1] + "^")
+    logger.exception('Unable to read content from %s\n%s\nSegment ID: %s\n_______________\n%s\n%s\n', file_path,
+                     exception, segment_id, error_line.replace('\t', '  '), " " * exception.position[1] + "^")
 
 
-def global_placeholders(email, settings):
-    # read global placeholders email
+def _read_xml(path):
+    if not path:
+        return None
     try:
-        global_email_path = settings.pattern.replace('{locale}', email.locale)
-        global_email_path = global_email_path.replace('{name}', fs.GLOBAL_PLACEHOLDERS_EMAIL_NAME)
-        global_email_fullpath = fs.path(settings.source, global_email_path)
-        if fs.is_file(global_email_fullpath):
-            global_tree = ElementTree.parse(global_email_fullpath)
-        else:
-            global_tree = None
+        return ElementTree.parse(path)
     except ElementTree.ParseError as e:
-        _handle_xml_parse_error(global_email_path, e)
-        return {}
-    return _placeholders(global_tree, 'global_')
+        _handle_xml_parse_error(path, e)
+        return None
 
 
-def read(email, settings):
+def create_email_content(template_name, styles, placeholders):
+    root = ElementTree.Element('resource')
+    root.set('xmlns:tools', 'http://schemas.android.com/tools')
+    root.set('template', template_name)
+    root.set('style', ','.join(styles))
+    for placeholder in placeholders:
+        new_content_tag = ElementTree.SubElement(root, 'string', {
+            'name': placeholder.name,
+            'isText': str(placeholder.is_text).lower(),
+        })
+        new_content_tag.text = placeholder.content
+    xml_as_str = ElementTree.tostring(root, encoding='utf8')
+    pretty_xml = BeautifulSoup(xml_as_str, "xml").prettify()
+    return pretty_xml
+
+
+def read(root_path, email):
     """
-    Reads an email from the path.
+    Reads an email from a path.
 
-    :param email_path: full path to an email
-    :returns: tuple of email template, a collection of placeholders and ignored_placeholder_names
+    :param email_path: a full path to an email
+    :returns: tuple of email template, a collection of placeholders
     """
-    # read email
-    try:
-        tree = ElementTree.parse(email.full_path)
-    except ElementTree.ParseError as e:
-        _handle_xml_parse_error(email.full_path, e)
-        return None, {}, []
+    email_xml = _read_xml(email.path)
+    if not email_xml and email.locale != const.DEFAULT_LOCALE:
+        email = fs.email(root_path, email.name, const.DEFAULT_LOCALE)
+        email_xml = _read_xml(email.path)
+    if not email_xml:
+        return None, None
+    template = _template(root_path, email_xml)
 
-    # read global placeholders email
-    try:
-        global_email_path = settings.pattern.replace('{locale}', email.locale)
-        global_email_path = global_email_path.replace('{name}', fs.GLOBAL_PLACEHOLDERS_EMAIL_NAME)
-        global_email_fullpath = fs.path(settings.source, global_email_path)
-        if fs.is_file(global_email_fullpath):
-            global_tree = ElementTree.parse(global_email_fullpath)
-        else:
-            global_tree = None
-    except ElementTree.ParseError as e:
-        _handle_xml_parse_error(global_email_path, e)
-        return None, {}, []
-
-    template = _template(tree, settings)
     if not template.name:
-        logger.error('no HTML template name define for %s', email.path)
+        logger.error('no HTML template name define for email %s locale %s', email.name, email.locale)
 
-    # check extra placeholders
-    email_placeholders = set(_placeholders(tree))
-    template_placeholders = set(template.placeholders_order)
-    extra_placeholders = email_placeholders - template_placeholders - set(SUBJECTS_PLACEHOLDERS)
-    if extra_placeholders:
-        logger.warn('There are extra placeholders %s in email %s/%s, missing in template %s' %
-                    (extra_placeholders, email.locale, email.name, template.name))
+    globals_xml = _read_xml(fs.global_email(root_path, email.locale).path)
+    placeholders = OrderedDict({name: content for name, content
+                                in _placeholders(globals_xml, const.GLOBALS_PLACEHOLDER_PREFIX).items()
+                                if name in template.placeholders})
+    placeholders.update(_placeholders(email_xml).items())
 
-    placeholders, ignored_plceholder_names = _all_email_placeholders(tree, global_tree)
-    ordered_placeholders = _ordered_placeholders(template.placeholders_order, placeholders)
-
-    return template, ordered_placeholders, ignored_plceholder_names
-
-
-def read_link_locale_mappings(settings):
-    try:
-        content = fs.read_file(settings.source, LINK_LOCALE_MAPPINGS_FILENAME)
-        return json.loads(content)
-    except FileNotFoundError:
-        logger.error('Link locale mapping (%s) could not be found at: %s' % (LINK_LOCALE_MAPPINGS_FILENAME,
-                                                                             settings.source))
-    return {}
+    return template, placeholders

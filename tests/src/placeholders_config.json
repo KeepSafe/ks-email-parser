@@ -1,0 +1,28 @@
+{
+    "dummy_email": {
+        "unsubscribe_link": 1
+    },
+    "email": {
+        "unsubscribe_link": 1
+    },
+    "email_globale": {
+        "unsubscribe_link": 1
+    },
+    "email_subject_resend": {
+        "unsubscribe_link": 1
+    },
+    "email_subjects_ab": {
+        "unsubscribe_link": 1
+    },
+    "fallback": {
+        "unsubscribe_link": 1
+    },
+    "missing_placeholder": {
+        "placeholder": 1,
+        "unsubscribe_link": 1
+    },
+    "placeholder": {
+        "placeholder": 1,
+        "unsubscribe_link": 1
+    }
+}

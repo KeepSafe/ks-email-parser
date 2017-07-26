@@ -7,109 +7,117 @@
     :copyright: (c) 2014 by KeepSafe.
     :license: Apache, see LICENSE for more details.
 """
+import json
+import os
 
-import logging
-import sys
-import shutil
-import asyncio
-import concurrent.futures
-from itertools import islice
-from functools import reduce
-from multiprocessing import Manager
-from . import cmd, fs, reader, renderer, placeholder, utils
-
-logger = logging.getLogger(__name__)
-loop = asyncio.get_event_loop()
-loop.set_debug(False)
+from . import placeholder, fs, reader, renderer, const
+from .model import *
 
 
-def _render_email(email, link_locale_mappings, settings, fallback_locale=None):
-    if not placeholder.validate_email(settings, email) and not settings.force:
-        return False
+class Parser:
+    def __init__(self, root_path, **kwargs):
+        self.root_path = root_path
+        config.init(**kwargs)
 
-    template, placeholders, ignored_plceholder_names = reader.read(email, settings)
-    if template:
-        subjects, text, html = renderer.render(email, template, placeholders, ignored_plceholder_names,
-                                               link_locale_mappings, settings)
-        fs.save(email, subjects, text, html, settings.destination, fallback_locale)
-        return True
-    else:
-        return False
+    def get_template_for_email(self, email_name, locale):
+        email = fs.email(self.root_path, email_name, locale)
+        if not email:
+            return None
+        template, _ = reader.read(self.root_path, email)
+        return template.content
 
+    def delete_template(self, email_name, locale):
+        fs.delete_file(self.root_path, locale, email_name + const.SOURCE_EXTENSION)
 
-def _parse_email(email, link_locale_mappings, settings):
-    if _render_email(email, link_locale_mappings, settings):
-        logger.info('.', extra={'same_line': True})
-        return True
-    else:
-        # TODO create default_locale_email function in fs module
-        default_locale_email = next(
-            fs.email(settings.source, settings.pattern, email.name, settings.default_locale), None)
-        if default_locale_email and _render_email(default_locale_email, link_locale_mappings, settings, email.locale):
-            logger.info('F', extra={'same_line': True})
-            logger.warn('Email %s/%s substituted by %s/%s' %
-                        (email.locale, email.name, default_locale_email.locale, default_locale_email.name))
-        else:
-            logger.info('E', extra={'same_line': True})
-        return False
+    def render(self, email_name, locale):
+        email = fs.email(self.root_path, email_name, locale)
+        return self.render_email(email)
 
+    def render_email(self, email):
+        if not email:
+            return None
+        template, persisted_placeholders = reader.read(self.root_path, email)
+        if template:
+            return renderer.render(email.locale, template, persisted_placeholders)
 
-def _parse_emails_batch(emails, link_locale_mappings, settings):
-    results = [_parse_email(email, link_locale_mappings, settings) for email in emails]
-    result = reduce(lambda acc, res: acc and res, results)
-    return result
+    def preview_email(self, email_name, locale, new_placeholders):
+        email = fs.email(self.root_path, email_name, locale)
+        template, persisted_placeholders = reader.read(self.root_path, email)
+        for placeholder_name, placeholder_inst in persisted_placeholders.items():
+            if placeholder_name in new_placeholders:
+                updated_placeholder = placeholder_inst._asdict()
+                updated_placeholder['content'] = new_placeholders[placeholder_name]['content']
+                persisted_placeholders[placeholder_name] = Placeholder(**updated_placeholder)
+        return renderer.render(email.locale, template, persisted_placeholders)
 
+    def get_email(self, email_name, locale):
+        email = fs.email(self.root_path, email_name, locale)
+        return fs.read_file(email.path)
 
-def _parse_emails(settings):
-    if not settings.exclusive:
-        shutil.rmtree(settings.destination, ignore_errors=True)
+    def get_email_components(self, email_name, locale):
+        email = fs.email(self.root_path, email_name, locale)
+        template, persisted_placeholders = reader.read(self.root_path, email)
+        return template.name, template.styles_names, persisted_placeholders
 
-    link_locale_mappings = reader.read_link_locale_mappings(settings)
-    if not link_locale_mappings and not settings.force:
-        return False
+    def delete_email(self, email_name):
+        emails = fs.emails(self.root_path, email_name=email_name)
+        files = []
+        for email in emails:
+            files.append(email.path)
+            fs.delete_file(email.path)
+        self.refresh_email_placeholders_config()
+        return files
 
-    emails = iter(fs.emails(settings.source, settings.pattern, settings.exclusive))
+    def save_email(self, email_name, locale, content):
+        saved_path = fs.save_email(self.root_path, content, email_name, locale)
+        self.refresh_email_placeholders_config()
+        return saved_path
 
-    executor = concurrent.futures.ProcessPoolExecutor(max_workers=settings.workers_pool)
-    tasks = []
+    def create_email(self, template_name, styles_names, placeholders):
+        placeholder_list = []
+        for placeholder_name, placeholder_props in placeholders.items():
+            if not placeholder_props['is_global']:
+                placeholder_inst = Placeholder(placeholder_name, placeholder_props['content'],
+                                               placeholder_props['is_text'],
+                                               placeholder_props['is_global'])
+                placeholder_list.append(placeholder_inst)
+        placeholder_list.sort(key=lambda item: item.name)
+        return reader.create_email_content(template_name, styles_names, placeholder_list)
 
-    emails_batch = list(islice(emails, settings.workers_pool))
-    while emails_batch:
-        task = loop.run_in_executor(executor, _parse_emails_batch, emails_batch, link_locale_mappings, settings)
-        tasks.append(task)
-        emails_batch = list(islice(emails, settings.workers_pool))
-    results = yield from asyncio.gather(*tasks)
-    result = reduce(lambda acc, result: True if acc and result else False, results)
-    return result
+    def get_email_names(self):
+        return (email.name for email in fs.emails(self.root_path, locale=const.DEFAULT_LOCALE))
 
+    def get_emails(self, locale=const.DEFAULT_LOCALE):
+        return (email._asdict() for email in fs.emails(self.root_path, locale=locale))
 
-def parse_emails(settings):
-    result = loop.run_until_complete(_parse_emails(settings))
-    return result
+    def get_email_placeholders(self):
+        expected_placeholders = placeholder.expected_placeholders_file(self.root_path)
+        return {k: list(v) for k, v in expected_placeholders.items()}
 
+    def get_placeholders_for_email(self, email_name, locale):
+        email = fs.email(self.root_path, email_name, locale)
+        if not email:
+            return None
+        template, placeholders = reader.read(self.root_path, email)
+        return placeholders
 
-def init_log(verbose):
-    log_level = logging.DEBUG if verbose else logging.INFO
-    error_msgs_queue = Manager().Queue()
-    warning_msgs_queue = Manager().Queue()
-    handler = utils.ProgressConsoleHandler(error_msgs_queue, warning_msgs_queue, stream=sys.stdout)
-    logger.setLevel(log_level)
-    logger.addHandler(handler)
+    def refresh_email_placeholders_config(self):
+        placeholders_config = placeholder.generate_config(self.root_path)
+        if placeholders_config:
+            fs.save_file(
+                json.dumps(placeholders_config, sort_keys=True, indent=const.JSON_INDENT),
+                self.get_placeholders_filepath())
+            placeholder.expected_placeholders_file.cache_clear()
 
+    def get_placeholders_filepath(self):
+        return os.path.join(self.root_path, const.REPO_SRC_PATH, const.PLACEHOLDERS_FILENAME)
 
-def main():
-    args = cmd.read_args()
-    if args.version:
-        result = cmd.print_version()
-    elif args.command:
-        result = cmd.execute_command(args)
-    else:
-        settings = cmd.read_settings(args)
-        init_log(settings.verbose)
-        result = parse_emails(settings)
-    logger.info('\nAll done', extra={'flush_errors': True})
-    sys.exit(0) if result else sys.exit(1)
+    def get_email_filepath(self, email_name, locale=const.DEFAULT_LOCALE):
+        return fs.get_email_filepath(self.root_path, email_name, locale)
 
+    def get_email_placeholders_validation_errors(self, email_name, locale):
+        email = fs.email(self.root_path, email_name, locale)
+        return placeholder.get_email_validation(self.root_path, email)['errors']
 
-if __name__ == '__main__':
-    main()
+    def get_resources(self):
+        return fs.resources(self.root_path)

@@ -27,5 +27,4 @@ setup(
     packages=find_packages(),
     install_requires=reqs,
     entry_points={'console_scripts': ['ks-email-parser = email_parser:main']},
-    include_package_data=True,
-    package_data={'email_parser.resources.gui': ['*.jinja2', '*.html']})
+    include_package_data=True)
