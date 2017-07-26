@@ -27,20 +27,28 @@ def _placeholders(tree, prefix=''):
     return result
 
 
-def _template(root_path, tree):
+def get_template_parts(root_path, template_filename):
     content = None
     placeholders = []
-    styles = []
 
-    template_name = tree.getroot().get('template')
-    if template_name:
-        content = fs.read_file(root_path, config.paths.templates, template_name)
+    if template_filename:
+        content = fs.read_file(root_path, config.paths.templates, template_filename)
         placeholders = [m.group(1) for m in re.finditer(r'\{\{(\w+)\}\}', content)]
 
     # TODO sad panda, refactor
     # base_url placeholder is not a content block
     while 'base_url' in placeholders:
         placeholders.remove('base_url')
+
+    return content, placeholders
+
+
+def _template(root_path, tree):
+    styles = []
+    styles_names = []
+
+    template_filename = tree.getroot().get('template')
+    content, placeholders = get_template_parts(root_path, template_filename)
 
     style_element = tree.getroot().get('style')
     if style_element:
@@ -52,7 +60,7 @@ def _template(root_path, tree):
         styles = ''
 
     # TODO either read all or leave just names for content and styles
-    return Template(template_name, styles_names, styles, content, placeholders)
+    return Template(template_filename, styles_names, styles, content, placeholders)
 
 
 def _handle_xml_parse_error(file_path, exception):
