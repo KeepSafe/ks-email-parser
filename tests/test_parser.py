@@ -87,3 +87,8 @@ class TestParser(TestCase):
         expected = templates_dict, ['basic_template.css']
         actual = self.parser.get_resources()
         self.assertEqual(actual, expected)
+
+    def test_equality(self):
+        parserA = email_parser.Parser('./tests')
+        parserB = email_parser.Parser('./tests')
+        self.assertEqual(parserA, parserB)
