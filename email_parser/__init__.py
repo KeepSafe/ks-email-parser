@@ -36,8 +36,6 @@ class Parser:
         template, _ = reader.read(self.root_path, email)
         return template.content
 
-    def delete_template(self, email_name, locale):
-        fs.delete_file(self.root_path, locale, email_name + const.SOURCE_EXTENSION)
     def render(self, email_name, locale):
         email = fs.email(self.root_path, email_name, locale)
         return self.render_email(email)
