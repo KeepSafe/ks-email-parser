@@ -47,6 +47,11 @@ class Parser:
         if template:
             return renderer.render(email.locale, template, persisted_placeholders)
 
+    def render_email_content(self, content, locale=const.DEFAULT_LOCALE):
+        template, persisted_placeholders = reader.read_from_content(self.root_path, content, locale)
+        return renderer.render(locale, template, persisted_placeholders)
+
+    # TODO: could be replaced completely by new on the fly renderer
     def preview_email(self, email_name, locale, new_placeholders):
         email = fs.email(self.root_path, email_name, locale)
         template, persisted_placeholders = reader.read(self.root_path, email)
@@ -80,7 +85,7 @@ class Parser:
         self.refresh_email_placeholders_config()
         return saved_path
 
-    def create_email(self, template_name, styles_names, placeholders):
+    def create_email_content(self, template_name, styles_names, placeholders):
         placeholder_list = []
         for placeholder_name, placeholder_props in placeholders.items():
             if not placeholder_props['is_global']:
