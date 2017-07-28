@@ -19,6 +19,16 @@ class Parser:
         self.root_path = root_path
         config.init(**kwargs)
 
+    def __hash__(self):
+        return hash(self.root_path)
+
+    def __eq__(self, other):
+        """
+        since parser is just wrapper it means essentially that parsers are equal if they work on the same root_path
+        sorting this out is needed for caching
+        """
+        return self.__hash__() == hash(other)
+
     def get_template_for_email(self, email_name, locale):
         email = fs.email(self.root_path, email_name, locale)
         if not email:

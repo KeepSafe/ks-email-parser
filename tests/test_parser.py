@@ -73,3 +73,8 @@ class TestParser(TestCase):
 </resource>'''
         content = self.parser.create_email('basic_template.html', ['basic_template.css'], placeholders)
         self.assertMultiLineEqual(content.strip(), expected.strip())
+
+    def test_equality(self):
+        parserA = email_parser.Parser('./tests')
+        parserB = email_parser.Parser('./tests')
+        self.assertEqual(parserA, parserB)
