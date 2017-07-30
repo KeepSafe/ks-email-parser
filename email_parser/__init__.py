@@ -51,17 +51,6 @@ class Parser:
         template, persisted_placeholders = reader.read_from_content(self.root_path, content, locale)
         return renderer.render(locale, template, persisted_placeholders)
 
-    # TODO: could be replaced completely by new on the fly renderer
-    def preview_email(self, email_name, locale, new_placeholders):
-        email = fs.email(self.root_path, email_name, locale)
-        template, persisted_placeholders = reader.read(self.root_path, email)
-        for placeholder_name, placeholder_inst in persisted_placeholders.items():
-            if placeholder_name in new_placeholders:
-                updated_placeholder = placeholder_inst._asdict()
-                updated_placeholder['content'] = new_placeholders[placeholder_name]['content']
-                persisted_placeholders[placeholder_name] = Placeholder(**updated_placeholder)
-        return renderer.render(email.locale, template, persisted_placeholders)
-
     def get_email(self, email_name, locale):
         email = fs.email(self.root_path, email_name, locale)
         return fs.read_file(email.path)

@@ -222,3 +222,11 @@ class TestHtmlRenderer(TestCase):
         actual = r.render(placeholders)
 
         self.assertEqual(expected, actual)
+
+    def test_empty_placeholders_rendering(self):
+        template = Template('dummy', [], '<style>p {color:red;}</style>', '<body>{{content}}</body>', ['content'])
+        r = renderer.HtmlRenderer(template, self.email_locale)
+        placeholders = {'content': Placeholder('content', '')}
+
+        actual = r.render(placeholders)
+        self.assertEqual('<body></body>', actual)
