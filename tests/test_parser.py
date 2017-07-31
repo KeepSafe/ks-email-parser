@@ -71,8 +71,22 @@ class TestParser(TestCase):
   dummy subject
  </string>
 </resource>'''
-        content = self.parser.create_email('basic_template.html', ['basic_template.css'], placeholders)
+        content = self.parser.create_email_content('basic_template.html', ['basic_template.css'], placeholders)
         self.assertMultiLineEqual(content.strip(), expected.strip())
+
+    def test_get_template_placeholders(self):
+        expected = ['subject', 'color', 'content', 'inline', 'image', 'image_absolute']
+        actual = self.parser.get_template_placeholders('basic_template.html')
+        self.assertEqual(set(actual), set(expected))
+
+    def test_get_resources(self):
+        templates_dict = {
+            'basic_template.html': ['subject', 'color', 'content', 'inline', 'image', 'image_absolute'],
+            'globale_template.html': ['subject', 'color', 'content', 'inline', 'image', 'image_absolute',
+                                      'global_unsubscribe']}
+        expected = templates_dict, ['basic_template.css']
+        actual = self.parser.get_resources()
+        self.assertEqual(actual, expected)
 
     def test_equality(self):
         parserA = email_parser.Parser('./tests')

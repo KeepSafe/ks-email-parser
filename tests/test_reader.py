@@ -15,23 +15,25 @@ def read_fixture(filename):
 class TestReader(TestCase):
     def setUp(self):
         super().setUp()
+        self.maxDiff = None
         self.email = Email(name='dummy', locale='dummy', path='dummy')
-        email_xml = ET.fromstring("""
+        self.email_content = """
         <resources template="dummy_template.html" style="dummy_template.css">
             <string name="subject">dummy subject</string>
             <string name="content">dummy content</string>
         </resources>
-        """)
+        """
         self.globals_xml = ET.fromstring("""
         <resources>
             <string name="content">dummy global</string>
             <string name="order" isText="false">asc</string>
         </resources>
         """)
+        self.template_str = '<html><head></head><body>{{content}}{{global_content}}</body></html>'
 
-        self.patch_etree = patch('email_parser.reader.ElementTree')
+        self.patch_etree = patch('email_parser.reader.ElementTree.parse')
         self.mock_etree = self.patch_etree.start()
-        self.mock_etree.parse.side_effect = iter([ET.ElementTree(email_xml), ET.ElementTree(self.globals_xml)])
+        self.mock_etree.side_effect = iter([ET.ElementTree(self.globals_xml)])
 
         self.patch_fs = patch('email_parser.reader.fs')
         self.mock_fs = self.patch_fs.start()
@@ -39,20 +41,18 @@ class TestReader(TestCase):
 
     def tearDown(self):
         super().tearDown()
-        self.patch_etree.stop()
         self.patch_fs.stop()
+        self.patch_etree.stop()
 
     def test_template(self):
-        template_str = '<html><head></head><body>{{content}}</body></html>'
-        self.mock_fs.read_file.side_effect = iter([template_str, 'test'])
-        expected_template = Template('dummy_template.html', ['dummy_template.css'], '<style>test</style>', template_str,
-                                     ['content'])
+        self.mock_fs.read_file.side_effect = iter([self.email_content, self.template_str, 'test'])
+        expected_template = Template('dummy_template.html', ['dummy_template.css'], '<style>test</style>',
+                                     self.template_str, ['content', 'global_content'])
         template, _ = reader.read('.', self.email)
         self.assertEqual(expected_template, template)
 
     def test_placeholders(self):
-        template_str = '<html><head></head><body>{{content}}{{global_content}}</body></html>'
-        self.mock_fs.read_file.side_effect = iter([template_str, 'test'])
+        self.mock_fs.read_file.side_effect = iter([self.email_content, self.template_str, 'test'])
         expected = {
             'global_content': Placeholder('global_content', 'dummy global', True, True),
             'subject': Placeholder('subject', 'dummy subject'),
@@ -62,15 +62,38 @@ class TestReader(TestCase):
         self.assertEqual(expected, placeholders)
 
     def test_template_with_multiple_styles(self):
-        email_xml = ET.fromstring("""
+        email_content = """
         <resources template="dummy_template.html" style="dummy_template1.css,dummy_template2.css">
             <string name="subject">dummy subject</string>
             <string name="content">dummy content</string>
         </resources>
-        """)
-        self.mock_etree.parse.side_effect = iter([ET.ElementTree(email_xml), ET.ElementTree(self.globals_xml)])
-        template, _ = reader.read('.', self.email)
+        """
+        self.mock_fs.read_file.return_value = 'test'
+        template, _ = reader.read_from_content('.', email_content, 'en')
         self.assertEqual('<style>test\ntest</style>', template.styles)
+
+    def test_read_by_content(self):
+        self.mock_fs.read_file.return_value = self.template_str
+        template, _ = reader.read_from_content('.', self.email_content, 'en')
+        self.assertEqual(template.name, 'dummy_template.html')
+
+    def test_on_missing_content_return_fallback(self):
+        self.mock_fs.read_file.return_value = None
+        template, _ = reader.read('.', self.email)
+        self.assertEqual(self.mock_fs.read_file.call_count, 2)
+
+    def test_on_malformed_content_return_fallback(self):
+        malformed_email_content = """
+        <resources template="dummy_template.html" style="dummy_template1.css,dummy_template2.css">
+            <string name="subject"dummy subject</string>
+        </resources>
+        """
+        self.mock_fs.read_file.side_effect = iter([malformed_email_content,
+                                                   self.email_content,
+                                                   self.template_str,
+                                                   'test'])
+        template, _ = reader.read('.', self.email)
+        self.assertEqual(self.mock_fs.read_file.call_count, 4)
 
 
 class TestWriter(TestCase):

@@ -69,7 +69,7 @@ class HtmlRenderer(object):
 
     def _render_placeholder(self, placeholder):
         if not placeholder.content.strip():
-            return placeholder
+            return placeholder.content
         content = placeholder.content.replace(const.LOCALE_PLACEHOLDER, self.locale)
         html = _md_to_html(content, config.base_img_path)
         return self._inline_css(html, self.template.styles)

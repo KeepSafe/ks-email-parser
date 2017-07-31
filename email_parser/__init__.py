@@ -36,9 +36,6 @@ class Parser:
         template, _ = reader.read(self.root_path, email)
         return template.content
 
-    def delete_template(self, email_name, locale):
-        fs.delete_file(self.root_path, locale, email_name + const.SOURCE_EXTENSION)
-
     def render(self, email_name, locale):
         email = fs.email(self.root_path, email_name, locale)
         return self.render_email(email)
@@ -50,15 +47,9 @@ class Parser:
         if template:
             return renderer.render(email.locale, template, persisted_placeholders)
 
-    def preview_email(self, email_name, locale, new_placeholders):
-        email = fs.email(self.root_path, email_name, locale)
-        template, persisted_placeholders = reader.read(self.root_path, email)
-        for placeholder_name, placeholder_inst in persisted_placeholders.items():
-            if placeholder_name in new_placeholders:
-                updated_placeholder = placeholder_inst._asdict()
-                updated_placeholder['content'] = new_placeholders[placeholder_name]['content']
-                persisted_placeholders[placeholder_name] = Placeholder(**updated_placeholder)
-        return renderer.render(email.locale, template, persisted_placeholders)
+    def render_email_content(self, content, locale=const.DEFAULT_LOCALE):
+        template, persisted_placeholders = reader.read_from_content(self.root_path, content, locale)
+        return renderer.render(locale, template, persisted_placeholders)
 
     def get_email(self, email_name, locale):
         email = fs.email(self.root_path, email_name, locale)
@@ -83,7 +74,7 @@ class Parser:
         self.refresh_email_placeholders_config()
         return saved_path
 
-    def create_email(self, template_name, styles_names, placeholders):
+    def create_email_content(self, template_name, styles_names, placeholders):
         placeholder_list = []
         for placeholder_name, placeholder_props in placeholders.items():
             if not placeholder_props['is_global']:
@@ -104,11 +95,8 @@ class Parser:
         expected_placeholders = placeholder.expected_placeholders_file(self.root_path)
         return {k: list(v) for k, v in expected_placeholders.items()}
 
-    def get_placeholders_for_email(self, email_name, locale):
-        email = fs.email(self.root_path, email_name, locale)
-        if not email:
-            return None
-        template, placeholders = reader.read(self.root_path, email)
+    def get_template_placeholders(self, template_filename):
+        _, placeholders = reader.get_template_parts(self.root_path, template_filename)
         return placeholders
 
     def refresh_email_placeholders_config(self):
@@ -130,4 +118,8 @@ class Parser:
         return placeholder.get_email_validation(self.root_path, email)['errors']
 
     def get_resources(self):
-        return fs.resources(self.root_path)
+        templates_view = {}
+        templates, styles = fs.resources(self.root_path)
+        for template_name in templates:
+            templates_view[template_name] = self.get_template_placeholders(template_name)
+        return templates_view, styles
