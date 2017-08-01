@@ -114,7 +114,7 @@ def create_email_content(template_name, styles, placeholders):
             'name': placeholder.name,
             'isText': str(placeholder.is_text).lower(),
         })
-        new_content_tag.text = placeholder.content
+        new_content_tag.text = '![CDATA[' + placeholder.content + ']]'
     xml_as_str = ElementTree.tostring(root, encoding='utf8')
     pretty_xml = BeautifulSoup(xml_as_str, "xml").prettify()
     return pretty_xml
