@@ -5,7 +5,7 @@ Extracts email information from an email file.
 import logging
 import re
 from collections import OrderedDict
-from xml.etree import ElementTree
+from lxml import etree
 
 from bs4 import BeautifulSoup
 from . import fs, const, config
@@ -86,17 +86,19 @@ def _read_xml(path):
     if not path:
         return None
     try:
-        return ElementTree.parse(path)
-    except ElementTree.ParseError as e:
+        parser = etree.XMLParser(encoding='utf-8')
+        return etree.parse(path, parser=parser)
+    except etree.ParseError as e:
         _handle_xml_parse_error(path, e)
         return None
 
 
 def _read_xml_from_content(content):
     try:
-        root = ElementTree.fromstring(content)
-        return ElementTree.ElementTree(root)
-    except ElementTree.ParseError as e:
+        parser = etree.XMLParser(encoding='utf-8')
+        root = etree.fromstring(content.encode('utf-8'), parser=parser)
+        return etree.ElementTree(root)
+    except etree.ParseError as e:
         logger.exception('Unable to parse XML content %s %s', content, e)
         return None
     except TypeError:
@@ -105,19 +107,18 @@ def _read_xml_from_content(content):
 
 
 def create_email_content(template_name, styles, placeholders):
-    root = ElementTree.Element('resource')
-    root.set('xmlns:tools', 'http://schemas.android.com/tools')
+    root = etree.Element('resource')
     root.set('template', template_name)
     root.set('style', ','.join(styles))
     for placeholder in placeholders:
-        new_content_tag = ElementTree.SubElement(root, 'string', {
+        new_content_tag = etree.SubElement(root, 'string', {
             'name': placeholder.name,
             'isText': str(placeholder.is_text).lower(),
         })
-        new_content_tag.text = '<![CDATA[' + placeholder.content + ']]>'
-    xml_as_str = ElementTree.tostring(root, encoding='utf8')
-    pretty_xml = BeautifulSoup(xml_as_str, 'xml').prettify()
-    return pretty_xml
+        new_content_tag.text = etree.CDATA(placeholder.content)
+    xml_as_str = etree.tostring(root, encoding='utf8', pretty_print=True)
+    print(type(xml_as_str))
+    return xml_as_str.decode('utf-8')
 
 
 def read_from_content(root_path, email_content, locale):
