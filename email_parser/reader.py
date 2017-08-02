@@ -117,7 +117,6 @@ def create_email_content(template_name, styles, placeholders):
         })
         new_content_tag.text = etree.CDATA(placeholder.content)
     xml_as_str = etree.tostring(root, encoding='utf8', pretty_print=True)
-    print(type(xml_as_str))
     return xml_as_str.decode('utf-8')
 
 
