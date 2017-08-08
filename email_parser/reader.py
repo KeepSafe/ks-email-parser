@@ -107,7 +107,7 @@ def _read_xml_from_content(content):
 
 
 def create_email_content(template_name, styles, placeholders):
-    root = etree.Element('resource')
+    root = etree.Element('resources')
     root.set('template', template_name)
     root.set('style', ','.join(styles))
     for placeholder in placeholders:
