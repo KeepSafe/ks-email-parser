@@ -1,9 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resource style="style1.css" template="dummy_template_name.html" xmlns:tools="http://schemas.android.com/tools">
- <string isText="true" name="subject">
-  dummy subject
- </string>
- <string isText="true" name="content">
-  dummy content
- </string>
+<resource template="dummy_template_name.html" style="style1.css">
+  <string isText="true" name="content"><![CDATA[dummy content]]></string>
+  <string isText="true" name="subject"><![CDATA[dummy subject]]></string>
 </resource>

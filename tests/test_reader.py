@@ -1,6 +1,6 @@
 from unittest import TestCase
 from unittest.mock import patch
-from xml.etree import ElementTree as ET
+from lxml import etree
 import os.path
 
 from email_parser import reader
@@ -23,7 +23,7 @@ class TestReader(TestCase):
             <string name="content">dummy content</string>
         </resources>
         """
-        self.globals_xml = ET.fromstring("""
+        self.globals_xml = etree.fromstring("""
         <resources>
             <string name="content">dummy global</string>
             <string name="order" isText="false">asc</string>
@@ -31,9 +31,9 @@ class TestReader(TestCase):
         """)
         self.template_str = '<html><head></head><body>{{content}}{{global_content}}</body></html>'
 
-        self.patch_etree = patch('email_parser.reader.ElementTree.parse')
-        self.mock_etree = self.patch_etree.start()
-        self.mock_etree.side_effect = iter([ET.ElementTree(self.globals_xml)])
+        self.patch_parse = patch('email_parser.reader.etree.parse')
+        self.mock_parse = self.patch_parse.start()
+        self.mock_parse.return_value = etree.ElementTree(self.globals_xml).getroot()
 
         self.patch_fs = patch('email_parser.reader.fs')
         self.mock_fs = self.patch_fs.start()
@@ -42,7 +42,7 @@ class TestReader(TestCase):
     def tearDown(self):
         super().tearDown()
         self.patch_fs.stop()
-        self.patch_etree.stop()
+        self.patch_parse.stop()
 
     def test_template(self):
         self.mock_fs.read_file.side_effect = iter([self.email_content, self.template_str, 'test'])
@@ -64,11 +64,12 @@ class TestReader(TestCase):
     def test_template_with_multiple_styles(self):
         email_content = """
         <resources template="dummy_template.html" style="dummy_template1.css,dummy_template2.css">
-            <string name="subject">dummy subject</string>
-            <string name="content">dummy content</string>
+            <string name="subject"><![CDATA[dummy subject]]></string>
+            <string name="content"><![CDATA[dummy content]]></string>
         </resources>
         """
         self.mock_fs.read_file.return_value = 'test'
+        self.mock_fs.global_email().path = 'test'
         template, _ = reader.read_from_content('.', email_content, 'en')
         self.assertEqual('<style>test\ntest</style>', template.styles)
 
@@ -103,8 +104,8 @@ class TestWriter(TestCase):
     def test_create_email_content(self):
         expected = read_fixture('email.xml').strip()
         placeholders = [
-            Placeholder('subject', 'dummy subject'),
             Placeholder('content', 'dummy content'),
+            Placeholder('subject', 'dummy subject'),
         ]
 
         result = reader.create_email_content('dummy_template_name.html', ['style1.css'], placeholders)

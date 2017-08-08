@@ -94,6 +94,8 @@ def _read_xml(path):
 
 
 def _read_xml_from_content(content):
+    if not content:
+        return None
     try:
         parser = etree.XMLParser(encoding='utf-8')
         root = etree.fromstring(content.encode('utf-8'), parser=parser)
@@ -128,7 +130,6 @@ def read_from_content(root_path, email_content, locale):
 
     if not template.name:
         logger.error('no HTML template name defined for given content')
-
     globals_xml = _read_xml(fs.global_email(root_path, locale).path)
     placeholders = OrderedDict({name: content for name, content
                                 in _placeholders(globals_xml, const.GLOBALS_PLACEHOLDER_PREFIX).items()
