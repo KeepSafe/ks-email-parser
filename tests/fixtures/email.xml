@@ -1,4 +1,4 @@
-<resource template="dummy_template_name.html" style="style1.css">
+<resources template="dummy_template_name.html" style="style1.css">
   <string isText="true" name="content"><![CDATA[dummy content]]></string>
   <string isText="true" name="subject"><![CDATA[dummy subject]]></string>
-</resource>
+</resources>
