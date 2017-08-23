@@ -71,8 +71,11 @@ class HtmlRenderer(object):
         if not placeholder.content.strip():
             return placeholder.content
         content = placeholder.content.replace(const.LOCALE_PLACEHOLDER, self.locale)
-        html = _md_to_html(content, config.base_img_path)
-        return self._inline_css(html, self.template.styles)
+        if placeholder.type == PlaceholderType.raw:
+            return content
+        else:
+            html = _md_to_html(content, config.base_img_path)
+            return self._inline_css(html, self.template.styles)
 
     def _concat_parts(self, subject, parts):
         subject = subject[0].content if subject[0] is not None else ''
@@ -139,8 +142,7 @@ class TextRenderer(object):
         _, contents = _split_subjects(placeholders)
         parts = [
             self._md_to_text(contents[p].content.replace(const.LOCALE_PLACEHOLDER, self.locale))
-            for p in self.template.placeholders if p in contents and contents[p].is_text
-        ]
+            for p in self.template.placeholders if p in contents if contents[p].type != PlaceholderType.attribute]
         return const.TEXT_EMAIL_PLACEHOLDER_SEPARATOR.join(v for v in filter(bool, parts))
 
 

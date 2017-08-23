@@ -21,9 +21,9 @@ def _placeholders(tree, prefix=''):
     for element in tree.findall('./string'):
         name = '{0}{1}'.format(prefix, element.get('name'))
         content = element.text or ''
-        is_text = element.get('isText', 'true') == 'true'
         is_global = prefix == const.GLOBALS_PLACEHOLDER_PREFIX
-        result[name] = Placeholder(name, content.strip(), is_text, is_global)
+        placeholder_type = PlaceholderType[element.get('type', PlaceholderType.text.value)]
+        result[name] = Placeholder(name, content.strip(), is_global, placeholder_type)
     return result
 
 
@@ -115,7 +115,7 @@ def create_email_content(template_name, styles, placeholders):
     for placeholder in placeholders:
         new_content_tag = etree.SubElement(root, 'string', {
             'name': placeholder.name,
-            'isText': str(placeholder.is_text).lower(),
+            'type': placeholder.type.value or PlaceholderType.text.value
         })
         new_content_tag.text = etree.CDATA(placeholder.content)
     xml_as_str = etree.tostring(root, encoding='utf8', pretty_print=True)

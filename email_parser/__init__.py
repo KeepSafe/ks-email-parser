@@ -10,7 +10,7 @@
 import json
 import os
 
-from . import placeholder, fs, reader, renderer, const
+from . import placeholder, fs, reader, renderer, const, config
 from .model import *
 
 
@@ -77,11 +77,11 @@ class Parser:
     def create_email_content(self, template_name, styles_names, placeholders):
         placeholder_list = []
         for placeholder_name, placeholder_props in placeholders.items():
-            if not placeholder_props['is_global']:
-                placeholder_inst = Placeholder(placeholder_name, placeholder_props['content'],
-                                               placeholder_props['is_text'],
-                                               placeholder_props['is_global'])
-                placeholder_list.append(placeholder_inst)
+            if not placeholder_props.get('is_global', False):
+                is_global = placeholder_props.get('is_global', False)
+                pt = placeholder_props.get('type', PlaceholderType.text)
+                p = Placeholder(placeholder_name, placeholder_props['content'], is_global, pt)
+                placeholder_list.append(p)
         placeholder_list.sort(key=lambda item: item.name)
         return reader.create_email_content(template_name, styles_names, placeholder_list)
 

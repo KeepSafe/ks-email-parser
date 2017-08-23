@@ -13,6 +13,8 @@ def read_fixture(filename):
 
 
 class TestReader(TestCase):
+    maxDiff = 0
+
     def setUp(self):
         super().setUp()
         self.maxDiff = None
@@ -26,7 +28,7 @@ class TestReader(TestCase):
         self.globals_xml = etree.fromstring("""
         <resources>
             <string name="content">dummy global</string>
-            <string name="order" isText="false">asc</string>
+            <string name="order" type="attribute">asc</string>
         </resources>
         """)
         self.template_str = '<html><head></head><body>{{content}}{{global_content}}</body></html>'
@@ -54,7 +56,7 @@ class TestReader(TestCase):
     def test_placeholders(self):
         self.mock_fs.read_file.side_effect = iter([self.email_content, self.template_str, 'test'])
         expected = {
-            'global_content': Placeholder('global_content', 'dummy global', True, True),
+            'global_content': Placeholder('global_content', 'dummy global', True),
             'subject': Placeholder('subject', 'dummy subject'),
             'content': Placeholder('content', 'dummy content')
         }

@@ -145,7 +145,7 @@ You can use `--strict` option to make sure all placeholders are filled. If there
 
 In case you want to put some non-text values in emails, like colors, you can use placeholders which will be ignored in text emails:
 
-`<string name="color" isText="false">[[#C0D9D9]]</string>`
+`<string name="color" type="attribute">[[#C0D9D9]]</string>`
 
 The only valid false value for isText is `false`, everything else counts as true including omitting the attribute.
 
