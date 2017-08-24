@@ -110,8 +110,16 @@ class Parser:
     def get_placeholders_filepath(self):
         return os.path.join(self.root_path, const.REPO_SRC_PATH, const.PLACEHOLDERS_FILENAME)
 
-    def get_email_filepath(self, email_name, locale=const.DEFAULT_LOCALE):
-        return fs.get_email_filepath(self.root_path, email_name, locale)
+    def get_email_filepaths(self, email_name, locale=None):
+        """
+        return list of file paths for single email or collection of emails if locale = None
+        :param email_name:
+        :param locale:
+        :return:
+        """
+        emails = fs.emails(self.root_path, email_name, locale)
+        abs_paths = map(lambda email: fs.get_email_filepath(self.root_path, email.name, email.locale), emails)
+        return list(abs_paths)
 
     def get_email_placeholders_validation_errors(self, email_name, locale):
         email = fs.email(self.root_path, email_name, locale)

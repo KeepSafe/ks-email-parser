@@ -80,6 +80,16 @@ class TestParser(TestCase):
         actual = self.parser.get_resources()
         self.assertEqual(actual, expected)
 
+    def test_get_email_filepaths_all_locale(self):
+        expected = ['src/ar/email.xml', 'src/en/email.xml', 'src/fr/email.xml']
+        actual = self.parser.get_email_filepaths('email')
+        self.assertEqual(actual, expected)
+
+    def test_get_email_filepaths_single_locale(self):
+        expected = ['src/ar/email.xml']
+        actual = self.parser.get_email_filepaths('email', 'ar')
+        self.assertEqual(actual, expected)
+
     def test_equality(self):
         parserA = email_parser.Parser('./tests')
         parserB = email_parser.Parser('./tests')
