@@ -23,6 +23,10 @@ class TestReader(TestCase):
         <resources template="dummy_template.html" style="dummy_template.css">
             <string name="subject">dummy subject</string>
             <string name="content">dummy content</string>
+            <string-array name="block">
+                <item>hello</item>
+                <item variant="B">bye</item>
+            </string-array>
         </resources>
         """
         self.globals_xml = etree.fromstring("""
@@ -58,7 +62,8 @@ class TestReader(TestCase):
         expected = {
             'global_content': Placeholder('global_content', 'dummy global', True),
             'subject': Placeholder('subject', 'dummy subject'),
-            'content': Placeholder('content', 'dummy content')
+            'content': Placeholder('content', 'dummy content'),
+            'block': Placeholder('block', 'hello', False, PlaceholderType.text, {'B': 'bye'})
         }
         _, placeholders = reader.read('.', self.email)
         self.assertEqual(expected, placeholders)
@@ -107,7 +112,7 @@ class TestWriter(TestCase):
         expected = read_fixture('email.xml').strip()
         placeholders = [
             Placeholder('content', 'dummy content'),
-            Placeholder('subject', 'dummy subject'),
+            Placeholder('subject', 'dummy subject', False, PlaceholderType.text, {'B': 'better subject'}),
         ]
 
         result = reader.create_email_content('dummy_template_name.html', ['style1.css'], placeholders)

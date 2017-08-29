@@ -10,8 +10,8 @@ class PlaceholderType(Enum):
 
 Email = namedtuple('Email', ['name', 'locale', 'path'])
 Template = namedtuple('Template', ['name', 'styles_names', 'styles', 'content', 'placeholders'])
-Placeholder = namedtuple('Placeholder', ['name', 'content', 'is_global', 'type'])
-Placeholder.__new__.__defaults__ = (False, PlaceholderType.text)
+Placeholder = namedtuple('Placeholder', ['name', 'content', 'is_global', 'type', 'variants'])
+Placeholder.__new__.__defaults__ = (False, PlaceholderType.text, {})
 
 
 class MissingPatternParamError(Exception):

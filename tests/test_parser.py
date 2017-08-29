@@ -49,7 +49,10 @@ class TestParser(TestCase):
             'subject': {
                 'content': "dummy subject",
                 'is_text': True,
-                'is_global': False
+                'is_global': False,
+                'variants': {
+                    'B': 'better subject'
+                }
             },
             'content': {
                 'content': "dummy content",

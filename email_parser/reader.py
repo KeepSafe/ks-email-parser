@@ -17,11 +17,24 @@ logger = logging.getLogger(__name__)
 def _placeholders(tree, prefix=''):
     if tree is None:
         return {}
+    is_global = (prefix == const.GLOBALS_PLACEHOLDER_PREFIX)
     result = OrderedDict()
+    for array in tree.findall('./string-array'):
+        name = '{0}{1}'.format(prefix, array.get('name'))
+        placeholder_type = PlaceholderType[array.get('type', PlaceholderType.text.value)]
+        content = ''
+        variants = {}
+        for element in array.findall('./item'):
+            variant = element.get('variant')
+            if variant:
+                variants[variant] = element.text.strip()
+            else:
+                content = element.text.strip()
+        result[name] = Placeholder(name, content, is_global, placeholder_type, variants)
+
     for element in tree.findall('./string'):
         name = '{0}{1}'.format(prefix, element.get('name'))
         content = element.text or ''
-        is_global = prefix == const.GLOBALS_PLACEHOLDER_PREFIX
         placeholder_type = PlaceholderType[element.get('type', PlaceholderType.text.value)]
         result[name] = Placeholder(name, content.strip(), is_global, placeholder_type)
     return result
@@ -113,11 +126,22 @@ def create_email_content(template_name, styles, placeholders):
     root.set('template', template_name)
     root.set('style', ','.join(styles))
     for placeholder in placeholders:
-        new_content_tag = etree.SubElement(root, 'string', {
-            'name': placeholder.name,
-            'type': placeholder.type.value or PlaceholderType.text.value
-        })
-        new_content_tag.text = etree.CDATA(placeholder.content)
+        if placeholder.variants:
+            new_content_tag = etree.SubElement(root, 'string-array', {
+                'name': placeholder.name,
+                'type': placeholder.type.value or PlaceholderType.text.value
+            })
+            default_item_tag = etree.SubElement(new_content_tag, 'item')
+            default_item_tag.text = etree.CDATA(placeholder.content)
+            for variant_name, variant_content in placeholder.variants.items():
+                new_item_tag = etree.SubElement(new_content_tag, 'item', {'variant': variant_name})
+                new_item_tag.text = etree.CDATA(variant_content)
+        else:
+            new_content_tag = etree.SubElement(root, 'string', {
+                'name': placeholder.name,
+                'type': placeholder.type.value or PlaceholderType.text.value
+            })
+            new_content_tag.text = etree.CDATA(placeholder.content)
     xml_as_str = etree.tostring(root, encoding='utf8', pretty_print=True)
     return xml_as_str.decode('utf-8')
 

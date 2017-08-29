@@ -79,8 +79,9 @@ class Parser:
         for placeholder_name, placeholder_props in placeholders.items():
             if not placeholder_props.get('is_global', False):
                 is_global = placeholder_props.get('is_global', False)
+                variants = placeholder_props.get('variants', {})
                 pt = placeholder_props.get('type', PlaceholderType.text)
-                p = Placeholder(placeholder_name, placeholder_props['content'], is_global, pt)
+                p = Placeholder(placeholder_name, placeholder_props['content'], is_global, pt, variants)
                 placeholder_list.append(p)
         placeholder_list.sort(key=lambda item: item.name)
         return reader.create_email_content(template_name, styles_names, placeholder_list)
