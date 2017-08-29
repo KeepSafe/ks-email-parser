@@ -19,24 +19,23 @@ def _placeholders(tree, prefix=''):
         return {}
     is_global = (prefix == const.GLOBALS_PLACEHOLDER_PREFIX)
     result = OrderedDict()
-    for array in tree.findall('./string-array'):
-        name = '{0}{1}'.format(prefix, array.get('name'))
-        placeholder_type = PlaceholderType[array.get('type', PlaceholderType.text.value)]
-        content = ''
-        variants = {}
-        for element in array.findall('./item'):
-            variant = element.get('variant')
-            if variant:
-                variants[variant] = element.text.strip()
-            else:
-                content = element.text.strip()
-        result[name] = Placeholder(name, content, is_global, placeholder_type, variants)
-
-    for element in tree.findall('./string'):
+    for element in tree.xpath('./string | ./string-array'):
         name = '{0}{1}'.format(prefix, element.get('name'))
-        content = element.text or ''
         placeholder_type = PlaceholderType[element.get('type', PlaceholderType.text.value)]
-        result[name] = Placeholder(name, content.strip(), is_global, placeholder_type)
+        if element.tag == 'string':
+            content = element.text or ''
+            result[name] = Placeholder(name, content.strip(), is_global, placeholder_type)
+        else:
+            content = ''
+            variants = {}
+            for item in element.findall('./item'):
+                variant = item.get('variant')
+                if variant:
+                    variants[variant] = item.text.strip()
+                else:
+                    content = item.text.strip()
+            result[name] = Placeholder(name, content, is_global, placeholder_type, variants)
+
     return result
 
 
