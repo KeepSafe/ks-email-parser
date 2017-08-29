@@ -56,9 +56,13 @@ class Parser:
         return fs.read_file(email.path)
 
     def get_email_components(self, email_name, locale):
+        serialized_placeholders = {}
         email = fs.email(self.root_path, email_name, locale)
-        template, persisted_placeholders = reader.read(self.root_path, email)
-        return template.name, template.styles_names, persisted_placeholders
+        template, placeholders = reader.read(self.root_path, email)
+        for name, placeholder_item in placeholders.items():
+            placeholder_item = placeholder_item._replace(type=placeholder_item.type.value)
+            serialized_placeholders[name] = placeholder_item._asdict()
+        return template.name, template.styles_names, serialized_placeholders
 
     def delete_email(self, email_name):
         emails = fs.emails(self.root_path, email_name=email_name)
@@ -79,9 +83,11 @@ class Parser:
         for placeholder_name, placeholder_props in placeholders.items():
             if not placeholder_props.get('is_global', False):
                 is_global = placeholder_props.get('is_global', False)
+                content = placeholder_props['content']
                 variants = placeholder_props.get('variants', {})
-                pt = placeholder_props.get('type', PlaceholderType.text)
-                p = Placeholder(placeholder_name, placeholder_props['content'], is_global, pt, variants)
+                pt = placeholder_props.get('type', PlaceholderType.text.value)
+                pt = PlaceholderType[pt]
+                p = Placeholder(placeholder_name, content, is_global, pt, variants)
                 placeholder_list.append(p)
         placeholder_list.sort(key=lambda item: item.name)
         return reader.create_email_content(template_name, styles_names, placeholder_list)
@@ -111,8 +117,16 @@ class Parser:
     def get_placeholders_filepath(self):
         return os.path.join(self.root_path, const.REPO_SRC_PATH, const.PLACEHOLDERS_FILENAME)
 
-    def get_email_filepath(self, email_name, locale=const.DEFAULT_LOCALE):
-        return fs.get_email_filepath(self.root_path, email_name, locale)
+    def get_email_filepaths(self, email_name, locale=None):
+        """
+        return list of file paths for single email or collection of emails if locale = None
+        :param email_name:
+        :param locale:
+        :return:
+        """
+        emails = fs.emails(self.root_path, email_name, locale)
+        abs_paths = map(lambda email: fs.get_email_filepath(self.root_path, email.name, email.locale), emails)
+        return list(abs_paths)
 
     def get_email_placeholders_validation_errors(self, email_name, locale):
         email = fs.email(self.root_path, email_name, locale)

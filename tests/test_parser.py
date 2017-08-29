@@ -1,5 +1,6 @@
 import os
 from unittest import TestCase
+from collections import OrderedDict
 
 import email_parser
 from email_parser import config
@@ -13,6 +14,7 @@ def read_fixture(filename):
 class TestParser(TestCase):
     def setUp(self):
         self.parser = email_parser.Parser('./tests')
+        self.maxDiff = None
 
     def tearDown(self):
         config.init()
@@ -50,18 +52,20 @@ class TestParser(TestCase):
                 'content': "dummy subject",
                 'is_text': True,
                 'is_global': False,
+                'type': 'text',
+                'is_global': False,
                 'variants': {
                     'B': 'better subject'
                 }
             },
             'content': {
                 'content': "dummy content",
-                'is_text': True,
+                'type': 'text',
                 'is_global': False
             },
             'global_content': {
                 'content': "global dummy content",
-                'is_text': True,
+                'type': 'text',
                 'is_global': True
             },
         }
@@ -83,7 +87,48 @@ class TestParser(TestCase):
         actual = self.parser.get_resources()
         self.assertEqual(actual, expected)
 
+    def test_get_email_filepaths_all_locale(self):
+        expected = ['src/ar/email.xml', 'src/en/email.xml', 'src/fr/email.xml']
+        actual = self.parser.get_email_filepaths('email')
+        self.assertEqual(actual, expected)
+
+    def test_get_email_filepaths_single_locale(self):
+        expected = ['src/ar/email.xml']
+        actual = self.parser.get_email_filepaths('email', 'ar')
+        self.assertEqual(actual, expected)
+
     def test_equality(self):
         parserA = email_parser.Parser('./tests')
         parserB = email_parser.Parser('./tests')
         self.assertEqual(parserA, parserB)
+
+    def test_get_email_components(self):
+        expected = ('basic_template.html', ['basic_template.css'],
+                    {'color': OrderedDict([('name', 'color'),
+                                           ('content', '[[#C0D9D9]]'),
+                                           ('is_global', False),
+                                           ('type', 'attribute')]),
+                     'content': OrderedDict([('name', 'content'),
+                                             ('content', 'Dummy content'),
+                                             ('is_global', False),
+                                             ('type', 'text')]),
+                     'image': OrderedDict([('name', 'image'),
+                                           ('content', '![Alt text](/path/to/img.jpg)'),
+                                           ('is_global', False),
+                                           ('type', 'text')]),
+                     'image_absolute': OrderedDict([('name', 'image_absolute'),
+                                                    (
+                                                    'content', '![Alt text](http://path.com/to/{link_locale}/img.jpg)'),
+                                                    ('is_global', False),
+                                                    ('type', 'text')]),
+                     'inline': OrderedDict([('name', 'inline'),
+                                            ('content', 'Dummy inline'),
+                                            ('is_global', False),
+                                            ('type', 'raw')]),
+                     'subject': OrderedDict([('name', 'subject'),
+                                             ('content', 'Dummy subject'),
+                                             ('is_global', False),
+                                             ('type', 'text')])
+                     })
+        actual = self.parser.get_email_components('email', 'en')
+        self.assertEqual(actual, expected)
