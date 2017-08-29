@@ -56,9 +56,13 @@ class Parser:
         return fs.read_file(email.path)
 
     def get_email_components(self, email_name, locale):
+        serialized_placeholders = {}
         email = fs.email(self.root_path, email_name, locale)
-        template, persisted_placeholders = reader.read(self.root_path, email)
-        return template.name, template.styles_names, persisted_placeholders
+        template, placeholders = reader.read(self.root_path, email)
+        for name, placeholder_item in placeholders.items():
+            placeholder_item = placeholder_item._replace(type=placeholder_item.type.value)
+            serialized_placeholders[name] = placeholder_item._asdict()
+        return template.name, template.styles_names, serialized_placeholders
 
     def delete_email(self, email_name):
         emails = fs.emails(self.root_path, email_name=email_name)
@@ -79,7 +83,8 @@ class Parser:
         for placeholder_name, placeholder_props in placeholders.items():
             if not placeholder_props.get('is_global', False):
                 is_global = placeholder_props.get('is_global', False)
-                pt = placeholder_props.get('type', PlaceholderType.text)
+                pt = placeholder_props.get('type', PlaceholderType.text.value)
+                pt = PlaceholderType[pt]
                 p = Placeholder(placeholder_name, placeholder_props['content'], is_global, pt)
                 placeholder_list.append(p)
         placeholder_list.sort(key=lambda item: item.name)
