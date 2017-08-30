@@ -158,3 +158,7 @@ class TestParser(TestCase):
         })
         actual = self.parser.get_email_components('email', 'en')
         self.assertEqual(actual, expected)
+
+    def test_get_email_variants(self):
+        actual = self.parser.get_email_variants('email')
+        self.assertEqual(actual, ['B'])
