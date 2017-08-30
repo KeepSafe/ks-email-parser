@@ -43,6 +43,7 @@ class Placeholder:
         self.variants = {}
         return self
 
+
 class MissingPatternParamError(Exception):
     pass
 
