@@ -6,4 +6,8 @@
     <string name="inline" type="raw">Dummy inline</string>
     <string name="image">![Alt text](/path/to/img.jpg)</string>
     <string name="image_absolute">![Alt text](http://path.com/to/{link_locale}/img.jpg)</string>
+    <string-array name="test" type="text">
+      <item><![CDATA[control]]></item>
+      <item variant="B"><![CDATA[experiment]]></item>
+    </string-array>
 </resources>

@@ -104,31 +104,58 @@ class TestParser(TestCase):
 
     def test_get_email_components(self):
         expected = ('basic_template.html', ['basic_template.css'],
-                    {'color': OrderedDict([('name', 'color'),
-                                           ('content', '[[#C0D9D9]]'),
-                                           ('is_global', False),
-                                           ('type', 'attribute')]),
-                     'content': OrderedDict([('name', 'content'),
-                                             ('content', 'Dummy content'),
-                                             ('is_global', False),
-                                             ('type', 'text')]),
-                     'image': OrderedDict([('name', 'image'),
-                                           ('content', '![Alt text](/path/to/img.jpg)'),
-                                           ('is_global', False),
-                                           ('type', 'text')]),
-                     'image_absolute': OrderedDict([('name', 'image_absolute'),
-                                                    (
-                                                    'content', '![Alt text](http://path.com/to/{link_locale}/img.jpg)'),
-                                                    ('is_global', False),
-                                                    ('type', 'text')]),
-                     'inline': OrderedDict([('name', 'inline'),
-                                            ('content', 'Dummy inline'),
-                                            ('is_global', False),
-                                            ('type', 'raw')]),
-                     'subject': OrderedDict([('name', 'subject'),
-                                             ('content', 'Dummy subject'),
-                                             ('is_global', False),
-                                             ('type', 'text')])
-                     })
+                    {
+            'color': {
+                'content': '[[#C0D9D9]]',
+                'is_global': False,
+                'name': 'color',
+                'type': 'attribute',
+                'variants': {}
+            },
+            'content': {
+                'content': 'Dummy content',
+                'is_global': False,
+                'name': 'content',
+                'type': 'text',
+                'variants': {}
+            },
+            'image': {
+                'content': '![Alt text](/path/to/img.jpg)',
+                'is_global': False,
+                'name': 'image',
+                'type': 'text',
+                'variants': {}
+            },
+            'image_absolute': {
+                'content': '![Alt text](http://path.com/to/{link_locale}/img.jpg)',
+                'is_global': False,
+                'name': 'image_absolute',
+                'type': 'text',
+                'variants': {}
+            },
+            'inline': {
+                'content': 'Dummy inline',
+                'is_global': False,
+                'name': 'inline',
+                'type': 'raw',
+                'variants': {}
+            },
+            'test': {
+                'content': 'control',
+                'is_global': False,
+                'name': 'test',
+                'type': 'text',
+                'variants': {
+                    'B': 'experiment'
+                }
+            },
+            'subject': {
+                'content': 'Dummy subject',
+                'is_global': False,
+                'name': 'subject',
+                'type': 'text',
+                'variants': {}
+            }
+        })
         actual = self.parser.get_email_components('email', 'en')
         self.assertEqual(actual, expected)

@@ -2,16 +2,41 @@ from collections import namedtuple
 from enum import Enum
 
 
+Email = namedtuple('Email', ['name', 'locale', 'path'])
+Template = namedtuple('Template', ['name', 'styles_names', 'styles', 'content', 'placeholders'])
+
+
 class PlaceholderType(Enum):
     attribute = 'attribute'
     raw = 'raw'
     text = 'text'
 
 
-Email = namedtuple('Email', ['name', 'locale', 'path'])
-Template = namedtuple('Template', ['name', 'styles_names', 'styles', 'content', 'placeholders'])
-Placeholder = namedtuple('Placeholder', ['name', 'content', 'is_global', 'type', 'variants'])
-Placeholder.__new__.__defaults__ = (False, PlaceholderType.text, {})
+class Placeholder:
+    def __init__(self, name, content, is_global=False, p_type=PlaceholderType.text, variants={}):
+        self.name = name
+        self.is_global = is_global
+        self.type = p_type
+        self._content = content
+        self.variants = variants
+
+    def __iter__(self):
+        for k, v in self.__dict__.items():
+            if k is 'type':
+                yield k, self.type.value
+            elif k is '_content':
+                yield 'content', v
+            else:
+                yield k, v
+
+    def __eq__(self, other):
+        return dict(self) == dict(other)
+
+    def get_content(self, variant=None):
+        if variant:
+            return self.variants.get(variant, self._content)
+        else:
+            return self._content
 
 
 class MissingPatternParamError(Exception):

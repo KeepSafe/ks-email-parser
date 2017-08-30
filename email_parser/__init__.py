@@ -59,9 +59,7 @@ class Parser:
         serialized_placeholders = {}
         email = fs.email(self.root_path, email_name, locale)
         template, placeholders = reader.read(self.root_path, email)
-        for name, placeholder_item in placeholders.items():
-            placeholder_item = placeholder_item._replace(type=placeholder_item.type.value)
-            serialized_placeholders[name] = placeholder_item._asdict()
+        serialized_placeholders = {name: dict(placeholder) for name, placeholder in placeholders.items()}
         return template.name, template.styles_names, serialized_placeholders
 
     def delete_email(self, email_name):
