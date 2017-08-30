@@ -141,7 +141,7 @@ def save_email(root_path, content, email_name, locale):
     return path
 
 
-def save_parsed_email(root_path, email, subjects, text, html):
+def save_parsed_email(root_path, email, subject, text, html):
     """
     Saves an email. The locale and name are taken from email tuple.
 
@@ -154,13 +154,7 @@ def save_parsed_email(root_path, email, subjects, text, html):
     locale = email.locale or const.DEFAULT_LOCALE
     folder = os.path.join(root_path, config.paths.destination, locale)
     os.makedirs(folder, exist_ok=True)
-    save_file(subjects[0], folder, email.name + const.SUBJECT_EXTENSION)
-    if len(subjects) > 1 and subjects[1] is not None:
-        save_file(subjects[1], folder, email.name + const.SUBJECT_A_EXTENSION)
-    if len(subjects) > 2 and subjects[2] is not None:
-        save_file(subjects[2], folder, email.name + const.SUBJECT_B_EXTENSION)
-    if len(subjects) > 3 and subjects[3] is not None:
-        save_file(subjects[3], folder, email.name + const.SUBJECT_RESEND_EXTENSION)
+    save_file(subject, folder, email.name + const.SUBJECT_EXTENSION)
     save_file(text, folder, email.name + const.TEXT_EXTENSION)
     save_file(html, folder, email.name + const.HTML_EXTENSION)
 
