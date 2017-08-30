@@ -82,6 +82,14 @@ class Parser:
         self.refresh_email_placeholders_config()
         return saved_path
 
+    def save_email_variant_as_default(self, email_name, locales, variant):
+        for locale in locales:
+            email = fs.email(self.root_path, email_name, locale)
+            template, placeholders = reader.read(self.root_path, email)
+            placeholders_list = [p.pick_variant(variant) for _, p in placeholders.items()]
+            content = reader.create_email_content(template.name, template.styles_names, placeholders_list)
+            fs.save_email(self.root_path, content, email_name, locale)
+
     def create_email_content(self, template_name, styles_names, placeholders):
         placeholder_list = []
         for placeholder_name, placeholder_props in placeholders.items():
@@ -93,7 +101,6 @@ class Parser:
                 pt = PlaceholderType[pt]
                 p = Placeholder(placeholder_name, content, is_global, pt, variants)
                 placeholder_list.append(p)
-        placeholder_list.sort(key=lambda item: item.name)
         return reader.create_email_content(template_name, styles_names, placeholder_list)
 
     def get_email_names(self):

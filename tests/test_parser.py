@@ -1,5 +1,6 @@
 import os
 from unittest import TestCase
+from unittest.mock import patch
 from collections import OrderedDict
 
 import email_parser
@@ -162,3 +163,17 @@ class TestParser(TestCase):
     def test_get_email_variants(self):
         actual = self.parser.get_email_variants('email')
         self.assertEqual(actual, ['B'])
+
+    @patch('email_parser.fs.save_file')
+    def test_save_email_variant_default_content(self, mock_save):
+        expected = read_fixture('email_en_default.xml')
+        self.parser.save_email_variant_as_default('email', ['en'], None)
+        content, _ = mock_save.call_args[0]
+        self.assertMultiLineEqual(content.strip(), expected.strip())
+
+    @patch('email_parser.fs.save_file')
+    def test_save_email_variant_b_content(self, mock_save):
+        expected = read_fixture('email_en_b.xml')
+        self.parser.save_email_variant_as_default('email', ['en'], 'B')
+        content, _ = mock_save.call_args[0]
+        self.assertMultiLineEqual(content.strip(), expected.strip())

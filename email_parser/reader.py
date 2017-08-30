@@ -124,6 +124,7 @@ def create_email_content(template_name, styles, placeholders):
     root = etree.Element('resources')
     root.set('template', template_name)
     root.set('style', ','.join(styles))
+    placeholders.sort(key=lambda item: item.name)
     for placeholder in placeholders:
         if placeholder.variants:
             new_content_tag = etree.SubElement(root, 'string-array', {

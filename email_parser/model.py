@@ -38,6 +38,10 @@ class Placeholder:
         else:
             return self._content
 
+    def pick_variant(self, variant):
+        self._content = self.get_content(variant)
+        self.variants = {}
+        return self
 
 class MissingPatternParamError(Exception):
     pass
