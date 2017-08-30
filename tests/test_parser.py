@@ -24,10 +24,16 @@ class TestParser(TestCase):
         self.assertEqual(email, read_fixture('email.raw.html'))
 
     def test_parse_email(self):
-        subjects, text, html = self.parser.render('email', 'en')
-        self.assertEqual(subjects[0], read_fixture('email.subject').strip())
+        subject, text, html = self.parser.render('email', 'en')
+        self.assertEqual(subject, read_fixture('email.subject').strip())
         self.assertEqual(html, read_fixture('email.html'))
         self.assertEqual(text, read_fixture('email.text').strip())
+
+    def test_parse_email_variant(self):
+        subject, text, html = self.parser.render('email', 'en', 'B')
+        self.assertEqual(subject, read_fixture('email.b.subject').strip())
+        self.assertEqual(html, read_fixture('email.b.html'))
+        self.assertEqual(text, read_fixture('email.b.text').strip())
 
     def test_get_email_names(self):
         names = self.parser.get_email_names()
@@ -43,7 +49,7 @@ class TestParser(TestCase):
         self.assertCountEqual(placeholders['placeholder'], ['unsubscribe_link', 'placeholder'])
 
     def test_render(self):
-        subjects, text, html = self.parser.render('placeholder', 'en')
+        subject, text, html = self.parser.render('placeholder', 'en')
         self.assertEqual(text, 'Dummy content {{placeholder}}\n\nDummy inline')
 
     def test_create_email(self):
@@ -117,7 +123,9 @@ class TestParser(TestCase):
                 'is_global': False,
                 'name': 'content',
                 'type': 'text',
-                'variants': {}
+                'variants': {
+                    'B': 'Awesome content'
+                }
             },
             'image': {
                 'content': '![Alt text](/path/to/img.jpg)',
@@ -140,21 +148,12 @@ class TestParser(TestCase):
                 'type': 'raw',
                 'variants': {}
             },
-            'test': {
-                'content': 'control',
-                'is_global': False,
-                'name': 'test',
-                'type': 'text',
-                'variants': {
-                    'B': 'experiment'
-                }
-            },
             'subject': {
                 'content': 'Dummy subject',
                 'is_global': False,
                 'name': 'subject',
                 'type': 'text',
-                'variants': {}
+                'variants': {'B': 'Awesome subject'}
             }
         })
         actual = self.parser.get_email_components('email', 'en')

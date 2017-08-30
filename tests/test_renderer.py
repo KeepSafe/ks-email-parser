@@ -17,13 +17,27 @@ class TestTextRenderer(TestCase):
         actual = self.r.render(placeholders)
         self.assertEqual('dummy content', actual)
 
+    def test_render_variant(self):
+        placeholders = {'content': Placeholder('content', 'dummy content', variants={'B': 'awesome content'})}
+        actual = self.r.render(placeholders, variant='B')
+        self.assertEqual('awesome content', actual)
+
     def test_concat_multiple_placeholders(self):
         placeholders = {
             'content1': Placeholder('content', 'dummy content'),
             'content2': Placeholder('content2', 'dummy content')
         }
-        expected = const.TEXT_EMAIL_PLACEHOLDER_SEPARATOR.join(map(lambda p: p.content, placeholders.values()))
+        expected = const.TEXT_EMAIL_PLACEHOLDER_SEPARATOR.join(['dummy content', 'dummy content'])
         actual = self.r.render(placeholders)
+        self.assertEqual(expected, actual)
+
+    def test_concat_multiple_placeholders_with_variants(self):
+        placeholders = {
+            'content1': Placeholder('content', 'dummy content'),
+            'content2': Placeholder('content2', 'dummy content', variants={'B': 'awesome content'})
+        }
+        expected = const.TEXT_EMAIL_PLACEHOLDER_SEPARATOR.join(['dummy content', 'awesome content'])
+        actual = self.r.render(placeholders, variant='B')
         self.assertEqual(expected, actual)
 
     def test_ignore_subject(self):
@@ -100,24 +114,18 @@ class TestTextRenderer(TestCase):
 class TestSubjectRenderer(TestCase):
     def setUp(self):
         self.r = renderer.SubjectRenderer()
+        self.placeholders = {
+            'content': Placeholder('content', 'dummy content'),
+            'subject': Placeholder('subject', 'dummy subject', variants={'B': 'experiment subject'})
+        }
 
     def test_happy_path(self):
-        placeholders = {
-            'content': Placeholder('content', 'dummy content'),
-            'subject': Placeholder('subject', 'dummy subject')
-        }
-        actual = self.r.render(placeholders)
-        self.assertEqual('dummy subject', actual[0])
+        actual = self.r.render(self.placeholders)
+        self.assertEqual('dummy subject', actual)
 
-    def test_ab(self):
-        placeholders = {
-            'content': Placeholder('content', 'dummy content'),
-            'subject': Placeholder('subject', 'dummy subject'),
-            'subject_b': Placeholder('subject_b', 'bbb'),
-            'subject_a': Placeholder('subject_a', 'aaa')
-        }
-        actual = self.r.render(placeholders)
-        self.assertEqual(['dummy subject', 'aaa', 'bbb', None], actual)
+    def test_variant(self):
+        actual = self.r.render(self.placeholders, variant='B')
+        self.assertEqual('experiment subject', actual)
 
     def test_raise_error_for_missing_subject(self):
         placeholders = {'content': 'dummy content'}
@@ -149,6 +157,14 @@ class TestHtmlRenderer(TestCase):
 
         actual = r.render(placeholders)
         self.assertEqual('<body><p>text1</p></body>', actual)
+
+    def test_variant(self):
+        placeholders = {'content1': Placeholder('content1', 'text1', variants={'B': 'text2'})}
+        template = Template('dummy', [], '<style>body {}</style>', '<body>{{content1}}</body>', ['content1'])
+        r = renderer.HtmlRenderer(template, self.email_locale)
+
+        actual = r.render(placeholders, variant='B')
+        self.assertEqual('<body><p>text2</p></body>', actual)
 
     def test_empty_style(self):
         placeholders = {'content': Placeholder('content', 'dummy_content')}

@@ -23,9 +23,9 @@ def _md_to_html(text, base_url=None):
     return markdown.markdown(text, extensions=extensions)
 
 
-def _split_subjects(placeholders):
-    return ([placeholders.get(subject) for subject in const.SUBJECTS_PLACEHOLDERS], OrderedDict(
-        (k, v) for k, v in placeholders.items() if k not in const.SUBJECTS_PLACEHOLDERS))
+def _split_subject(placeholders):
+    return (placeholders.get(const.SUBJECT_PLACEHOLDER),
+            dict((k, v) for k, v in placeholders.items() if k != const.SUBJECT_PLACEHOLDER))
 
 
 class HtmlRenderer(object):
@@ -67,18 +67,19 @@ class HtmlRenderer(object):
         else:
             return html
 
-    def _render_placeholder(self, placeholder):
-        if not placeholder.content.strip():
-            return placeholder.content
-        content = placeholder.content.replace(const.LOCALE_PLACEHOLDER, self.locale)
+    def _render_placeholder(self, placeholder, variant=None):
+        content = placeholder.get_content(variant)
+        if not content.strip():
+            return content
+        content = content.replace(const.LOCALE_PLACEHOLDER, self.locale)
         if placeholder.type == PlaceholderType.raw:
             return content
         else:
             html = _md_to_html(content, config.base_img_path)
             return self._inline_css(html, self.template.styles)
 
-    def _concat_parts(self, subject, parts):
-        subject = subject[0].content if subject[0] is not None else ''
+    def _concat_parts(self, subject, parts, variant):
+        subject = subject.get_content(variant) if subject is not None else ''
         placeholders = dict(parts.items() | {'subject': subject, 'base_url': config.base_img_path}.items())
         try:
             # pystache escapes html by default, we pass escape option to disable this
@@ -89,10 +90,10 @@ class HtmlRenderer(object):
             message = 'template %s for locale %s has missing placeholders: %s' % (self.template.name, self.locale, e)
             raise MissingTemplatePlaceholderError(message) from e
 
-    def render(self, placeholders):
-        subjects, contents = _split_subjects(placeholders)
-        parts = {k: self._render_placeholder(v) for k, v in contents.items()}
-        html = self._concat_parts(subjects, parts)
+    def render(self, placeholders, variant=None):
+        subject, contents = _split_subject(placeholders)
+        parts = {k: self._render_placeholder(v, variant) for k, v in contents.items()}
+        html = self._concat_parts(subject, parts, variant)
         html = self._wrap_with_text_direction(html)
         return html
 
@@ -138,10 +139,10 @@ class TextRenderer(object):
         html = _md_to_html(text, base_url)
         return self._html_to_text(html)
 
-    def render(self, placeholders):
-        _, contents = _split_subjects(placeholders)
+    def render(self, placeholders, variant=None):
+        _, contents = _split_subject(placeholders)
         parts = [
-            self._md_to_text(contents[p].content.replace(const.LOCALE_PLACEHOLDER, self.locale))
+            self._md_to_text(contents[p].get_content(variant).replace(const.LOCALE_PLACEHOLDER, self.locale))
             for p in self.template.placeholders if p in contents if contents[p].type != PlaceholderType.attribute]
         return const.TEXT_EMAIL_PLACEHOLDER_SEPARATOR.join(v for v in filter(bool, parts))
 
@@ -151,25 +152,25 @@ class SubjectRenderer(object):
     Renders email's subject as text.
     """
 
-    def render(self, placeholders):
-        subjects, _ = _split_subjects(placeholders)
-        if subjects[0] is None:
+    def render(self, placeholders, variant=None):
+        subject, _ = _split_subject(placeholders)
+        if subject is None:
             raise MissingSubjectError('Subject is required for every email')
-        return list(map(lambda s: s.content if s else None, subjects))
+        return subject.get_content(variant)
 
 
-def render(email_locale, template, placeholders):
+def render(email_locale, template, placeholders, variant=None):
     subject_renderer = SubjectRenderer()
-    subjects = subject_renderer.render(placeholders)
+    subject = subject_renderer.render(placeholders, variant)
 
     text_renderer = TextRenderer(template, email_locale)
-    text = text_renderer.render(placeholders)
+    text = text_renderer.render(placeholders, variant)
 
     html_renderer = HtmlRenderer(template, email_locale)
     try:
-        html = html_renderer.render(placeholders)
+        html = html_renderer.render(placeholders, variant)
     except MissingTemplatePlaceholderError as e:
         message = 'failed to generate html content for locale: {} with message: {}'.format(email_locale, e)
         raise RenderingError(message) from e
 
-    return subjects, text, html
+    return subject, text, html

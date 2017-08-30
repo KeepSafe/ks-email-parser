@@ -131,7 +131,7 @@ def create_email_content(template_name, styles, placeholders):
                 'type': placeholder.type.value or PlaceholderType.text.value
             })
             default_item_tag = etree.SubElement(new_content_tag, 'item')
-            default_item_tag.text = etree.CDATA(placeholder.content)
+            default_item_tag.text = etree.CDATA(placeholder.get_content())
             for variant_name, variant_content in placeholder.variants.items():
                 new_item_tag = etree.SubElement(new_content_tag, 'item', {'variant': variant_name})
                 new_item_tag.text = etree.CDATA(variant_content)
@@ -140,7 +140,7 @@ def create_email_content(template_name, styles, placeholders):
                 'name': placeholder.name,
                 'type': placeholder.type.value or PlaceholderType.text.value
             })
-            new_content_tag.text = etree.CDATA(placeholder.content)
+            new_content_tag.text = etree.CDATA(placeholder.get_content())
     xml_as_str = etree.tostring(root, encoding='utf8', pretty_print=True)
     return xml_as_str.decode('utf-8')
 

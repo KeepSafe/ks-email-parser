@@ -36,20 +36,20 @@ class Parser:
         template, _ = reader.read(self.root_path, email)
         return template.content
 
-    def render(self, email_name, locale):
+    def render(self, email_name, locale, variant=None):
         email = fs.email(self.root_path, email_name, locale)
-        return self.render_email(email)
+        return self.render_email(email, variant)
 
-    def render_email(self, email):
+    def render_email(self, email, variant=None):
         if not email:
             return None
         template, persisted_placeholders = reader.read(self.root_path, email)
         if template:
-            return renderer.render(email.locale, template, persisted_placeholders)
+            return renderer.render(email.locale, template, persisted_placeholders, variant)
 
-    def render_email_content(self, content, locale=const.DEFAULT_LOCALE):
+    def render_email_content(self, content, locale=const.DEFAULT_LOCALE, variant=None):
         template, persisted_placeholders = reader.read_from_content(self.root_path, content, locale)
-        return renderer.render(locale, template, persisted_placeholders)
+        return renderer.render(locale, template, persisted_placeholders, variant=None)
 
     def get_email(self, email_name, locale):
         email = fs.email(self.root_path, email_name, locale)
