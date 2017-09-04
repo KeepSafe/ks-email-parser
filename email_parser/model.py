@@ -10,6 +10,7 @@ class PlaceholderType(Enum):
     attribute = 'attribute'
     raw = 'raw'
     text = 'text'
+    image = 'image'
 
 
 class Placeholder:
