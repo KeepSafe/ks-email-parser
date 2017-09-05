@@ -83,12 +83,15 @@ class Parser:
         return saved_path
 
     def save_email_variant_as_default(self, email_name, locales, variant):
+        paths = []
         for locale in locales:
             email = fs.email(self.root_path, email_name, locale)
             template, placeholders = reader.read(self.root_path, email)
-            placeholders_list = [p.pick_variant(variant) for _, p in placeholders.items()]
+            placeholders_list = [p.pick_variant(variant) for _, p in placeholders.items() if not p.is_global]
             content = reader.create_email_content(template.name, template.styles_names, placeholders_list)
-            fs.save_email(self.root_path, content, email_name, locale)
+            email_path = fs.save_email(self.root_path, content, email_name, locale)
+            paths.append(email_path)
+        return paths
 
     def create_email_content(self, template_name, styles_names, placeholders):
         placeholder_list = []
