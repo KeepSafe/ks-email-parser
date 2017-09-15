@@ -14,12 +14,12 @@ class PlaceholderType(Enum):
 
 
 class Placeholder:
-    def __init__(self, name, content, is_global=False, p_type=PlaceholderType.text, variants={}):
+    def __init__(self, name, content, is_global=False, p_type=PlaceholderType.text, variants=None):
         self.name = name
         self.is_global = is_global
         self.type = p_type
         self._content = content
-        self.variants = variants
+        self.variants = variants or {}
 
     def __iter__(self):
         for k, v in self.__dict__.items():
