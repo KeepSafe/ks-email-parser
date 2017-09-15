@@ -1,12 +1,9 @@
 SUBJECT_EXTENSION = '.subject'
-SUBJECT_RESEND_EXTENSION = '.resend.subject'
-SUBJECT_A_EXTENSION = '.a.subject'
-SUBJECT_B_EXTENSION = '.b.subject'
 TEXT_EXTENSION = '.text'
 HTML_EXTENSION = '.html'
 CSS_EXTENSION = '.css'
 SOURCE_EXTENSION = '.xml'
-SUBJECTS_PLACEHOLDERS = ['subject', 'subject_a', 'subject_b', 'subject_resend']
+SUBJECT_PLACEHOLDER = 'subject'
 
 GLOBALS_EMAIL_NAME = 'global'
 GLOBALS_PLACEHOLDER_PREFIX = 'global_'

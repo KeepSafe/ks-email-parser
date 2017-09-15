@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <resources template="globale_template.html" style="basic_template.css">
     <string name="subject">Dummy subject</string>
-    <string name="color" isText="false">[[#C0D9D9]]</string>
+    <string name="color" type="attribute">[[#C0D9D9]]</string>
     <string name="content">Dummy content</string>
-    <string name="inline">[[Dummy inline]]</string>
+    <string name="inline" type="raw">Dummy inline</string>
     <string name="image">![Alt text](/path/to/img.jpg)</string>
     <string name="image_absolute">![Alt text](http://path.com/to/img.jpg)</string>
 </resources>

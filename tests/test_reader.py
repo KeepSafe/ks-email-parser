@@ -13,6 +13,8 @@ def read_fixture(filename):
 
 
 class TestReader(TestCase):
+    maxDiff = 0
+
     def setUp(self):
         super().setUp()
         self.maxDiff = None
@@ -21,12 +23,16 @@ class TestReader(TestCase):
         <resources template="dummy_template.html" style="dummy_template.css">
             <string name="subject">dummy subject</string>
             <string name="content">dummy content</string>
+            <string-array name="block">
+                <item>hello</item>
+                <item variant="B">bye</item>
+            </string-array>
         </resources>
         """
         self.globals_xml = etree.fromstring("""
         <resources>
             <string name="content">dummy global</string>
-            <string name="order" isText="false">asc</string>
+            <string name="order" type="attribute">asc</string>
         </resources>
         """)
         self.template_str = '<html><head></head><body>{{content}}{{global_content}}</body></html>'
@@ -54,9 +60,10 @@ class TestReader(TestCase):
     def test_placeholders(self):
         self.mock_fs.read_file.side_effect = iter([self.email_content, self.template_str, 'test'])
         expected = {
-            'global_content': Placeholder('global_content', 'dummy global', True, True),
+            'global_content': Placeholder('global_content', 'dummy global', True),
             'subject': Placeholder('subject', 'dummy subject'),
-            'content': Placeholder('content', 'dummy content')
+            'content': Placeholder('content', 'dummy content'),
+            'block': Placeholder('block', 'hello', False, PlaceholderType.text, {'B': 'bye'})
         }
         _, placeholders = reader.read('.', self.email)
         self.assertEqual(expected, placeholders)
@@ -105,7 +112,7 @@ class TestWriter(TestCase):
         expected = read_fixture('email.xml').strip()
         placeholders = [
             Placeholder('content', 'dummy content'),
-            Placeholder('subject', 'dummy subject'),
+            Placeholder('subject', 'dummy subject', False, PlaceholderType.text, {'B': 'better subject'}),
         ]
 
         result = reader.create_email_content('dummy_template_name.html', ['style1.css'], placeholders)

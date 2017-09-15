@@ -41,21 +41,6 @@ class TestParser(TestCase):
     def test_html(self):
         self._run_and_assert('email.html')
 
-    def test_subjects_ab_main(self):
-        self._run_and_assert('email_subjects_ab.subject')
-
-    def test_subjects_ab_a(self):
-        self._run_and_assert('email_subjects_ab.a.subject')
-
-    def test_subjects_ab_b(self):
-        self._run_and_assert('email_subjects_ab.b.subject')
-
-    def test_subject_resend_main(self):
-        self._run_and_assert('email_subject_resend.subject')
-
-    def test_subject_resend(self):
-        self._run_and_assert('email_subject_resend.resend.subject')
-
     def test_global_text(self):
         self._run_and_assert('email_globale.text')
 

@@ -108,8 +108,8 @@ def read_args(argsargs=argparse.ArgumentParser):
 def _parse_and_save(email, parser):
     result = parser.render_email(email)
     if result:
-        subjects, text, html = result
-        fs.save_parsed_email(parser.root_path, email, subjects, text, html)
+        subject, text, html = result
+        fs.save_parsed_email(parser.root_path, email, subject, text, html)
         return True
     else:
         return False

@@ -1,5 +1,7 @@
 import os
 from unittest import TestCase
+from unittest.mock import patch
+from collections import OrderedDict
 
 import email_parser
 from email_parser import config
@@ -13,6 +15,7 @@ def read_fixture(filename):
 class TestParser(TestCase):
     def setUp(self):
         self.parser = email_parser.Parser('./tests')
+        self.maxDiff = None
 
     def tearDown(self):
         config.init()
@@ -22,10 +25,16 @@ class TestParser(TestCase):
         self.assertEqual(email, read_fixture('email.raw.html'))
 
     def test_parse_email(self):
-        subjects, text, html = self.parser.render('email', 'en')
-        self.assertEqual(subjects[0], read_fixture('email.subject').strip())
+        subject, text, html = self.parser.render('email', 'en')
+        self.assertEqual(subject, read_fixture('email.subject').strip())
         self.assertEqual(html, read_fixture('email.html'))
         self.assertEqual(text, read_fixture('email.text').strip())
+
+    def test_parse_email_variant(self):
+        subject, text, html = self.parser.render('email', 'en', 'B')
+        self.assertEqual(subject, read_fixture('email.b.subject').strip())
+        self.assertEqual(html, read_fixture('email.b.html'))
+        self.assertEqual(text, read_fixture('email.b.text').strip())
 
     def test_get_email_names(self):
         names = self.parser.get_email_names()
@@ -41,7 +50,7 @@ class TestParser(TestCase):
         self.assertCountEqual(placeholders['placeholder'], ['unsubscribe_link', 'placeholder'])
 
     def test_render(self):
-        subjects, text, html = self.parser.render('placeholder', 'en')
+        subject, text, html = self.parser.render('placeholder', 'en')
         self.assertEqual(text, 'Dummy content {{placeholder}}\n\nDummy inline')
 
     def test_create_email(self):
@@ -49,16 +58,21 @@ class TestParser(TestCase):
             'subject': {
                 'content': "dummy subject",
                 'is_text': True,
-                'is_global': False
+                'is_global': False,
+                'type': 'text',
+                'is_global': False,
+                'variants': {
+                    'B': 'better subject'
+                }
             },
             'content': {
                 'content': "dummy content",
-                'is_text': True,
+                'type': 'text',
                 'is_global': False
             },
             'global_content': {
                 'content': "global dummy content",
-                'is_text': True,
+                'type': 'text',
                 'is_global': True
             },
         }
@@ -94,3 +108,72 @@ class TestParser(TestCase):
         parserA = email_parser.Parser('./tests')
         parserB = email_parser.Parser('./tests')
         self.assertEqual(parserA, parserB)
+
+    def test_get_email_components(self):
+        expected = ('basic_template.html', ['basic_template.css'],
+                    {
+            'color': {
+                'content': '[[#C0D9D9]]',
+                'is_global': False,
+                'name': 'color',
+                'type': 'attribute',
+                'variants': {}
+            },
+            'content': {
+                'content': 'Dummy content',
+                'is_global': False,
+                'name': 'content',
+                'type': 'text',
+                'variants': {
+                    'B': 'Awesome content'
+                }
+            },
+            'image': {
+                'content': '![Alt text](/path/to/img.jpg)',
+                'is_global': False,
+                'name': 'image',
+                'type': 'text',
+                'variants': {}
+            },
+            'image_absolute': {
+                'content': '![Alt text](http://path.com/to/{link_locale}/img.jpg)',
+                'is_global': False,
+                'name': 'image_absolute',
+                'type': 'text',
+                'variants': {}
+            },
+            'inline': {
+                'content': 'Dummy inline',
+                'is_global': False,
+                'name': 'inline',
+                'type': 'raw',
+                'variants': {}
+            },
+            'subject': {
+                'content': 'Dummy subject',
+                'is_global': False,
+                'name': 'subject',
+                'type': 'text',
+                'variants': {'B': 'Awesome subject'}
+            }
+        })
+        actual = self.parser.get_email_components('email', 'en')
+        self.assertEqual(actual, expected)
+
+    def test_get_email_variants(self):
+        actual = self.parser.get_email_variants('email')
+        self.assertEqual(actual, ['B'])
+
+    @patch('email_parser.fs.save_file')
+    def test_save_email_variant_default_content(self, mock_save):
+        expected = read_fixture('email_en_default.xml')
+        self.parser.save_email_variant_as_default('email', ['en'], None)
+        content, _ = mock_save.call_args[0]
+        self.assertMultiLineEqual(content.strip(), expected.strip())
+
+    @patch('email_parser.fs.save_file')
+    def test_save_email_variant_b_content(self, mock_save):
+        expected = read_fixture('email_en_b.xml')
+        self.parser.save_email_variant_as_default('email', ['en'], 'B')
+        content, _ = mock_save.call_args[0]
+        self.assertMultiLineEqual(content.strip(), expected.strip())

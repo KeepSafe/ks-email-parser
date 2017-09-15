@@ -21,7 +21,7 @@ def expected_placeholders_file(root_path):
 
 def _email_placeholders(root_path, email):
     _, contents = reader.read(root_path, email)
-    content = ''.join(map(lambda c: c.content, contents.values()))
+    content = ''.join(map(lambda c: c.get_content(), contents.values()))
     return _extract_placeholders(content)
 
 

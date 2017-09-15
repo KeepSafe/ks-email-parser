@@ -10,7 +10,7 @@
 import json
 import os
 
-from . import placeholder, fs, reader, renderer, const
+from . import placeholder, fs, reader, renderer, const, config
 from .model import *
 
 
@@ -36,29 +36,37 @@ class Parser:
         template, _ = reader.read(self.root_path, email)
         return template.content
 
-    def render(self, email_name, locale):
+    def render(self, email_name, locale, variant=None):
         email = fs.email(self.root_path, email_name, locale)
-        return self.render_email(email)
+        return self.render_email(email, variant)
 
-    def render_email(self, email):
+    def render_email(self, email, variant=None):
         if not email:
             return None
         template, persisted_placeholders = reader.read(self.root_path, email)
         if template:
-            return renderer.render(email.locale, template, persisted_placeholders)
+            return renderer.render(email.locale, template, persisted_placeholders, variant)
 
-    def render_email_content(self, content, locale=const.DEFAULT_LOCALE):
+    def render_email_content(self, content, locale=const.DEFAULT_LOCALE, variant=None):
         template, persisted_placeholders = reader.read_from_content(self.root_path, content, locale)
-        return renderer.render(locale, template, persisted_placeholders)
+        return renderer.render(locale, template, persisted_placeholders, variant=variant)
 
     def get_email(self, email_name, locale):
         email = fs.email(self.root_path, email_name, locale)
         return fs.read_file(email.path)
 
     def get_email_components(self, email_name, locale):
+        serialized_placeholders = {}
         email = fs.email(self.root_path, email_name, locale)
-        template, persisted_placeholders = reader.read(self.root_path, email)
-        return template.name, template.styles_names, persisted_placeholders
+        template, placeholders = reader.read(self.root_path, email)
+        serialized_placeholders = {name: dict(placeholder) for name, placeholder in placeholders.items()}
+        return template.name, template.styles_names, serialized_placeholders
+
+    def get_email_variants(self, email_name):
+        email = fs.email(self.root_path, email_name, const.DEFAULT_LOCALE)
+        _, placeholders = reader.read(self.root_path, email)
+        variants = set([name for _, p in placeholders.items() for name in p.variants.keys()])
+        return list(variants)
 
     def delete_email(self, email_name):
         emails = fs.emails(self.root_path, email_name=email_name)
@@ -74,15 +82,28 @@ class Parser:
         self.refresh_email_placeholders_config()
         return saved_path
 
+    def save_email_variant_as_default(self, email_name, locales, variant):
+        paths = []
+        for locale in locales:
+            email = fs.email(self.root_path, email_name, locale)
+            template, placeholders = reader.read(self.root_path, email)
+            placeholders_list = [p.pick_variant(variant) for _, p in placeholders.items() if not p.is_global]
+            content = reader.create_email_content(template.name, template.styles_names, placeholders_list)
+            email_path = fs.save_email(self.root_path, content, email_name, locale)
+            paths.append(email_path)
+        return paths
+
     def create_email_content(self, template_name, styles_names, placeholders):
         placeholder_list = []
         for placeholder_name, placeholder_props in placeholders.items():
-            if not placeholder_props['is_global']:
-                placeholder_inst = Placeholder(placeholder_name, placeholder_props['content'],
-                                               placeholder_props['is_text'],
-                                               placeholder_props['is_global'])
-                placeholder_list.append(placeholder_inst)
-        placeholder_list.sort(key=lambda item: item.name)
+            if not placeholder_props.get('is_global', False):
+                is_global = placeholder_props.get('is_global', False)
+                content = placeholder_props['content']
+                variants = placeholder_props.get('variants', {})
+                pt = placeholder_props.get('type', PlaceholderType.text.value)
+                pt = PlaceholderType[pt]
+                p = Placeholder(placeholder_name, content, is_global, pt, variants)
+                placeholder_list.append(p)
         return reader.create_email_content(template_name, styles_names, placeholder_list)
 
     def get_email_names(self):
