@@ -2,15 +2,20 @@ from collections import namedtuple
 from enum import Enum
 
 
-Email = namedtuple('Email', ['name', 'locale', 'path'])
-Template = namedtuple('Template', ['name', 'styles_names', 'styles', 'content', 'placeholders'])
-
-
 class PlaceholderType(Enum):
     attribute = 'attribute'
     raw = 'raw'
     text = 'text'
     image = 'image'
+
+
+class EmailType(Enum):
+    marketing = 'marketing'
+    transactional = 'transactional'
+
+
+Email = namedtuple('Email', ['name', 'locale', 'path'])
+Template = namedtuple('Template', ['name', 'styles_names', 'styles', 'content', 'placeholders'])
 
 
 class Placeholder:

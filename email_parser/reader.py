@@ -5,9 +5,9 @@ Extracts email information from an email file.
 import logging
 import re
 from collections import OrderedDict
+
 from lxml import etree
 
-from bs4 import BeautifulSoup
 from . import fs, const, config
 from .model import *
 
@@ -120,10 +120,12 @@ def _read_xml_from_content(content):
         return None
 
 
-def create_email_content(template_name, styles, placeholders):
+def create_email_content(template_name, styles, placeholders, email_type=None):
     root = etree.Element('resources')
     root.set('template', template_name)
     root.set('style', ','.join(styles))
+    if email_type:
+        root.set('email_type', email_type.value)
     placeholders.sort(key=lambda item: item.name)
     for placeholder in placeholders:
         if placeholder.variants:
@@ -179,3 +181,9 @@ def read(root_path, email):
         results = read_from_content(root_path, email_content, email.locale)
 
     return results
+
+
+def get_email_type(root_path, email):
+    email_content = fs.read_file(email.path)
+    email_xml = _read_xml_from_content(email_content)
+    return email_xml.getroot().get('email_type')

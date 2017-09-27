@@ -3,12 +3,12 @@ Different ways of rendering emails.
 """
 
 import logging
-import markdown
-import bs4
-import pystache
-import inlinestyler.utils as inline_styler
 import xml.etree.ElementTree as ET
-from collections import OrderedDict
+
+import bs4
+import inlinestyler.utils as inline_styler
+import markdown
+import pystache
 
 from . import markdown_ext, const, utils, config
 from .model import *

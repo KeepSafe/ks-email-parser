@@ -1,7 +1,8 @@
+import os.path
 from unittest import TestCase
 from unittest.mock import patch
+
 from lxml import etree
-import os.path
 
 from email_parser import reader
 from email_parser.model import *
@@ -116,4 +117,15 @@ class TestWriter(TestCase):
         ]
 
         result = reader.create_email_content('dummy_template_name.html', ['style1.css'], placeholders)
+        self.assertMultiLineEqual(expected, result.strip())
+
+    def test_create_content_with_type(self):
+        expected = read_fixture('email_with_type.xml').strip()
+        placeholders = [
+            Placeholder('content', 'dummy content'),
+            Placeholder('subject', 'dummy subject', False, PlaceholderType.text, {'B': 'better subject'}),
+        ]
+
+        result = reader.create_email_content('dummy_template_name.html', ['style1.css'], placeholders,
+                                             EmailType.transactional)
         self.assertMultiLineEqual(expected, result.strip())
