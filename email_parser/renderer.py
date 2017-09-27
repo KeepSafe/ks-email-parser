@@ -67,7 +67,16 @@ class HtmlRenderer(object):
         else:
             return html
 
-    def _render_placeholder(self, placeholder, variant=None):
+    def _wrap_with_highlight(self, html, highlight):
+        attr_id = highlight.get('id', '')
+        attr_style = highlight.get('style', '')
+
+        soup = bs4.BeautifulSoup(html, 'html.parser')
+        tag = soup.new_tag('div', id=attr_id, style=attr_style)
+        tag.insert(0, soup)
+        return tag.prettify()
+
+    def _render_placeholder(self, placeholder, variant=None, highlight=None):
         content = placeholder.get_content(variant)
         if not content.strip():
             return content
@@ -76,7 +85,10 @@ class HtmlRenderer(object):
             return content
         else:
             html = _md_to_html(content, config.base_img_path)
-            return self._inline_css(html, self.template.styles)
+            html = self._inline_css(html, self.template.styles)
+            if highlight and highlight.get('placeholder') == placeholder.name and highlight.get('variant') == variant:
+                html = self._wrap_with_highlight(html, highlight)
+            return html
 
     def _concat_parts(self, subject, parts, variant):
         subject = subject.get_content(variant) if subject is not None else ''
@@ -90,9 +102,9 @@ class HtmlRenderer(object):
             message = 'template %s for locale %s has missing placeholders: %s' % (self.template.name, self.locale, e)
             raise MissingTemplatePlaceholderError(message) from e
 
-    def render(self, placeholders, variant=None):
+    def render(self, placeholders, variant=None, highlight=None):
         subject, contents = _split_subject(placeholders)
-        parts = {k: self._render_placeholder(v, variant) for k, v in contents.items()}
+        parts = {k: self._render_placeholder(v, variant, highlight) for k, v in contents.items()}
         html = self._concat_parts(subject, parts, variant)
         html = self._wrap_with_text_direction(html)
         return html
@@ -159,7 +171,7 @@ class SubjectRenderer(object):
         return subject.get_content(variant)
 
 
-def render(email_locale, template, placeholders, variant=None):
+def render(email_locale, template, placeholders, variant=None, highlight=None):
     subject_renderer = SubjectRenderer()
     subject = subject_renderer.render(placeholders, variant)
 
@@ -168,7 +180,7 @@ def render(email_locale, template, placeholders, variant=None):
 
     html_renderer = HtmlRenderer(template, email_locale)
     try:
-        html = html_renderer.render(placeholders, variant)
+        html = html_renderer.render(placeholders, variant, highlight)
     except MissingTemplatePlaceholderError as e:
         message = 'failed to generate html content for locale: {} with message: {}'.format(email_locale, e)
         raise RenderingError(message) from e
