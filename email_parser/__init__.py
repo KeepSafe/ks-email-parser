@@ -136,6 +136,9 @@ class Parser:
     def get_placeholders_filepath(self):
         return os.path.join(self.root_path, const.REPO_SRC_PATH, const.PLACEHOLDERS_FILENAME)
 
+    def get_templates_directory_filepath(self):
+        return os.path.join(self.root_path, config.paths.templates)
+
     def get_email_filepaths(self, email_name, locale=None):
         """
         return list of file paths for single email or collection of emails if locale = None

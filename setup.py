@@ -26,5 +26,5 @@ setup(
     license='Apache',
     packages=find_packages(),
     install_requires=reqs,
-    entry_points={'console_scripts': ['ks-email-parser = email_parser:main']},
+    entry_points={'console_scripts': ['ks-email-parser = email_parser.cmd:main']},
     include_package_data=True)
