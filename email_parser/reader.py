@@ -14,27 +14,38 @@ from .model import *
 logger = logging.getLogger(__name__)
 
 
-def _placeholders(tree, prefix=''):
+def _get_placeholder_order_num(placeholder_name, template_placeholders):
+    if placeholder_name == const.SUBJECT_PLACEHOLDER:
+        return -1
+    elif placeholder_name in template_placeholders:
+        return template_placeholders.index(placeholder_name)
+    else:
+        return 99
+
+
+def _placeholders(tree, template_placeholders, prefix='', template_only=False):
     if tree is None:
         return {}
     is_global = (prefix == const.GLOBALS_PLACEHOLDER_PREFIX)
-    result = OrderedDict()
+    result = {}
     for element in tree.xpath('./string | ./string-array'):
         name = '{0}{1}'.format(prefix, element.get('name'))
-        placeholder_type = PlaceholderType[element.get('type', PlaceholderType.text.value)]
-        if element.tag == 'string':
-            content = element.text or ''
-            result[name] = Placeholder(name, content.strip(), is_global, placeholder_type)
-        else:
-            content = ''
-            variants = {}
-            for item in element.findall('./item'):
-                variant = item.get('variant')
-                if variant:
-                    variants[variant] = item.text.strip()
-                else:
-                    content = item.text.strip()
-            result[name] = Placeholder(name, content, is_global, placeholder_type, variants)
+        if template_only and name in template_placeholders or not template_only:
+            order_num = _get_placeholder_order_num(name, template_placeholders)
+            placeholder_type = PlaceholderType[element.get('type', PlaceholderType.text.value)]
+            if element.tag == 'string':
+                content = element.text or ''
+                result[name] = Placeholder(name, content.strip(), order_num, is_global, placeholder_type)
+            else:
+                content = ''
+                variants = {}
+                for item in element.findall('./item'):
+                    variant = item.get('variant')
+                    if variant:
+                        variants[variant] = item.text.strip()
+                    else:
+                        content = item.text.strip()
+                result[name] = Placeholder(name, content, order_num, is_global, placeholder_type, variants)
 
     return result
 
@@ -126,7 +137,7 @@ def create_email_content(template_name, styles, placeholders, email_type=None):
     root.set('style', ','.join(styles))
     if email_type:
         root.set('email_type', email_type.value)
-    placeholders.sort(key=lambda item: item.name)
+    placeholders.sort(key=lambda item: item.order)
     for placeholder in placeholders:
         if placeholder.variants:
             new_content_tag = etree.SubElement(root, 'string-array', {
@@ -156,11 +167,11 @@ def read_from_content(root_path, email_content, locale):
 
     if not template.name:
         logger.error('no HTML template name defined for given content')
+
     globals_xml = _read_xml(fs.global_email(root_path, locale).path)
-    placeholders = OrderedDict({name: content for name, content
-                                in _placeholders(globals_xml, const.GLOBALS_PLACEHOLDER_PREFIX).items()
-                                if name in template.placeholders})
-    placeholders.update(_placeholders(email_xml).items())
+    placeholders = _placeholders(globals_xml, template.placeholders,
+                                 prefix=const.GLOBALS_PLACEHOLDER_PREFIX, template_only=True)
+    placeholders.update(_placeholders(email_xml, template.placeholders).items())
 
     return template, placeholders
 

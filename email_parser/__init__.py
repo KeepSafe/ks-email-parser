@@ -103,10 +103,11 @@ class Parser:
             if not placeholder_props.get('is_global', False):
                 is_global = placeholder_props.get('is_global', False)
                 content = placeholder_props['content']
+                order_num = placeholder_props['order']
                 variants = placeholder_props.get('variants', {})
                 pt = placeholder_props.get('type', PlaceholderType.text.value)
                 pt = PlaceholderType[pt]
-                p = Placeholder(placeholder_name, content, is_global, pt, variants)
+                p = Placeholder(placeholder_name, content, order_num, is_global, pt, variants)
                 placeholder_list.append(p)
         email_type = EmailType(email_type) if email_type else None
         return reader.create_email_content(template_name, styles_names, placeholder_list, email_type)
