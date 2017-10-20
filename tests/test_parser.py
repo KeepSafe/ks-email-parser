@@ -57,6 +57,7 @@ class TestParser(TestCase):
         placeholders = {
             'subject': {
                 'content': "dummy subject",
+                'order': -1,
                 'is_text': True,
                 'is_global': False,
                 'type': 'text',
@@ -67,11 +68,13 @@ class TestParser(TestCase):
             },
             'content': {
                 'content': "dummy content",
+                'order': 1,
                 'type': 'text',
                 'is_global': False
             },
             'global_content': {
                 'content': "global dummy content",
+                'order': 2,
                 'type': 'text',
                 'is_global': True
             },
@@ -114,6 +117,7 @@ class TestParser(TestCase):
                     {
             'color': {
                 'content': '[[#C0D9D9]]',
+                'order': 1,
                 'is_global': False,
                 'name': 'color',
                 'type': 'attribute',
@@ -121,6 +125,7 @@ class TestParser(TestCase):
             },
             'content': {
                 'content': 'Dummy content',
+                'order': 2,
                 'is_global': False,
                 'name': 'content',
                 'type': 'text',
@@ -130,6 +135,7 @@ class TestParser(TestCase):
             },
             'image': {
                 'content': '![Alt text](/path/to/img.jpg)',
+                'order': 4,
                 'is_global': False,
                 'name': 'image',
                 'type': 'text',
@@ -137,6 +143,7 @@ class TestParser(TestCase):
             },
             'image_absolute': {
                 'content': '![Alt text](http://path.com/to/{link_locale}/img.jpg)',
+                'order': 5,
                 'is_global': False,
                 'name': 'image_absolute',
                 'type': 'text',
@@ -144,6 +151,7 @@ class TestParser(TestCase):
             },
             'inline': {
                 'content': 'Dummy inline',
+                'order': 3,
                 'is_global': False,
                 'name': 'inline',
                 'type': 'raw',
@@ -151,6 +159,7 @@ class TestParser(TestCase):
             },
             'subject': {
                 'content': 'Dummy subject',
+                'order': -1,
                 'is_global': False,
                 'name': 'subject',
                 'type': 'text',

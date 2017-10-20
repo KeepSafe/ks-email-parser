@@ -24,7 +24,7 @@ class TestGenerator(TestCase):
 
     def test_happy_path(self):
         self.mock_fs.emails.return_value = iter([Email('test_name', 'en', 'path')])
-        self.mock_reader.read.return_value = ('', {'segment': Placeholder('segment', '{{placeholder}}')})
+        self.mock_reader.read.return_value = ('', {'segment': Placeholder('segment', '{{placeholder}}', 1)})
         config = placeholder.generate_config('.')
         self.assertEqual(config, {'test_name': Counter({'placeholder': 1})})
 
@@ -41,7 +41,7 @@ class TestValidate(TestCase):
 
         self.patch_reader = patch('email_parser.placeholder.reader')
         self.mock_reader = self.patch_reader.start()
-        self.mock_reader.read.return_value = ('', {'segment': Placeholder('segment', '{{test_placeholder}}')})
+        self.mock_reader.read.return_value = ('', {'segment': Placeholder('segment', '{{test_placeholder}}', 1)})
 
         self.patch_config = patch('email_parser.placeholder.expected_placeholders_file')
         self.mock_config = self.patch_config.start()
@@ -57,7 +57,7 @@ class TestValidate(TestCase):
         self.assertEqual(expected, actual)
 
     def test_missing_placeholder(self):
-        self.mock_reader.read.return_value = ('', {'segment': Placeholder('segment', 'content')})
+        self.mock_reader.read.return_value = ('', {'segment': Placeholder('segment', 'content', 1)})
         actual = placeholder.get_email_validation('.', self.email)
         expected = {'valid': False, 'errors': {'missing': ['test_placeholder'], 'extra': [], 'diff_number': []}}
         self.assertEqual(expected, actual)
@@ -70,7 +70,8 @@ class TestValidate(TestCase):
 
     def test_diffrent_placeholder_count(self):
         self.mock_reader.read.return_value = ('', {'segment': Placeholder('segment',
-                                                                          '{{test_placeholder}}{{test_placeholder}}')})
+                                                                          '{{test_placeholder}}{{test_placeholder}}',
+                                                                          1)})
         actual = placeholder.get_email_validation('.', self.email)
         expected = {
             'valid': False,

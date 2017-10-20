@@ -19,8 +19,9 @@ Template = namedtuple('Template', ['name', 'styles_names', 'styles', 'content', 
 
 
 class Placeholder:
-    def __init__(self, name, content, is_global=False, p_type=PlaceholderType.text, variants=None):
+    def __init__(self, name, content, order, is_global=False, p_type=PlaceholderType.text, variants=None):
         self.name = name
+        self.order = order
         self.is_global = is_global
         self.type = p_type
         self._content = content
