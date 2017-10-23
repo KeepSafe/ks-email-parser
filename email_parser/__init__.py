@@ -100,7 +100,8 @@ class Parser:
             template, placeholders = reader.read(self.root_path, email)
             placeholders_list = [p.pick_variant(variant) for _, p in placeholders.items() if not p.is_global]
             email_type = EmailType(email_type) if email_type else None
-            content = reader.create_email_content(template.name, template.styles_names, placeholders_list, email_type)
+            content = reader.create_email_content(self.root_path, template.name, template.styles_names,
+                                                  placeholders_list, email_type)
             email_path = fs.save_email(self.root_path, content, email_name, locale)
             paths.append(email_path)
         return paths
@@ -117,7 +118,7 @@ class Parser:
                 p = Placeholder(placeholder_name, content, is_global, pt, variants)
                 placeholder_list.append(p)
         email_type = EmailType(email_type) if email_type else None
-        return reader.create_email_content(template_name, styles_names, placeholder_list, email_type)
+        return reader.create_email_content(self.root_path, template_name, styles_names, placeholder_list, email_type)
 
     def get_email_names(self):
         return (email.name for email in fs.emails(self.root_path, locale=const.DEFAULT_LOCALE))

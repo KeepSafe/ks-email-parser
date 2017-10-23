@@ -1,7 +1,7 @@
 <resources template="dummy_template_name.html" style="style1.css" email_type="transactional">
-  <string name="content" type="text"><![CDATA[dummy content]]></string>
   <string-array name="subject" type="text">
     <item><![CDATA[dummy subject]]></item>
     <item variant="B"><![CDATA[better subject]]></item>
   </string-array>
+  <string name="content" type="text"><![CDATA[dummy content]]></string>
 </resources>

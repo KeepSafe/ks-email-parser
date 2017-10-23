@@ -76,7 +76,7 @@ class TestParser(TestCase):
             },
         }
         expected = read_fixture('email.xml').strip()
-        content = self.parser.create_email_content('dummy_template_name.html', ['style1.css'], placeholders)
+        content = self.parser.create_email_content('basic_template.html', ['style1.css'], placeholders)
         self.assertMultiLineEqual(content.strip(), expected.strip())
 
     def test_get_template_placeholders(self):

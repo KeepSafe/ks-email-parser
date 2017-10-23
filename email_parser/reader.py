@@ -120,13 +120,19 @@ def _read_xml_from_content(content):
         return None
 
 
-def create_email_content(template_name, styles, placeholders, email_type=None):
+def _sort_from_template(root_path, template_filename, placeholders):
+    _, placeholders_ordered = get_template_parts(root_path, template_filename)
+    placeholders.sort(
+        key=lambda item: placeholders_ordered.index(item.name) if item.name in placeholders_ordered else 99)
+
+
+def create_email_content(root_path, template_name, styles, placeholders, email_type=None):
     root = etree.Element('resources')
     root.set('template', template_name)
     root.set('style', ','.join(styles))
     if email_type:
         root.set('email_type', email_type.value)
-    placeholders.sort(key=lambda item: item.name)
+    _sort_from_template(root_path, template_name, placeholders)
     for placeholder in placeholders:
         if placeholder.variants:
             new_content_tag = etree.SubElement(root, 'string-array', {

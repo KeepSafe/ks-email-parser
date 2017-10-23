@@ -109,6 +109,17 @@ class TestWriter(TestCase):
     def setUp(self):
         self.maxDiff = None
 
+        self.patch_fs = patch('email_parser.reader.fs')
+        self.mock_fs = self.patch_fs.start()
+        self.mock_fs.read_file.return_value = 'test'
+
+        self.template_str = '<html><head>{{subject}}</head><body>{{content}}{{global_content}}</body></html>'
+        self.mock_fs.read_file.side_effect = iter([self.template_str])
+
+    def tearDown(self):
+        super().tearDown()
+        self.patch_fs.stop()
+
     def test_create_email_content(self):
         expected = read_fixture('email.xml').strip()
         placeholders = [
@@ -116,7 +127,7 @@ class TestWriter(TestCase):
             Placeholder('subject', 'dummy subject', False, PlaceholderType.text, {'B': 'better subject'}),
         ]
 
-        result = reader.create_email_content('dummy_template_name.html', ['style1.css'], placeholders)
+        result = reader.create_email_content('dummy_root', 'basic_template.html', ['style1.css'], placeholders)
         self.assertMultiLineEqual(expected, result.strip())
 
     def test_create_content_with_type(self):
@@ -126,6 +137,6 @@ class TestWriter(TestCase):
             Placeholder('subject', 'dummy subject', False, PlaceholderType.text, {'B': 'better subject'}),
         ]
 
-        result = reader.create_email_content('dummy_template_name.html', ['style1.css'], placeholders,
+        result = reader.create_email_content('dummy_root', 'dummy_template_name.html', ['style1.css'], placeholders,
                                              EmailType.transactional)
         self.assertMultiLineEqual(expected, result.strip())
