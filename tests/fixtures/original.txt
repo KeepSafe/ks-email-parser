@@ -1,0 +1,7 @@
+Dummy subject
+
+Dummy content
+
+![Alt text](/path/to/img.jpg)
+
+![Alt text](http://path.com/to/{link_locale}/img.jpg)

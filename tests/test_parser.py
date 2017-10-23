@@ -1,7 +1,6 @@
 import os
 from unittest import TestCase
 from unittest.mock import patch
-from collections import OrderedDict
 
 import email_parser
 from email_parser import config
@@ -40,7 +39,7 @@ class TestParser(TestCase):
         names = self.parser.get_email_names()
         self.assertEqual(
             list(names), [
-                'email', 'email_globale', 'email_subject_resend', 'email_subjects_ab', 'fallback',
+                'email', 'email_globale', 'email_order', 'email_subject_resend', 'email_subjects_ab', 'fallback',
                 'missing_placeholder', 'placeholder'
             ])
 
@@ -177,3 +176,7 @@ class TestParser(TestCase):
         self.parser.save_email_variant_as_default('email', ['en'], 'B')
         content, _ = mock_save.call_args[0]
         self.assertMultiLineEqual(content.strip(), expected.strip())
+
+    def test_original(self):
+        actual = self.parser.original('email_order', 'en')
+        self.assertEqual(actual, read_fixture('original.txt').strip())

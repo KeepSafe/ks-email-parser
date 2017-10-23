@@ -59,6 +59,14 @@ class Parser:
         email = fs.email(self.root_path, email_name, locale)
         return fs.read_file(email.path)
 
+    def original(self, email_name, locale, variant=None):
+        email = fs.email(self.root_path, email_name, locale)
+        if not email:
+            return None
+        template, placeholders = reader.read(self.root_path, email)
+        return '\n\n'.join([placeholders[name].get_content() for name in template.placeholders if
+                            placeholders[name].type == PlaceholderType.text])
+
     def get_email_components(self, email_name, locale):
         email = fs.email(self.root_path, email_name, locale)
         template, placeholders = reader.read(self.root_path, email)
