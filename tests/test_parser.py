@@ -81,14 +81,20 @@ class TestParser(TestCase):
 
     def test_get_template_placeholders(self):
         expected = ['subject', 'color', 'content', 'inline', 'image', 'image_absolute']
-        actual = self.parser.get_template_placeholders('basic_template.html')
+        actual = self.parser.get_template_placeholders('basic_template.html', None)
         self.assertEqual(set(actual), set(expected))
 
     def test_get_resources(self):
         templates_dict = {
-            'basic_template.html': ['subject', 'color', 'content', 'inline', 'image', 'image_absolute'],
-            'globale_template.html': ['subject', 'color', 'content', 'inline', 'image', 'image_absolute',
-                                      'global_unsubscribe']}
+            'marketing': {
+                'basic_marketing_template.html': ['subject', 'color', 'content', 'inline', 'image', 'image_absolute'],
+            },
+            None: {
+                'basic_template.html': ['subject', 'color', 'content', 'inline', 'image', 'image_absolute'],
+                'globale_template.html': ['subject', 'color', 'content', 'inline', 'image', 'image_absolute',
+                                          'global_unsubscribe']
+            }
+        }
         expected = templates_dict, ['basic_template.css']
         actual = self.parser.get_resources()
         self.assertEqual(actual, expected)

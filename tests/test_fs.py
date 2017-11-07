@@ -5,18 +5,25 @@ from email_parser.model import *
 
 
 class MockPath(object):
-    def __init__(self, path, is_dir=False):
+    def __init__(self, path, is_dir=False, parent='.'):
         self.path = path
         self._is_dir = is_dir
+        self.name = path.split('/')[-1]
+        self._parent = parent
+        if parent:
+            self.parent = MockPath(parent, is_dir=True, parent=None)
 
     def is_dir(self):
         return self._is_dir
+
+    def is_file(self):
+        return not self._is_dir
 
     def resolve(self):
         return self.path
 
     def relative_to(self, base):
-        return self.path
+        return MockPath(self.path, is_dir=self._is_dir, parent=self._parent)
 
     def __str__(self):
         return self.path
@@ -64,10 +71,15 @@ class TestFs(TestCase):
         template_name = 'name1.html'
         css_name = 'name2.css'
         self.mock_path.return_value.glob.return_value = [
-            MockPath(template_name), MockPath(css_name), MockPath('name2.xxx')
+            MockPath(template_name), MockPath(css_name), MockPath('marketing/basic_marketing_template.html',
+                                                                  parent='marketing')
         ]
+        expected_templates = {
+            'marketing': ['basic_marketing_template.html'],
+            None: [template_name]
+        }
         templates, styles = fs.resources('.')
-        self.assertIn(template_name, templates)
+        self.assertEqual(expected_templates, templates)
         self.assertIn(css_name, styles)
 
     def test_get_email_filepath(self):

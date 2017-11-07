@@ -39,12 +39,15 @@ def _placeholders(tree, prefix=''):
     return result
 
 
-def get_template_parts(root_path, template_filename):
+def get_template_parts(root_path, template_filename, template_type):
     content = None
     placeholders = []
 
     if template_filename:
-        content = fs.read_file(root_path, config.paths.templates, template_filename)
+        if template_type:
+            content = fs.read_file(root_path, config.paths.templates, template_type, template_filename)
+        else:
+            content = fs.read_file(root_path, config.paths.templates, template_filename)
         placeholders = [m.group(1) for m in re.finditer(r'\{\{(\w+)\}\}', content)]
 
     # TODO sad panda, refactor
@@ -60,7 +63,8 @@ def _template(root_path, tree):
     styles_names = []
 
     template_filename = tree.getroot().get('template')
-    content, placeholders = get_template_parts(root_path, template_filename)
+    template_type = tree.getroot().get('email_type') or None
+    content, placeholders = get_template_parts(root_path, template_filename, template_type)
     style_element = tree.getroot().get('style')
 
     if style_element:
@@ -120,8 +124,8 @@ def _read_xml_from_content(content):
         return None
 
 
-def _sort_from_template(root_path, template_filename, placeholders):
-    _, placeholders_ordered = get_template_parts(root_path, template_filename)
+def _sort_from_template(root_path, template_filename, template_type, placeholders):
+    _, placeholders_ordered = get_template_parts(root_path, template_filename, template_type)
     placeholders.sort(
         key=lambda item: placeholders_ordered.index(item.name) if item.name in placeholders_ordered else 99)
 
@@ -132,7 +136,7 @@ def create_email_content(root_path, template_name, styles, placeholders, email_t
     root.set('style', ','.join(styles))
     if email_type:
         root.set('email_type', email_type.value)
-    _sort_from_template(root_path, template_name, placeholders)
+    _sort_from_template(root_path, template_name, email_type, placeholders)
     for placeholder in placeholders:
         if placeholder.variants:
             new_content_tag = etree.SubElement(root, 'string-array', {

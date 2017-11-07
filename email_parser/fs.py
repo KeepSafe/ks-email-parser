@@ -108,7 +108,10 @@ def read_file(*path_parts):
     """
     Helper for reading files
     """
-    path = os.path.join(*path_parts)
+    try:
+        path = os.path.join(*path_parts)
+    except:
+        logger.error(path_parts)
     logger.debug('reading file from %s', path)
     with open(path) as fp:
         return fp.read()
@@ -165,15 +168,17 @@ def resources(root_path):
     :param root_path:
     :return:
     """
-    templates = []
+    templates = {}
     styles = []
     templates_path = os.path.join(root_path, config.paths.templates)
-    glob_path = Path(templates_path).glob('*')
-    for path in sorted(glob_path, key=lambda path: str(path)):
-        if not path.is_dir():
-            str_path = str(path.relative_to(templates_path))
-            if str_path.endswith(const.HTML_EXTENSION):
-                templates.append(str_path)
-            if str_path.endswith(const.CSS_EXTENSION):
-                styles.append(str_path)
+    glob_path = Path(templates_path).glob('**/*')
+    paths = sorted(glob_path, key=lambda p: str(p))
+    css_files = filter(lambda p: p.is_file() and p.name.endswith(const.CSS_EXTENSION), paths)
+    styles.extend(map(lambda p: p.name, css_files))
+    html_files = filter(lambda p: p.is_file() and p.name.endswith(const.HTML_EXTENSION), paths)
+    for html_file in html_files:
+        parent = html_file.relative_to(templates_path).parent
+        template_type = None if str(parent) == '.' else str(parent)
+        templates_list_by_type = templates.setdefault(template_type, [])
+        templates_list_by_type.append(html_file.name)
     return templates, styles

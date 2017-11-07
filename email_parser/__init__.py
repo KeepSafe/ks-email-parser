@@ -130,8 +130,8 @@ class Parser:
         expected_placeholders = placeholder.expected_placeholders_file(self.root_path)
         return {k: list(v) for k, v in expected_placeholders.items()}
 
-    def get_template_placeholders(self, template_filename):
-        _, placeholders = reader.get_template_parts(self.root_path, template_filename)
+    def get_template_placeholders(self, template_filename, template_type):
+        _, placeholders = reader.get_template_parts(self.root_path, template_filename, template_type)
         return placeholders
 
     def refresh_email_placeholders_config(self):
@@ -166,6 +166,9 @@ class Parser:
     def get_resources(self):
         templates_view = {}
         templates, styles = fs.resources(self.root_path)
-        for template_name in templates:
-            templates_view[template_name] = self.get_template_placeholders(template_name)
+        for template_type in templates:
+            types_templates = templates[template_type]
+            templates_view_type = templates_view.setdefault(template_type, {})
+            for template_name in types_templates:
+                templates_view_type[template_name] = self.get_template_placeholders(template_name, template_type)
         return templates_view, styles
