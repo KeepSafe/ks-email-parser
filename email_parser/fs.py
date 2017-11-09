@@ -108,10 +108,7 @@ def read_file(*path_parts):
     """
     Helper for reading files
     """
-    try:
-        path = os.path.join(*path_parts)
-    except:
-        logger.error(path_parts)
+    path = os.path.join(*path_parts)
     logger.debug('reading file from %s', path)
     with open(path) as fp:
         return fp.read()

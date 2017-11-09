@@ -21,7 +21,7 @@ class TestReader(TestCase):
         self.maxDiff = None
         self.email = Email(name='dummy', locale='dummy', path='dummy')
         self.email_content = """
-        <resources template="dummy_template.html" style="dummy_template.css">
+        <resources template="dummy_template.html" style="dummy_template.css" email_type="transactional">
             <string name="subject">dummy subject</string>
             <string name="content">dummy content</string>
             <string-array name="block">
@@ -54,7 +54,7 @@ class TestReader(TestCase):
     def test_template(self):
         self.mock_fs.read_file.side_effect = iter([self.email_content, self.template_str, 'test'])
         expected_template = Template('dummy_template.html', ['dummy_template.css'], '<style>test</style>',
-                                     self.template_str, ['content', 'global_content'])
+                                     self.template_str, ['content', 'global_content'], EmailType.transactional)
         template, _ = reader.read('.', self.email)
         self.assertEqual(expected_template, template)
 
@@ -71,7 +71,8 @@ class TestReader(TestCase):
 
     def test_template_with_multiple_styles(self):
         email_content = """
-        <resources template="dummy_template.html" style="dummy_template1.css,dummy_template2.css">
+        <resources template="dummy_template.html" style="dummy_template1.css,dummy_template2.css"
+        email_type="transactional">
             <string name="subject"><![CDATA[dummy subject]]></string>
             <string name="content"><![CDATA[dummy content]]></string>
         </resources>
@@ -93,7 +94,8 @@ class TestReader(TestCase):
 
     def test_on_malformed_content_return_fallback(self):
         malformed_email_content = """
-        <resources template="dummy_template.html" style="dummy_template1.css,dummy_template2.css">
+        <resources template="dummy_template.html" style="dummy_template1.css,dummy_template2.css"
+        email_type="marketing">
             <string name="subject"dummy subject</string>
         </resources>
         """
@@ -127,7 +129,8 @@ class TestWriter(TestCase):
             Placeholder('subject', 'dummy subject', False, PlaceholderType.text, {'B': 'better subject'}),
         ]
 
-        result = reader.create_email_content('dummy_root', 'basic_template.html', ['style1.css'], placeholders)
+        result = reader.create_email_content('dummy_root', 'basic_template.html', ['style1.css'], placeholders,
+                                             EmailType.transactional)
         self.assertMultiLineEqual(expected, result.strip())
 
     def test_create_content_with_type(self):

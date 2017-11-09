@@ -4,6 +4,7 @@ from unittest.mock import patch
 
 import email_parser
 from email_parser import config
+from email_parser.model import EmailType
 
 
 def read_fixture(filename):
@@ -76,23 +77,23 @@ class TestParser(TestCase):
             },
         }
         expected = read_fixture('email.xml').strip()
-        content = self.parser.create_email_content('basic_template.html', ['style1.css'], placeholders)
+        content = self.parser.create_email_content('basic_template.html', ['style1.css'], placeholders, 'transactional')
         self.assertMultiLineEqual(content.strip(), expected.strip())
 
     def test_get_template_placeholders(self):
         expected = ['subject', 'color', 'content', 'inline', 'image', 'image_absolute']
-        actual = self.parser.get_template_placeholders('basic_template.html', None)
+        actual = self.parser.get_template_placeholders('basic_template.html', 'transactional')
         self.assertEqual(set(actual), set(expected))
 
     def test_get_resources(self):
         templates_dict = {
             'marketing': {
                 'basic_marketing_template.html': ['subject', 'color', 'content', 'inline', 'image', 'image_absolute'],
-            },
-            None: {
-                'basic_template.html': ['subject', 'color', 'content', 'inline', 'image', 'image_absolute'],
                 'globale_template.html': ['subject', 'color', 'content', 'inline', 'image', 'image_absolute',
                                           'global_unsubscribe']
+            },
+            'transactional': {
+                'basic_template.html': ['subject', 'color', 'content', 'inline', 'image', 'image_absolute'],
             }
         }
         expected = templates_dict, ['basic_template.css']
@@ -115,7 +116,7 @@ class TestParser(TestCase):
         self.assertEqual(parserA, parserB)
 
     def test_get_email_components(self):
-        expected = ('basic_template.html', ['basic_template.css'],
+        expected = ('basic_template.html', EmailType.transactional.value, ['basic_template.css'],
                     {
             'color': {
                 'content': '[[#C0D9D9]]',

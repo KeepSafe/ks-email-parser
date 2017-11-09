@@ -45,7 +45,7 @@ def get_template_parts(root_path, template_filename, template_type):
 
     if template_filename:
         if template_type:
-            content = fs.read_file(root_path, config.paths.templates, template_type, template_filename)
+            content = fs.read_file(root_path, config.paths.templates, template_type.value, template_filename)
         else:
             content = fs.read_file(root_path, config.paths.templates, template_filename)
         placeholders = [m.group(1) for m in re.finditer(r'\{\{(\w+)\}\}', content)]
@@ -61,9 +61,11 @@ def get_template_parts(root_path, template_filename, template_type):
 def _template(root_path, tree):
     styles = ''
     styles_names = []
+    template_type = None
 
     template_filename = tree.getroot().get('template')
-    template_type = tree.getroot().get('email_type') or None
+    if template_filename:
+        template_type = EmailType(tree.getroot().get('email_type'))
     content, placeholders = get_template_parts(root_path, template_filename, template_type)
     style_element = tree.getroot().get('style')
 
@@ -74,7 +76,7 @@ def _template(root_path, tree):
         styles = '<style>%s</style>' % styles
 
     # TODO either read all or leave just names for content and styles
-    return Template(template_filename, styles_names, styles, content, placeholders)
+    return Template(template_filename, styles_names, styles, content, placeholders, template_type)
 
 
 def _handle_xml_parse_error(file_path, exception):
@@ -130,12 +132,11 @@ def _sort_from_template(root_path, template_filename, template_type, placeholder
         key=lambda item: placeholders_ordered.index(item.name) if item.name in placeholders_ordered else 99)
 
 
-def create_email_content(root_path, template_name, styles, placeholders, email_type=None):
+def create_email_content(root_path, template_name, styles, placeholders, email_type):
     root = etree.Element('resources')
     root.set('template', template_name)
     root.set('style', ','.join(styles))
-    if email_type:
-        root.set('email_type', email_type.value)
+    root.set('email_type', email_type.value)
     _sort_from_template(root_path, template_name, email_type, placeholders)
     for placeholder in placeholders:
         if placeholder.variants:

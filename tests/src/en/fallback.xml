@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<resources template="basic_template.html" style="basic_template.css">
+<resources template="basic_template.html" style="basic_template.css" email_type="transactional">
     <string name="subject">Dummy subject</string>
     <string name="color" type="attribute">[[#C0D9D9]]</string>
     <string name="content">Dummy content</string>

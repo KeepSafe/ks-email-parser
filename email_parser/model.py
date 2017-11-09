@@ -15,7 +15,7 @@ class EmailType(Enum):
 
 
 Email = namedtuple('Email', ['name', 'locale', 'path'])
-Template = namedtuple('Template', ['name', 'styles_names', 'styles', 'content', 'placeholders'])
+Template = namedtuple('Template', ['name', 'styles_names', 'styles', 'content', 'placeholders', 'type'])
 
 
 class Placeholder:
