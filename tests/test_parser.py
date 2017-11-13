@@ -80,9 +80,9 @@ class TestParser(TestCase):
         content = self.parser.create_email_content('basic_template.html', ['style1.css'], placeholders, 'transactional')
         self.assertMultiLineEqual(content.strip(), expected.strip())
 
-    def test_get_template_placeholders(self):
+    def test_get_template(self):
         expected = ['subject', 'color', 'content', 'inline', 'image', 'image_absolute']
-        actual = self.parser.get_template_placeholders('basic_template.html', 'transactional')
+        _, actual = self.parser.get_template('basic_template.html', 'transactional')
         self.assertEqual(set(actual), set(expected))
 
     def test_get_resources(self):
