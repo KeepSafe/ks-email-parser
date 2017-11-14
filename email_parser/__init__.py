@@ -135,6 +135,10 @@ class Parser:
         content, placeholders = reader.get_template_parts(self.root_path, template_filename, template_type)
         return content, placeholders
 
+    def save_template(self, template_filename, template_type, template_content):
+        template_type = EmailType(template_type)
+        return fs.save_template(self.root_path, template_filename, template_type, template_content)
+
     def refresh_email_placeholders_config(self):
         placeholders_config = placeholder.generate_config(self.root_path)
         if placeholders_config:

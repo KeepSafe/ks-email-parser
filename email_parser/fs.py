@@ -141,6 +141,12 @@ def save_email(root_path, content, email_name, locale):
     return path
 
 
+def save_template(root_path, template_filename, template_type, template_content):
+    path = os.path.join(root_path, config.paths.templates, template_type.value, template_filename)
+    written = save_file(template_content, path)
+    return path, written
+
+
 def save_parsed_email(root_path, email, subject, text, html):
     """
     Saves an email. The locale and name are taken from email tuple.
