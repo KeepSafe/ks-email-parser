@@ -174,14 +174,17 @@ def resources(root_path):
     templates = {}
     styles = []
     templates_path = os.path.join(root_path, config.paths.templates)
-    glob_path = Path(templates_path).glob('**/*')
-    paths = sorted(glob_path, key=lambda p: str(p))
-    css_files = filter(lambda p: p.is_file() and p.name.endswith(const.CSS_EXTENSION), paths)
+    css_glob = Path(templates_path).glob('*' + const.CSS_EXTENSION)
+    css_files = sorted(css_glob, key=lambda p: str(p))
     styles.extend(map(lambda p: p.name, css_files))
-    html_files = filter(lambda p: p.is_file() and p.name.endswith(const.HTML_EXTENSION), paths)
+    html_glob = Path(templates_path).glob('**/*' + const.HTML_EXTENSION)
+    html_files = sorted(html_glob, key=lambda p: str(p))
     for html_file in html_files:
         parent = html_file.relative_to(templates_path).parent
-        template_type = None if str(parent) == '.' else str(parent)
-        templates_list_by_type = templates.setdefault(template_type, [])
-        templates_list_by_type.append(html_file.name)
+        try:
+            template_type = EmailType(str(parent)).value
+            templates_list_by_type = templates.setdefault(template_type, [])
+            templates_list_by_type.append(html_file.name)
+        except ValueError:
+            continue
     return templates, styles

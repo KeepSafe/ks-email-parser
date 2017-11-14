@@ -33,6 +33,7 @@ class TestFs(TestCase):
     def setUp(self):
         self.patch_path = patch('email_parser.fs.Path')
         self.mock_path = self.patch_path.start()
+        self.showDiff = True
 
     def tearDown(self):
         super().tearDown()
@@ -76,7 +77,21 @@ class TestFs(TestCase):
         ]
         expected_templates = {
             'marketing': ['basic_marketing_template.html'],
-            None: [template_name]
+        }
+        templates, styles = fs.resources('.')
+        self.assertEqual(expected_templates, templates)
+        self.assertIn(css_name, styles)
+
+    def test_resources_ignore_unknown_email_types(self):
+        template_name = 'name1.html'
+        css_name = 'name2.css'
+        self.mock_path.return_value.glob.return_value = [
+            MockPath(template_name), MockPath(css_name),
+            MockPath('marketing/basic_marketing_template.html', parent='marketing'),
+            MockPath('unknown/basic_marketing_template.html', parent='unknown')
+        ]
+        expected_templates = {
+            'marketing': ['basic_marketing_template.html'],
         }
         templates, styles = fs.resources('.')
         self.assertEqual(expected_templates, templates)
