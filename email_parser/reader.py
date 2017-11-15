@@ -69,6 +69,14 @@ def get_template_parts(root_path, template_filename, template_type):
     return content, placeholders
 
 
+def get_inline_style(root_path, styles_names):
+    if not len(styles_names):
+        return ''
+    css = [fs.read_file(root_path, config.paths.templates, f) or ' ' for f in styles_names]
+    styles = '\n'.join(css)
+    return '<style>%s</style>' % styles
+
+
 def _template(root_path, tree):
     styles = ''
     styles_names = []
@@ -80,9 +88,7 @@ def _template(root_path, tree):
 
     if style_element:
         styles_names = style_element.split(',')
-        css = [fs.read_file(root_path, config.paths.templates, f) or ' ' for f in styles_names]
-        styles = '\n'.join(css)
-        styles = '<style>%s</style>' % styles
+        styles = get_inline_style(root_path, styles_names)
 
     # TODO either read all or leave just names for content and styles
     return Template(template_filename, styles_names, styles, content, placeholders, email_type)
@@ -169,6 +175,11 @@ def create_email_content(root_path, template_name, styles, placeholders, email_t
     return xml_as_str.decode('utf-8')
 
 
+def get_global_placeholders(root_path, locale):
+    globals_xml = _read_xml(fs.global_email(root_path, locale).path)
+    return _placeholders(globals_xml, const.GLOBALS_PLACEHOLDER_PREFIX)
+
+
 def read_from_content(root_path, email_content, locale):
     email_xml = _read_xml_from_content(email_content)
     if not email_xml:
@@ -177,9 +188,9 @@ def read_from_content(root_path, email_content, locale):
 
     if not template.name:
         logger.error('no HTML template name defined for given content')
-    globals_xml = _read_xml(fs.global_email(root_path, locale).path)
+    global_placeholders = get_global_placeholders(root_path, locale)
     placeholders = OrderedDict({name: content for name, content
-                                in _placeholders(globals_xml, const.GLOBALS_PLACEHOLDER_PREFIX).items()
+                                in global_placeholders.items()
                                 if name in template.placeholders})
     placeholders.update(_placeholders(email_xml).items())
 

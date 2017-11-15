@@ -123,6 +123,12 @@ class Parser:
         email_type = EmailType(email_type)
         return reader.create_email_content(self.root_path, template_name, styles_names, placeholder_list, email_type)
 
+    def render_template_content(self, template_content, styles_names, placeholders, locale=const.DEFAULT_LOCALE):
+        styles = reader.get_inline_style(self.root_path, styles_names)
+        placeholders_objs = {name: Placeholder(name, content) for name, content in placeholders.items()}
+        template = Template('preview', styles_names, styles, template_content, placeholders_objs, None)
+        return renderer.render(locale, template, placeholders_objs)
+
     def get_email_names(self):
         return (email.name for email in fs.emails(self.root_path, locale=const.DEFAULT_LOCALE))
 
@@ -185,3 +191,7 @@ class Parser:
                 tpl_content, tpl_placeholders = self.get_template(template_name, template_type)
                 templates_view_type[template_name] = tpl_placeholders
         return templates_view, styles, sections_map
+
+    def get_global_placeholders_map(self, locale=const.DEFAULT_LOCALE):
+        global_placeholders = reader.get_global_placeholders(self.root_path, locale)
+        return {name: placeholder.get_content() for name, placeholder in global_placeholders.items()}
