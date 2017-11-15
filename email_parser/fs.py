@@ -189,3 +189,13 @@ def resources(root_path):
         except ValueError:
             continue
     return templates, styles
+
+
+def get_html_sections_map(root_path):
+    html_sections = {}
+    html_sections_path = os.path.join(root_path, config.paths.sections)
+    html_sections_glob = Path(html_sections_path).glob('*' + const.HTML_EXTENSION)
+    html_sections_files = sorted(html_sections_glob, key=lambda p: str(p))
+    for html_sections_path in html_sections_files:
+        html_sections[html_sections_path.name] = read_file(*html_sections_path.parts)
+    return html_sections

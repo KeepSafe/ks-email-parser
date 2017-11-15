@@ -101,9 +101,10 @@ class TestParser(TestCase):
                 'basic_template.html': ['subject', 'color', 'content', 'inline', 'image', 'image_absolute'],
             }
         }
-        expected = templates_dict, ['basic_template.css']
-        actual = self.parser.get_resources()
-        self.assertEqual(actual, expected)
+        actual_templates, styles, sections = self.parser.get_resources()
+        self.assertEqual(actual_templates, templates_dict)
+        self.assertIn('header-with-background.html', sections.keys())
+        self.assertIn('basic_template.css', styles)
 
     def test_get_email_filepaths_all_locale(self):
         expected = ['src/ar/email.xml', 'src/en/email.xml', 'src/fr/email.xml']

@@ -177,10 +177,11 @@ class Parser:
     def get_resources(self):
         templates_view = {}
         templates, styles = fs.resources(self.root_path)
+        sections_map = fs.get_html_sections_map(self.root_path)
         for template_type in templates:
             types_templates = templates[template_type]
             templates_view_type = templates_view.setdefault(template_type, {})
             for template_name in types_templates:
                 tpl_content, tpl_placeholders = self.get_template(template_name, template_type)
                 templates_view_type[template_name] = tpl_placeholders
-        return templates_view, styles
+        return templates_view, styles, sections_map
