@@ -71,7 +71,7 @@ class Parser:
         email = fs.email(self.root_path, email_name, locale)
         template, placeholders = reader.read(self.root_path, email)
         serialized_placeholders = {name: dict(placeholder) for name, placeholder in placeholders.items()}
-        return template.name, template.type.value, template.styles_names, serialized_placeholders
+        return template.name, template.type, template.styles_names, serialized_placeholders
 
     def get_email_variants(self, email_name):
         email = fs.email(self.root_path, email_name, const.DEFAULT_LOCALE)
@@ -99,7 +99,10 @@ class Parser:
             email = fs.email(self.root_path, email_name, locale)
             template, placeholders = reader.read(self.root_path, email)
             placeholders_list = [p.pick_variant(variant) for _, p in placeholders.items() if not p.is_global]
-            email_type = EmailType(email_type) if email_type else template.type
+            if email_type:
+                email_type = EmailType(email_type)
+            elif template.type:
+                email_type = EmailType(template.type)
             content = reader.create_email_content(self.root_path, template.name, template.styles_names,
                                                   placeholders_list, email_type)
             email_path = fs.save_email(self.root_path, content, email_name, locale)
@@ -130,8 +133,11 @@ class Parser:
         expected_placeholders = placeholder.expected_placeholders_file(self.root_path)
         return {k: list(v) for k, v in expected_placeholders.items()}
 
-    def get_template(self, template_filename, template_type):
-        template_type = EmailType(template_type)
+    def get_template(self, template_filename, template_type=None):
+        try:
+            template_type = EmailType(template_type)
+        except ValueError:
+            template_type = None
         content, placeholders = reader.get_template_parts(self.root_path, template_filename, template_type)
         return content, placeholders
 

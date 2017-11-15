@@ -85,6 +85,11 @@ class TestParser(TestCase):
         _, actual = self.parser.get_template('basic_template.html', 'transactional')
         self.assertEqual(set(actual), set(expected))
 
+    def test_get_template_without_type(self):
+        expected = ['subject', 'color', 'content', 'inline', 'image', 'image_absolute']
+        _, actual = self.parser.get_template('basic_template.html')
+        self.assertEqual(set(actual), set(expected))
+
     def test_get_resources(self):
         templates_dict = {
             'marketing': {

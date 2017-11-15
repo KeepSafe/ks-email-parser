@@ -167,6 +167,7 @@ def save_parsed_email(root_path, email, subject, text, html):
 
 def resources(root_path):
     """
+    TODO: separate styles and templates
     Returns a tuple of lists: html templates list and css styles list
     :param root_path:
     :return:

@@ -54,9 +54,14 @@ class TestReader(TestCase):
     def test_template(self):
         self.mock_fs.read_file.side_effect = iter([self.email_content, self.template_str, 'test'])
         expected_template = Template('dummy_template.html', ['dummy_template.css'], '<style>test</style>',
-                                     self.template_str, ['content', 'global_content'], EmailType.transactional)
+                                     self.template_str, ['content', 'global_content'], EmailType.transactional.value)
         template, _ = reader.read('.', self.email)
         self.assertEqual(expected_template, template)
+
+    def test_get_template_parts_no_email_type(self):
+        self.mock_fs.read_file.side_effect = iter([self.template_str])
+        content, placeholders = reader.get_template_parts('root-path', 'basic_template.html', None)
+        self.assertEqual(content, self.template_str)
 
     def test_placeholders(self):
         self.mock_fs.read_file.side_effect = iter([self.email_content, self.template_str, 'test'])

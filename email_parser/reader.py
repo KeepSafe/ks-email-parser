@@ -43,12 +43,23 @@ def get_template_parts(root_path, template_filename, template_type):
     content = None
     placeholders = []
 
-    if template_filename:
-        if template_type:
-            content = fs.read_file(root_path, config.paths.templates, template_type.value, template_filename)
-        else:
-            content = fs.read_file(root_path, config.paths.templates, template_filename)
-        placeholders = [m.group(1) for m in re.finditer(r'\{\{(\w+)\}\}', content)]
+    try:
+        template_type = EmailType(template_type)
+    except ValueError:
+        template_type = None
+
+    if template_type:
+        content = fs.read_file(root_path, config.paths.templates, template_type.value, template_filename)
+    else:
+        logger.warning('FIXME: no email_type set for: %s, trying all types..', template_filename)
+        for email_type in EmailType:
+            try:
+                content = fs.read_file(root_path, config.paths.templates, email_type.value, template_filename)
+                break
+            except FileNotFoundError:
+                continue
+
+    placeholders = [m.group(1) for m in re.finditer(r'\{\{(\w+)\}\}', content)]
 
     # TODO sad panda, refactor
     # base_url placeholder is not a content block
@@ -61,12 +72,10 @@ def get_template_parts(root_path, template_filename, template_type):
 def _template(root_path, tree):
     styles = ''
     styles_names = []
-    template_type = None
 
     template_filename = tree.getroot().get('template')
-    if template_filename:
-        template_type = EmailType(tree.getroot().get('email_type'))
-    content, placeholders = get_template_parts(root_path, template_filename, template_type)
+    email_type = tree.getroot().get('email_type')
+    content, placeholders = get_template_parts(root_path, template_filename, email_type)
     style_element = tree.getroot().get('style')
 
     if style_element:
@@ -76,7 +85,7 @@ def _template(root_path, tree):
         styles = '<style>%s</style>' % styles
 
     # TODO either read all or leave just names for content and styles
-    return Template(template_filename, styles_names, styles, content, placeholders, template_type)
+    return Template(template_filename, styles_names, styles, content, placeholders, email_type)
 
 
 def _handle_xml_parse_error(file_path, exception):
@@ -136,7 +145,8 @@ def create_email_content(root_path, template_name, styles, placeholders, email_t
     root = etree.Element('resources')
     root.set('template', template_name)
     root.set('style', ','.join(styles))
-    root.set('email_type', email_type.value)
+    if email_type:
+        root.set('email_type', email_type.value)
     _sort_from_template(root_path, template_name, email_type, placeholders)
     for placeholder in placeholders:
         if placeholder.variants:
