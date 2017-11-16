@@ -80,6 +80,31 @@ class TestParser(TestCase):
         content = self.parser.create_email_content('basic_template.html', ['style1.css'], placeholders, 'transactional')
         self.assertMultiLineEqual(content.strip(), expected.strip())
 
+    def test_create_email_without_emailtype(self):
+        placeholders = {
+            'subject': {
+                'content': "dummy subject",
+                'is_text': True,
+                'is_global': False,
+                'type': 'text',
+                'is_global': False,
+                'variants': {
+                    'B': 'better subject'
+                }
+            },
+            'content': {
+                'content': "dummy content",
+                'type': 'text',
+                'is_global': False
+            },
+            'global_content': {
+                'content': "global dummy content",
+                'type': 'text',
+                'is_global': True
+            },
+        }
+        self.parser.create_email_content('basic_template.html', ['style1.css'], placeholders)
+
     def test_get_template(self):
         expected = ['subject', 'color', 'content', 'inline', 'image', 'image_absolute']
         _, actual = self.parser.get_template('basic_template.html', 'transactional')

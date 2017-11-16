@@ -109,7 +109,7 @@ class Parser:
             paths.append(email_path)
         return paths
 
-    def create_email_content(self, template_name, styles_names, placeholders, email_type):
+    def create_email_content(self, template_name, styles_names, placeholders, email_type=None):
         placeholder_list = []
         for placeholder_name, placeholder_props in placeholders.items():
             if not placeholder_props.get('is_global', False):
@@ -120,7 +120,8 @@ class Parser:
                 pt = PlaceholderType[pt]
                 p = Placeholder(placeholder_name, content, is_global, pt, variants)
                 placeholder_list.append(p)
-        email_type = EmailType(email_type)
+        if email_type:
+            email_type = EmailType(email_type)
         return reader.create_email_content(self.root_path, template_name, styles_names, placeholder_list, email_type)
 
     def render_template_content(self, template_content, styles_names, placeholders, locale=const.DEFAULT_LOCALE):
