@@ -116,7 +116,13 @@ def _parse_and_save(email, parser):
 
 
 def _parse_emails_batch(emails, parser):
-    results = [_parse_and_save(email, parser) for email in emails]
+    results = []
+    for email in emails:
+        try:
+            results.append(_parse_and_save(email, parser))
+        except Exception as ex:
+            logger.exception('Cannot _parse_and_save email %s', email, exc_info=ex)
+
     result = reduce(lambda acc, res: acc and res, results)
     return result
 

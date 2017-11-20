@@ -141,6 +141,12 @@ def save_email(root_path, content, email_name, locale):
     return path
 
 
+def save_template(root_path, template_filename, template_type, template_content):
+    path = os.path.join(root_path, config.paths.templates, template_type.value, template_filename)
+    written = save_file(template_content, path)
+    return path, written
+
+
 def save_parsed_email(root_path, email, subject, text, html):
     """
     Saves an email. The locale and name are taken from email tuple.
@@ -161,19 +167,35 @@ def save_parsed_email(root_path, email, subject, text, html):
 
 def resources(root_path):
     """
+    TODO: separate styles and templates
     Returns a tuple of lists: html templates list and css styles list
     :param root_path:
     :return:
     """
-    templates = []
+    templates = {}
     styles = []
     templates_path = os.path.join(root_path, config.paths.templates)
-    glob_path = Path(templates_path).glob('*')
-    for path in sorted(glob_path, key=lambda path: str(path)):
-        if not path.is_dir():
-            str_path = str(path.relative_to(templates_path))
-            if str_path.endswith(const.HTML_EXTENSION):
-                templates.append(str_path)
-            if str_path.endswith(const.CSS_EXTENSION):
-                styles.append(str_path)
+    css_glob = Path(templates_path).glob('*' + const.CSS_EXTENSION)
+    css_files = sorted(css_glob, key=lambda p: str(p))
+    styles.extend(map(lambda p: p.name, css_files))
+    html_glob = Path(templates_path).glob('**/*' + const.HTML_EXTENSION)
+    html_files = sorted(html_glob, key=lambda p: str(p))
+    for html_file in html_files:
+        parent = html_file.relative_to(templates_path).parent
+        try:
+            template_type = EmailType(str(parent)).value
+            templates_list_by_type = templates.setdefault(template_type, [])
+            templates_list_by_type.append(html_file.name)
+        except ValueError:
+            continue
     return templates, styles
+
+
+def get_html_sections_map(root_path):
+    html_sections = {}
+    html_sections_path = os.path.join(root_path, config.paths.sections)
+    html_sections_glob = Path(html_sections_path).glob('*' + const.HTML_EXTENSION)
+    html_sections_files = sorted(html_sections_glob, key=lambda p: str(p))
+    for html_sections_path in html_sections_files:
+        html_sections[html_sections_path.name] = read_file(*html_sections_path.parts)
+    return html_sections

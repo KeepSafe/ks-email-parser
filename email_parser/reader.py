@@ -39,13 +39,27 @@ def _placeholders(tree, prefix=''):
     return result
 
 
-def get_template_parts(root_path, template_filename):
+def get_template_parts(root_path, template_filename, template_type):
     content = None
     placeholders = []
 
-    if template_filename:
-        content = fs.read_file(root_path, config.paths.templates, template_filename)
-        placeholders = [m.group(1) for m in re.finditer(r'\{\{(\w+)\}\}', content)]
+    try:
+        template_type = EmailType(template_type)
+    except ValueError:
+        template_type = None
+
+    if template_type:
+        content = fs.read_file(root_path, config.paths.templates, template_type.value, template_filename)
+    else:
+        logger.warning('FIXME: no email_type set for: %s, trying all types..', template_filename)
+        for email_type in EmailType:
+            try:
+                content = fs.read_file(root_path, config.paths.templates, email_type.value, template_filename)
+                break
+            except FileNotFoundError:
+                continue
+
+    placeholders = [m.group(1) for m in re.finditer(r'\{\{(\w+)\}\}', content)]
 
     # TODO sad panda, refactor
     # base_url placeholder is not a content block
@@ -55,22 +69,29 @@ def get_template_parts(root_path, template_filename):
     return content, placeholders
 
 
+def get_inline_style(root_path, styles_names):
+    if not len(styles_names):
+        return ''
+    css = [fs.read_file(root_path, config.paths.templates, f) or ' ' for f in styles_names]
+    styles = '\n'.join(css)
+    return '<style>%s</style>' % styles
+
+
 def _template(root_path, tree):
     styles = ''
     styles_names = []
 
     template_filename = tree.getroot().get('template')
-    content, placeholders = get_template_parts(root_path, template_filename)
+    email_type = tree.getroot().get('email_type')
+    content, placeholders = get_template_parts(root_path, template_filename, email_type)
     style_element = tree.getroot().get('style')
 
     if style_element:
         styles_names = style_element.split(',')
-        css = [fs.read_file(root_path, config.paths.templates, f) or ' ' for f in styles_names]
-        styles = '\n'.join(css)
-        styles = '<style>%s</style>' % styles
+        styles = get_inline_style(root_path, styles_names)
 
     # TODO either read all or leave just names for content and styles
-    return Template(template_filename, styles_names, styles, content, placeholders)
+    return Template(template_filename, styles_names, styles, content, placeholders, email_type)
 
 
 def _handle_xml_parse_error(file_path, exception):
@@ -120,19 +141,19 @@ def _read_xml_from_content(content):
         return None
 
 
-def _sort_from_template(root_path, template_filename, placeholders):
-    _, placeholders_ordered = get_template_parts(root_path, template_filename)
+def _sort_from_template(root_path, template_filename, template_type, placeholders):
+    _, placeholders_ordered = get_template_parts(root_path, template_filename, template_type)
     placeholders.sort(
         key=lambda item: placeholders_ordered.index(item.name) if item.name in placeholders_ordered else 99)
 
 
-def create_email_content(root_path, template_name, styles, placeholders, email_type=None):
+def create_email_content(root_path, template_name, styles, placeholders, email_type):
     root = etree.Element('resources')
     root.set('template', template_name)
     root.set('style', ','.join(styles))
     if email_type:
         root.set('email_type', email_type.value)
-    _sort_from_template(root_path, template_name, placeholders)
+    _sort_from_template(root_path, template_name, email_type, placeholders)
     for placeholder in placeholders:
         if placeholder.variants:
             new_content_tag = etree.SubElement(root, 'string-array', {
@@ -154,6 +175,11 @@ def create_email_content(root_path, template_name, styles, placeholders, email_t
     return xml_as_str.decode('utf-8')
 
 
+def get_global_placeholders(root_path, locale):
+    globals_xml = _read_xml(fs.global_email(root_path, locale).path)
+    return _placeholders(globals_xml, const.GLOBALS_PLACEHOLDER_PREFIX)
+
+
 def read_from_content(root_path, email_content, locale):
     email_xml = _read_xml_from_content(email_content)
     if not email_xml:
@@ -162,9 +188,9 @@ def read_from_content(root_path, email_content, locale):
 
     if not template.name:
         logger.error('no HTML template name defined for given content')
-    globals_xml = _read_xml(fs.global_email(root_path, locale).path)
+    global_placeholders = get_global_placeholders(root_path, locale)
     placeholders = OrderedDict({name: content for name, content
-                                in _placeholders(globals_xml, const.GLOBALS_PLACEHOLDER_PREFIX).items()
+                                in global_placeholders.items()
                                 if name in template.placeholders})
     placeholders.update(_placeholders(email_xml).items())
 

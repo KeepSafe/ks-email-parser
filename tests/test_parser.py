@@ -4,6 +4,7 @@ from unittest.mock import patch
 
 import email_parser
 from email_parser import config
+from email_parser.model import EmailType
 
 
 def read_fixture(filename):
@@ -76,22 +77,59 @@ class TestParser(TestCase):
             },
         }
         expected = read_fixture('email.xml').strip()
-        content = self.parser.create_email_content('basic_template.html', ['style1.css'], placeholders)
+        content = self.parser.create_email_content('basic_template.html', ['style1.css'], placeholders, 'transactional')
         self.assertMultiLineEqual(content.strip(), expected.strip())
 
-    def test_get_template_placeholders(self):
+    def test_create_email_without_emailtype(self):
+        placeholders = {
+            'subject': {
+                'content': "dummy subject",
+                'is_text': True,
+                'is_global': False,
+                'type': 'text',
+                'is_global': False,
+                'variants': {
+                    'B': 'better subject'
+                }
+            },
+            'content': {
+                'content': "dummy content",
+                'type': 'text',
+                'is_global': False
+            },
+            'global_content': {
+                'content': "global dummy content",
+                'type': 'text',
+                'is_global': True
+            },
+        }
+        self.parser.create_email_content('basic_template.html', ['style1.css'], placeholders)
+
+    def test_get_template(self):
         expected = ['subject', 'color', 'content', 'inline', 'image', 'image_absolute']
-        actual = self.parser.get_template_placeholders('basic_template.html')
+        _, actual = self.parser.get_template('basic_template.html', 'transactional')
+        self.assertEqual(set(actual), set(expected))
+
+    def test_get_template_without_type(self):
+        expected = ['subject', 'color', 'content', 'inline', 'image', 'image_absolute']
+        _, actual = self.parser.get_template('basic_template.html')
         self.assertEqual(set(actual), set(expected))
 
     def test_get_resources(self):
         templates_dict = {
-            'basic_template.html': ['subject', 'color', 'content', 'inline', 'image', 'image_absolute'],
-            'globale_template.html': ['subject', 'color', 'content', 'inline', 'image', 'image_absolute',
-                                      'global_unsubscribe']}
-        expected = templates_dict, ['basic_template.css']
-        actual = self.parser.get_resources()
-        self.assertEqual(actual, expected)
+            'marketing': {
+                'basic_marketing_template.html': ['subject', 'color', 'content', 'inline', 'image', 'image_absolute'],
+                'globale_template.html': ['subject', 'color', 'content', 'inline', 'image', 'image_absolute',
+                                          'global_unsubscribe']
+            },
+            'transactional': {
+                'basic_template.html': ['subject', 'color', 'content', 'inline', 'image', 'image_absolute'],
+            }
+        }
+        actual_templates, styles, sections = self.parser.get_resources()
+        self.assertEqual(actual_templates, templates_dict)
+        self.assertIn('header-with-background.html', sections.keys())
+        self.assertIn('basic_template.css', styles)
 
     def test_get_email_filepaths_all_locale(self):
         expected = ['src/ar/email.xml', 'src/en/email.xml', 'src/fr/email.xml']
@@ -109,7 +147,7 @@ class TestParser(TestCase):
         self.assertEqual(parserA, parserB)
 
     def test_get_email_components(self):
-        expected = ('basic_template.html', ['basic_template.css'],
+        expected = ('basic_template.html', EmailType.transactional.value, ['basic_template.css'],
                     {
             'color': {
                 'content': '[[#C0D9D9]]',

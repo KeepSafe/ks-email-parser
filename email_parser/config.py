@@ -1,8 +1,8 @@
 from collections import namedtuple
 
-Paths = namedtuple('Paths', ['source', 'destination', 'templates', 'images'])
+Paths = namedtuple('Paths', ['source', 'destination', 'templates', 'images', 'sections'])
 
-_default_paths = Paths('src', 'target', 'templates_html', 'templates_html/img')
+_default_paths = Paths('src', 'target', 'templates_html', 'templates_html/img', 'templates_html/sections')
 _default_pattern = '{locale}/{name}.xml'
 _default_base_img_path = 'http://www.getkeepsafe.com/emails/img'
 _default_rlt = ['ar', 'he']

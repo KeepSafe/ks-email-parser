@@ -1,4 +1,4 @@
-<resources template="basic_template.html" style="style1.css">
+<resources template="basic_template.html" style="style1.css" email_type="transactional">
   <string-array name="subject" type="text">
     <item><![CDATA[dummy subject]]></item>
     <item variant="B"><![CDATA[better subject]]></item>
