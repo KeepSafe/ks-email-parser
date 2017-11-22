@@ -8,6 +8,8 @@ import parse
 from pathlib import Path
 from string import Formatter
 
+from bs4 import BeautifulSoup
+
 from . import const, config
 from .model import *
 
@@ -142,8 +144,9 @@ def save_email(root_path, content, email_name, locale):
 
 
 def save_template(root_path, template_filename, template_type, template_content):
+    soup = BeautifulSoup(template_content, 'html.parser')
     path = os.path.join(root_path, config.paths.templates, template_type.value, template_filename)
-    written = save_file(template_content, path)
+    written = save_file(soup.prettify(), path)
     return path, written
 
 
