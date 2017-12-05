@@ -85,7 +85,7 @@ class ProgressConsoleHandler(logging.StreamHandler):
                 self._write_msg(stream, msg, record)
         except (KeyboardInterrupt, SystemExit):
             raise
-        except:
+        except Exception:
             self.handleError(record)
 
 
