@@ -193,7 +193,7 @@ class TestHtmlRenderer(TestCase):
             r.render(placeholders)
 
     def test_rtl_locale(self):
-        email_locale = 'ar'
+        email_locale = 'he'
         template = Template('dummy', [], '<style>body {}</style>', '<body>{{content}}</body>', ['content'], None)
         r = renderer.HtmlRenderer(template, email_locale)
         placeholders = {'content': Placeholder('content', 'dummy_content')}

@@ -1,7 +1,8 @@
-_LOCALES_MAPPING = {'he': 'en', 'pt-BR': 'pt', 'zh-TW-Hant': 'zh-TW'}
+_LOCALES_MAPPING = {'pt-BR': 'pt', 'zh-TW-Hant': 'zh-TW'}
+from . import config
 
 
 def normalize_locale(locale):
-    if locale in _LOCALES_MAPPING:
-        return _LOCALES_MAPPING[locale]
+    if locale in config.lang_mappings:
+        return config.lang_mappings[locale]
     return locale
