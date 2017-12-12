@@ -99,5 +99,5 @@ class TestFs(TestCase):
 
     def test_get_email_filepath(self):
         expected = 'src/en/email.xml'
-        actual = fs.get_email_filepath('.', 'email', 'en')
+        actual = fs.get_email_filepath('email', 'en')
         self.assertEqual(expected, actual)

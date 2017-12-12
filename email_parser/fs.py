@@ -47,11 +47,24 @@ def _emails(root_path, pattern, params):
                     yield result
 
 
-def get_email_filepath(root_path, email_name, locale):
+def get_email_filepath(email_name, locale):
     pattern = config.pattern.replace('{name}', email_name)
     pattern = pattern.replace('{locale}', locale)
     filepath = os.path.join(config.paths.source, pattern)
     return filepath
+
+
+def get_template_filepath(root_path, template_name, template_type):
+    return Path(root_path, config.paths.templates, template_type, template_name)
+
+
+def get_template_resources_filepaths(root_path, template):
+    """
+    :return: list of file paths of resources (css & html) related with given email
+    """
+    paths = [Path(root_path, config.paths.templates, f) or ' ' for f in template.styles_names]
+    paths.append(get_template_filepath(root_path, template.name, template.type))
+    return paths
 
 
 def emails(root_path, email_name=None, locale=None):
