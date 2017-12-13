@@ -174,8 +174,16 @@ class Parser:
         :return:
         """
         emails = fs.emails(self.root_path, email_name, locale)
-        abs_paths = map(lambda email: fs.get_email_filepath(self.root_path, email.name, email.locale), emails)
+        abs_paths = map(lambda email: fs.get_email_filepath(email.name, email.locale), emails)
         return list(abs_paths)
+
+    def get_email_resources_filepaths(self, email_name):
+        email = fs.email(self.root_path, email_name, 'en')
+        if not email:
+            return None
+        template, _ = reader.read(self.root_path, email)
+        file_paths = fs.get_template_resources_filepaths(self.root_path, template)
+        return list(map(lambda p: str(p.relative_to(self.root_path)), file_paths))
 
     def get_email_placeholders_validation_errors(self, email_name, locale):
         email = fs.email(self.root_path, email_name, locale)

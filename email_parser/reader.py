@@ -49,12 +49,14 @@ def get_template_parts(root_path, template_filename, template_type):
         template_type = None
 
     if template_type:
-        content = fs.read_file(root_path, config.paths.templates, template_type.value, template_filename)
+        template_path = str(fs.get_template_filepath(root_path, template_filename, template_type.value))
+        content = fs.read_file(template_path)
     else:
         logger.warning('FIXME: no email_type set for: %s, trying all types..', template_filename)
         for email_type in EmailType:
             try:
-                content = fs.read_file(root_path, config.paths.templates, email_type.value, template_filename)
+                template_path = str(fs.get_template_filepath(root_path, template_filename, email_type.value))
+                content = fs.read_file(template_path)
                 break
             except FileNotFoundError:
                 continue

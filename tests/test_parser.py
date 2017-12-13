@@ -218,3 +218,9 @@ class TestParser(TestCase):
     def test_original(self):
         actual = self.parser.original('email_order', 'en')
         self.assertEqual(actual, read_fixture('original.txt').strip())
+
+    def test_get_emails_resources_paths(self):
+        expected = ['templates_html/basic_template.css',
+                    'templates_html/transactional/basic_template.html']
+        actual = self.parser.get_email_resources_filepaths('email')
+        self.assertEqual(set(expected), set(actual))
