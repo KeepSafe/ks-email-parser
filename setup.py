@@ -1,7 +1,11 @@
 import os
 from setuptools import setup, find_packages
-from pip.req import parse_requirements
 from pip.download import PipSession
+
+try:
+    from pip._internal.req import parse_requirements
+except ImportError:
+    from pip.req import parse_requirements
 
 version = '0.2.13'
 
