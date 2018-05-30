@@ -14,18 +14,40 @@ from .model import *
 logger = logging.getLogger(__name__)
 
 
+def _parse_placeholder(placeholder_str):
+    args = {}
+    try:
+        placeholder_type, name, args_str = placeholder_str.split(':')
+    except ValueError:
+        return MetaPlaceholder(placeholder_str)
+    try:
+        placeholder_type = MetaPlaceholderType(placeholder_type)
+    except ValueError:
+        raise ValueError('Placeholder definition %s uses invalid MetaPlaceholderType' % placeholder_str)
+    for attr_str in args_str.split(';'):
+        attr_name, attr_value = attr_str.split('=')
+        args[attr_name] = attr_value
+    return MetaPlaceholder(name, placeholder_type, args)
+
+
 def _placeholders(tree, prefix=''):
     if tree is None:
         return {}
     is_global = (prefix == const.GLOBALS_PLACEHOLDER_PREFIX)
     result = OrderedDict()
-    for element in tree.xpath('./string | ./string-array'):
+    for element in tree.xpath('./string | ./string-array | ./array'):
         name = '{0}{1}'.format(prefix, element.get('name'))
         placeholder_type = PlaceholderType[element.get('type', PlaceholderType.text.value)]
+        opt_attrs = dict(element.items())
+        del opt_attrs['name']
+        try:
+            del opt_attrs['type']
+        except KeyError:
+            pass
         if element.tag == 'string':
             content = element.text or ''
-            result[name] = Placeholder(name, content.strip(), is_global, placeholder_type)
-        else:
+            result[name] = Placeholder(name, content.strip(), is_global, placeholder_type, None, opt_attrs)
+        elif element.tag in ['string-array', 'array']:
             content = ''
             variants = {}
             for item in element.findall('./item'):
@@ -34,14 +56,16 @@ def _placeholders(tree, prefix=''):
                     variants[variant] = item.text.strip()
                 else:
                     content = item.text.strip()
-            result[name] = Placeholder(name, content, is_global, placeholder_type, variants)
+            result[name] = Placeholder(name, content, is_global, placeholder_type, variants, opt_attrs)
+        else:
+            raise Exception('Unknown tag:\n%s' % element)
 
     return result
 
 
 def get_template_parts(root_path, template_filename, template_type):
     content = None
-    placeholders = []
+    placeholders = OrderedDict()
 
     try:
         template_type = EmailType(template_type)
@@ -61,12 +85,17 @@ def get_template_parts(root_path, template_filename, template_type):
             except FileNotFoundError:
                 continue
 
-    placeholders = [m.group(1) for m in re.finditer(r'\{\{(\w+)\}\}', content)]
+    for m in re.finditer(r'\{\{(\w+)\}\}', content):
+        placeholder_def = m.group(1)
+        placeholder_meta = MetaPlaceholder(placeholder_def)
+        placeholders[placeholder_meta.name] = placeholder_meta
 
-    # TODO sad panda, refactor
-    # base_url placeholder is not a content block
-    while 'base_url' in placeholders:
-        placeholders.remove('base_url')
+    try:
+        # TODO sad panda, refactor
+        # base_url placeholder is not a content block
+        del placeholders['base_url']
+    except KeyError:
+        pass
 
     return content, placeholders
 
@@ -145,8 +174,9 @@ def _read_xml_from_content(content):
 
 def _sort_from_template(root_path, template_filename, template_type, placeholders):
     _, placeholders_ordered = get_template_parts(root_path, template_filename, template_type)
+    ordered_placeholders_names = list(placeholders_ordered.keys())
     placeholders.sort(
-        key=lambda item: placeholders_ordered.index(item.name) if item.name in placeholders_ordered else 99)
+        key=lambda item: ordered_placeholders_names.index(item.name) if item.name in ordered_placeholders_names else 99)
 
 
 def create_email_content(root_path, template_name, styles, placeholders, email_type):
