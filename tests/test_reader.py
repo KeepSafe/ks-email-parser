@@ -165,6 +165,20 @@ class TestWriter(TestCase):
                                              EmailType.transactional)
         self.assertMultiLineEqual(expected, result.strip())
 
+    def test_create_content_with_metaplaceholder(self):
+        expected = read_fixture('email_inference.xml').strip()
+        tpl = read_fixture('email_inference_raw.html').strip()
+        bitmap_attr = {
+            'alt': 'ALT_TEXT'
+        }
+        placeholders = [
+            BitmapPlaceholder('MY_BITMAP', 'ID', None, None, **bitmap_attr),
+        ]
+        self.mock_fs.read_file.side_effect = iter([tpl])
+        result = reader.create_email_content('dummy_root', 'basic_template.html', ['style1.css'], placeholders,
+                                             EmailType.transactional)
+        self.assertMultiLineEqual(expected, result.strip())
+
 
 class TestParsing(TestCase):
     def test_parsing_meta_complex(self):

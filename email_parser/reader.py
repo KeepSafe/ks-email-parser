@@ -21,9 +21,9 @@ def _parse_placeholder(placeholder_str):
     except ValueError:
         return MetaPlaceholder(placeholder_str)
     try:
-        placeholder_type = MetaPlaceholderType(placeholder_type)
+        placeholder_type = PlaceholderType(placeholder_type)
     except ValueError:
-        raise ValueError('Placeholder definition %s uses invalid MetaPlaceholderType' % placeholder_str)
+        raise ValueError('Placeholder definition %s uses invalid PlaceholderType' % placeholder_str)
     for attr_str in args_str.split(';'):
         attr_name, attr_value = attr_str.split('=')
         args[attr_name] = attr_value
@@ -187,6 +187,7 @@ def create_email_content(root_path, template_name, styles, placeholders, email_t
         root.set('email_type', email_type.value)
     _sort_from_template(root_path, template_name, email_type, placeholders)
     for placeholder in placeholders:
+
         if placeholder.variants:
             new_content_tag = etree.SubElement(root, 'string-array', {
                 'name': placeholder.name,
@@ -197,6 +198,12 @@ def create_email_content(root_path, template_name, styles, placeholders, email_t
             for variant_name, variant_content in placeholder.variants.items():
                 new_item_tag = etree.SubElement(new_content_tag, 'item', {'variant': variant_name})
                 new_item_tag.text = etree.CDATA(variant_content)
+        elif placeholder.type == PlaceholderType.bitmap:
+            new_content_tag = etree.SubElement(root, 'bitmap', {
+                'name': placeholder.name,
+                'type': placeholder.type.value,
+                'id': placeholder.id,
+            })
         else:
             new_content_tag = etree.SubElement(root, 'string', {
                 'name': placeholder.name,

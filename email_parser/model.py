@@ -1,11 +1,7 @@
 from collections import namedtuple
 from enum import Enum
+import string
 import json
-
-
-class MetaPlaceholderType(Enum):
-    text = 'text'
-    image = 'image'
 
 
 class PlaceholderType(Enum):
@@ -89,6 +85,29 @@ class ModelJsonEncoder(json.JSONEncoder):
             as_dict = o.__getstate__()
             return as_dict
         return super().default(o)
+
+
+class BitmapPlaceholder(Placeholder):
+    def __init__(self, name, id, is_global=False, variants=None, **opt_attr):
+        self.name = name
+        self.id = id
+        self.is_global = is_global
+        self.type = PlaceholderType.bitmap
+        self.variants = variants or {}
+        self._opt_attr = opt_attr
+
+    def get_content(self, variant=None):
+        content = string.Template("""<div class="bitmap-wrapper" style="$style">
+        <img id="$id" src="$src" alt="$alt"/>
+        </div>
+        """)
+        mapping = dict(self._opt_attr)
+        style = ""
+        for style_tag in ['max-width', 'max-height']:
+            style += "{}: {};".format(style_tag, mapping[style_tag])
+            del mapping[style_tag]
+        mapping['style'] = style
+        return content.substitute(mapping)
 
 
 class MissingPatternParamError(Exception):
