@@ -88,26 +88,40 @@ class ModelJsonEncoder(json.JSONEncoder):
 
 
 class BitmapPlaceholder(Placeholder):
-    def __init__(self, name, id, is_global=False, variants=None, **opt_attr):
+    def __init__(self, name, bitmap_id, src, alt=None, is_global=False, variants=None, **opt_attr):
         self.name = name
-        self.id = id
+        self.id = bitmap_id
+        self.src = src
+        self.alt = alt
         self.is_global = is_global
         self.type = PlaceholderType.bitmap
         self.variants = variants or {}
-        self._opt_attr = opt_attr
+        self.opt_attr = opt_attr
 
     def get_content(self, variant=None):
-        content = string.Template("""<div class="bitmap-wrapper" style="$style">
-        <img id="$id" src="$src" alt="$alt"/>
-        </div>
-        """)
-        mapping = dict(self._opt_attr)
+        wrapper = string.Template("""<div class="bitmap-wrapper" style="$style">\n\t\t$img\n\t</div>""")
+        img = string.Template("""<img id="$id" src="$src"$optional/>""")
+        mapping = dict(self.opt_attr)
+        optional = ""
         style = ""
+        if self.alt:
+            optional += " alt=\"{}\"".format(self.alt)
         for style_tag in ['max-width', 'max-height']:
-            style += "{}: {};".format(style_tag, mapping[style_tag])
-            del mapping[style_tag]
-        mapping['style'] = style
-        return content.substitute(mapping)
+            if style_tag in mapping:
+                style += "{}: {};".format(style_tag, mapping[style_tag])
+                del mapping[style_tag]
+        mapping.update({
+            'style': style,
+            'id': self.id,
+            'optional': optional,
+            'src': self.src
+        })
+        mapping['img'] = img.substitute(mapping)
+        final_wrapper = wrapper.substitute(mapping)
+        return final_wrapper
+
+    def set_attr(self, attr):
+        self.opt_attr = attr
 
 
 class MissingPatternParamError(Exception):

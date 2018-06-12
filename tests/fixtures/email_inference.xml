@@ -1,3 +1,3 @@
 <resources template="basic_template.html" style="style1.css" email_type="transactional">
-  <bitmap id="ID" name="MY_BITMAP" type="bitmap"/>
+  <bitmap alt="ALT_TEXT" id="ID" name="MY_BITMAP" src="SRC_LINK" type="bitmap"/>
 </resources>

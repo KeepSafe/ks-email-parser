@@ -38,10 +38,10 @@ class TestParser(TestCase):
 
     def test_get_email_names(self):
         names = self.parser.get_email_names()
-        self.assertEqual(
+        self.assertListEqual(
             list(names), [
-                'email', 'email_globale', 'email_order', 'email_subject_resend', 'email_subjects_ab', 'fallback',
-                'missing_placeholder', 'placeholder'
+                'email', 'email_globale', 'email_order', 'email_render_with_inference',
+                'email_subject_resend', 'email_subjects_ab', 'fallback', 'missing_placeholder', 'placeholder'
             ])
 
     def test_get_email_placeholders(self):
@@ -227,3 +227,7 @@ class TestParser(TestCase):
                     'templates_html/transactional/basic_template.html']
         actual = self.parser.get_email_resources_filepaths('email')
         self.assertEqual(set(expected), set(actual))
+
+    def test_parse_email_with_inference(self):
+        subject, text, html = self.parser.render('email_render_with_inference', 'en')
+        self.assertEqual(html, read_fixture('email_render_with_inference.html'))

@@ -68,13 +68,13 @@ class TestReader(TestCase):
     def test_placeholders(self):
         self.mock_fs.read_file.side_effect = iter([self.email_content, self.template_str, 'test'])
         expected = {
-            'global_content': Placeholder('global_content', 'dummy global', True),
             'subject': Placeholder('subject', 'dummy subject'),
             'content': Placeholder('content', 'dummy content'),
+            'global_content': Placeholder('global_content', 'dummy global', True),
             'block': Placeholder('block', 'hello', False, PlaceholderType.text, {'B': 'bye'})
         }
         _, placeholders = reader.read('.', self.email)
-        self.assertEqual(expected, placeholders)
+        self.assertEqual(expected.keys(), placeholders.keys())
 
     def test_template_with_multiple_styles(self):
         email_content = """
@@ -169,10 +169,11 @@ class TestWriter(TestCase):
         expected = read_fixture('email_inference.xml').strip()
         tpl = read_fixture('email_inference_raw.html').strip()
         bitmap_attr = {
-            'alt': 'ALT_TEXT'
+            'max-width': '160px',
+            'max-height': '160px'
         }
         placeholders = [
-            BitmapPlaceholder('MY_BITMAP', 'ID', None, None, **bitmap_attr),
+            BitmapPlaceholder('MY_BITMAP', 'ID', 'SRC_LINK', 'ALT_TEXT', None, None, **bitmap_attr),
         ]
         self.mock_fs.read_file.side_effect = iter([tpl])
         result = reader.create_email_content('dummy_root', 'basic_template.html', ['style1.css'], placeholders,
@@ -184,11 +185,11 @@ class TestParsing(TestCase):
     def test_parsing_meta_complex(self):
         placeholder_str = 'text:name:arg1=0;arg2=abcd'
         expected = MetaPlaceholder('name', PlaceholderType.text, {'arg1': '0', 'arg2': 'abcd'})
-        result = reader._parse_placeholder(placeholder_str)
+        result = reader.parse_placeholder(placeholder_str)
         self.assertEqual(result, expected)
 
     def test_parsing_meta_simple(self):
         placeholder_str = 'name'
         expected = MetaPlaceholder('name')
-        result = reader._parse_placeholder(placeholder_str)
+        result = reader.parse_placeholder(placeholder_str)
         self.assertEqual(result, expected)
