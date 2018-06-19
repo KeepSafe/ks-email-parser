@@ -56,9 +56,12 @@ def _placeholders(tree, prefix=''):
             result[name] = Placeholder(name, content.strip(), is_global, placeholder_type, None, opt_attrs)
         elif element.tag == 'bitmap':
             del opt_attrs['src']
+            del opt_attrs['id']
             p_id = element.get('id')
             src = element.get('src')
             alt = element.get('alt') or None
+            if alt:
+                del opt_attrs['alt']
             result[name] = BitmapPlaceholder(name, p_id, src, alt, is_global, None, **opt_attrs)
         elif element.tag in ['string-array', 'array']:
             content = ''
