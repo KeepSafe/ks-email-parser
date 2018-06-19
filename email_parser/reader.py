@@ -219,7 +219,11 @@ def create_email_content(root_path, template_name, styles, placeholders, email_t
             }
             if placeholder.alt:
                 attr['alt'] = placeholder.alt
-            etree.SubElement(root, 'bitmap', attr)
+            try:
+                etree.SubElement(root, 'bitmap', attr)
+            except TypeError:
+                msg = 'Cannot create xml element with attrs: %s' % attr
+                raise TypeError(msg)
         else:
             new_content_tag = etree.SubElement(root, 'string', {
                 'name': placeholder.name,

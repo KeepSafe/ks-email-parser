@@ -51,10 +51,10 @@ class Placeholder:
         self._opt_attr = opt_attr
 
     def __iter__(self):
-        attributes = self.__dict__.items()
+        attributes = dict(self.__dict__)
         if self._opt_attr:
             attributes.update(self._opt_attr)
-        for k, v in attributes:
+        for k, v in attributes.items():
             if k is 'type':
                 yield k, self.type.value
             elif k is '_content':
@@ -96,12 +96,12 @@ class BitmapPlaceholder(Placeholder):
         self.is_global = is_global
         self.type = PlaceholderType.bitmap
         self.variants = variants or {}
-        self.opt_attr = opt_attr
+        self._opt_attr = opt_attr
 
     def get_content(self, variant=None):
         wrapper = string.Template("""<div class="bitmap-wrapper" style="$style">\n\t\t$img\n\t</div>""")
         img = string.Template("""<img id="$id" src="$src"$optional/>""")
-        mapping = dict(self.opt_attr)
+        mapping = dict(self._opt_attr)
         optional = ""
         style = ""
         if self.alt:
@@ -121,7 +121,7 @@ class BitmapPlaceholder(Placeholder):
         return final_wrapper
 
     def set_attr(self, attr):
-        self.opt_attr = attr
+        self._opt_attr = attr
 
 
 class MissingPatternParamError(Exception):
