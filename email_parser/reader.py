@@ -14,18 +14,56 @@ from .model import *
 logger = logging.getLogger(__name__)
 
 
+def parse_placeholder(placeholder_str):
+    args = {}
+    regex = r"(.*):(.*):(.*)"
+    try:
+        match = re.match(regex, placeholder_str)
+        placeholder_type = match.group(1)
+        name = match.group(2)
+        args_str = match.group(3)
+    except AttributeError:
+        return MetaPlaceholder(placeholder_str)
+    try:
+        placeholder_type = PlaceholderType(placeholder_type)
+    except ValueError:
+        raise ValueError('Placeholder definition %s uses invalid PlaceholderType' % placeholder_str)
+    for attr_str in args_str.split(';'):
+        try:
+            attr_name, attr_value = attr_str.split('=')
+            args[attr_name] = attr_value
+        except ValueError:
+            ValueError('Malformed attributes definition: %s'.format(args_str))
+    return MetaPlaceholder(name, placeholder_type, args)
+
+
 def _placeholders(tree, prefix=''):
     if tree is None:
         return {}
     is_global = (prefix == const.GLOBALS_PLACEHOLDER_PREFIX)
     result = OrderedDict()
-    for element in tree.xpath('./string | ./string-array'):
+    for element in tree.xpath('./string | ./string-array | bitmap | ./array'):
         name = '{0}{1}'.format(prefix, element.get('name'))
         placeholder_type = PlaceholderType[element.get('type', PlaceholderType.text.value)]
+        opt_attrs = dict(element.items())
+        del opt_attrs['name']
+        try:
+            del opt_attrs['type']
+        except KeyError:
+            pass
         if element.tag == 'string':
             content = element.text or ''
-            result[name] = Placeholder(name, content.strip(), is_global, placeholder_type)
-        else:
+            result[name] = Placeholder(name, content.strip(), is_global, placeholder_type, None, opt_attrs)
+        elif element.tag == 'bitmap':
+            del opt_attrs['src']
+            del opt_attrs['id']
+            p_id = element.get('id')
+            src = element.get('src')
+            alt = element.get('alt') or None
+            if alt:
+                del opt_attrs['alt']
+            result[name] = BitmapPlaceholder(name, p_id, src, alt, is_global, None, **opt_attrs)
+        elif element.tag in ['string-array', 'array']:
             content = ''
             variants = {}
             for item in element.findall('./item'):
@@ -34,14 +72,16 @@ def _placeholders(tree, prefix=''):
                     variants[variant] = item.text.strip()
                 else:
                     content = item.text.strip()
-            result[name] = Placeholder(name, content, is_global, placeholder_type, variants)
+            result[name] = Placeholder(name, content, is_global, placeholder_type, variants, opt_attrs)
+        else:
+            raise Exception('Unknown tag:\n%s' % element)
 
     return result
 
 
 def get_template_parts(root_path, template_filename, template_type):
     content = None
-    placeholders = []
+    placeholders = OrderedDict()
 
     try:
         template_type = EmailType(template_type)
@@ -61,12 +101,17 @@ def get_template_parts(root_path, template_filename, template_type):
             except FileNotFoundError:
                 continue
 
-    placeholders = [m.group(1) for m in re.finditer(r'\{\{(\w+)\}\}', content)]
+    for m in re.finditer(r'{{(.+?)}}', content):
+        placeholder_def = m.group(1)
+        placeholder_meta = parse_placeholder(placeholder_def)
+        placeholders[placeholder_meta.name] = placeholder_meta
 
-    # TODO sad panda, refactor
-    # base_url placeholder is not a content block
-    while 'base_url' in placeholders:
-        placeholders.remove('base_url')
+    try:
+        # TODO sad panda, refactor
+        # base_url placeholder is not a content block
+        del placeholders['base_url']
+    except KeyError:
+        pass
 
     return content, placeholders
 
@@ -145,8 +190,9 @@ def _read_xml_from_content(content):
 
 def _sort_from_template(root_path, template_filename, template_type, placeholders):
     _, placeholders_ordered = get_template_parts(root_path, template_filename, template_type)
+    ordered_placeholders_names = list(placeholders_ordered.keys())
     placeholders.sort(
-        key=lambda item: placeholders_ordered.index(item.name) if item.name in placeholders_ordered else 99)
+        key=lambda item: ordered_placeholders_names.index(item.name) if item.name in ordered_placeholders_names else 99)
 
 
 def create_email_content(root_path, template_name, styles, placeholders, email_type):
@@ -167,6 +213,20 @@ def create_email_content(root_path, template_name, styles, placeholders, email_t
             for variant_name, variant_content in placeholder.variants.items():
                 new_item_tag = etree.SubElement(new_content_tag, 'item', {'variant': variant_name})
                 new_item_tag.text = etree.CDATA(variant_content)
+        elif placeholder.type == PlaceholderType.bitmap:
+            attr = {
+                'name': placeholder.name,
+                'type': placeholder.type.value,
+                'id': placeholder.id,
+                'src': placeholder.src
+            }
+            if placeholder.alt:
+                attr['alt'] = placeholder.alt
+            try:
+                etree.SubElement(root, 'bitmap', attr)
+            except TypeError:
+                msg = 'Cannot create xml element with attrs: %s' % attr
+                raise TypeError(msg)
         else:
             new_content_tag = etree.SubElement(root, 'string', {
                 'name': placeholder.name,
@@ -182,12 +242,21 @@ def get_global_placeholders(root_path, locale):
     return _placeholders(globals_xml, const.GLOBALS_PLACEHOLDER_PREFIX)
 
 
+def get_inferred_placeholders(meta_placeholders, placeholders):
+    inferred_placeholders = OrderedDict(placeholders)
+    for placeholder_name in placeholders:
+        meta_placeholder = meta_placeholders.get(placeholder_name)
+        if meta_placeholder and meta_placeholder.attributes:
+            attr = meta_placeholder.attributes
+            inferred_placeholders[placeholder_name].set_attr(attr)
+    return inferred_placeholders
+
+
 def read_from_content(root_path, email_content, locale):
     email_xml = _read_xml_from_content(email_content)
     if not email_xml:
         return None, None
     template = _template(root_path, email_xml)
-
     if not template.name:
         logger.error('no HTML template name defined for given content')
     global_placeholders = get_global_placeholders(root_path, locale)
@@ -195,8 +264,9 @@ def read_from_content(root_path, email_content, locale):
                                 in global_placeholders.items()
                                 if name in template.placeholders})
     placeholders.update(_placeholders(email_xml).items())
+    inferred_placeholders = get_inferred_placeholders(template.placeholders, placeholders)
 
-    return template, placeholders
+    return template, inferred_placeholders
 
 
 def read(root_path, email):
