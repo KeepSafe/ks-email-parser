@@ -56,7 +56,10 @@ class BaseUrlImagePattern(Pattern):
             image = const.IMAGE_PATTERN.format(m.group(2), self.images_dir, m.group(10).strip('/'))
         pattern = re.compile("^(.*?)%s(.*?)$" % self.image_pattern.pattern, re.DOTALL | re.UNICODE)
         match = re.match(pattern, ' ' + image + ' ')
-        return self.image_pattern.handleMatch(match)
+        el = self.image_pattern.handleMatch(match)
+        # each markdown image should have default style
+        el.set('style', self.unescape('max-width: 100%;'))
+        return el
 
 
 class NoTrackingLinkPattern(LinkPattern):
