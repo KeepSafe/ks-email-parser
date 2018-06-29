@@ -100,7 +100,7 @@ class BitmapPlaceholder(Placeholder):
 
     def get_content(self, variant=None):
         wrapper = string.Template("""<div class="bitmap-wrapper" style="$style">\n\t\t$img\n\t</div>""")
-        img = string.Template("""<img id="$id" src="$src"$optional style="max-width: 100%;max-height: 100%;"/>""")
+        img = string.Template("""<img id="$id" src="$src"$optional style="max-width: 100%;$img_style"/>""")
         mapping = dict(self._opt_attr)
         optional = ""
         div_style = "vertical-align: middle;text-align: center;"
@@ -110,12 +110,12 @@ class BitmapPlaceholder(Placeholder):
         for style_tag in ['max-width', 'max-height']:
             if style_tag in mapping:
                 constraints += "{}: {};".format(style_tag, mapping[style_tag])
-                del mapping[style_tag]
         mapping.update({
             'style': div_style + constraints,
             'id': self.id,
             'optional': optional,
-            'src': self.src
+            'src': self.src,
+            'img_style': constraints
         })
         mapping['img'] = img.substitute(mapping)
         final_wrapper = wrapper.substitute(mapping)
