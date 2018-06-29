@@ -7,7 +7,7 @@ try:
 except ImportError:
     from pip.req import parse_requirements
 
-version = '0.2.15'
+version = '0.2.16'
 
 
 def read(f):
