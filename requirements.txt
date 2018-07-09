@@ -7,4 +7,4 @@ lxml==3.4.1
 pystache==0.5.4
 parse==1.6.6
 requests==2.13.0
-aiohttp==0.21.2
+aiohttp==1.3.5
