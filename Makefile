@@ -19,7 +19,7 @@ env:
 	$(PYTHON) ./setup.py develop
 
 dev:
-	$(PIP) install flake8 nose coverage requests
+	$(PIP) install -r requirements-dev.txt
 	$(PYTHON) ./setup.py develop
 
 install:

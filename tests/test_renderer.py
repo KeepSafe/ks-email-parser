@@ -248,3 +248,9 @@ class TestHtmlRenderer(TestCase):
 
         actual = r.render(placeholders)
         self.assertEqual('<body></body>', actual)
+
+    def test_transform_extended_tags(self):
+        content = '<body>{{bitmap:MY_BITMAP:max-width=160;max-height=160;}}</body>'
+        expected = '<body>{{MY_BITMAP}}</body>'
+        result = renderer._transform_extended_tags(content)
+        self.assertEqual(result, expected)

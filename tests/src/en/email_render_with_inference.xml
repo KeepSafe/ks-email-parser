@@ -1,0 +1,4 @@
+<resources template="email_render_with_inference.html" email_type="transactional">
+    <string name="subject" type="text"><![CDATA[Awesome subject]]></string>
+    <bitmap id="ID" name="MY_BITMAP" type="bitmap" src="{{ GLOBAL_IMG_BUCKET }}"/>
+</resources>

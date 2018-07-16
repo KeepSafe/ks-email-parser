@@ -38,10 +38,10 @@ class TestParser(TestCase):
 
     def test_get_email_names(self):
         names = self.parser.get_email_names()
-        self.assertEqual(
+        self.assertListEqual(
             list(names), [
-                'email', 'email_globale', 'email_order', 'email_subject_resend', 'email_subjects_ab', 'fallback',
-                'missing_placeholder', 'placeholder'
+                'email', 'email_globale', 'email_order', 'email_render_with_inference',
+                'email_subject_resend', 'email_subjects_ab', 'fallback', 'missing_placeholder', 'placeholder'
             ])
 
     def test_get_email_placeholders(self):
@@ -116,18 +116,21 @@ class TestParser(TestCase):
         self.assertEqual(set(actual), set(expected))
 
     def test_get_resources(self):
-        templates_dict = {
-            'marketing': {
-                'basic_marketing_template.html': ['subject', 'color', 'content', 'inline', 'image', 'image_absolute'],
-                'globale_template.html': ['subject', 'color', 'content', 'inline', 'image', 'image_absolute',
-                                          'global_unsubscribe']
-            },
-            'transactional': {
-                'basic_template.html': ['subject', 'color', 'content', 'inline', 'image', 'image_absolute'],
-            }
-        }
+        basic_template_placeholders = ['subject', 'color', 'content', 'inline', 'image', 'image_absolute']
+        globale_template_placeholders = ['subject', 'color', 'content', 'inline', 'image', 'image_absolute',
+                                         'global_unsubscribe']
         actual_templates, styles, sections = self.parser.get_resources()
-        self.assertEqual(actual_templates, templates_dict)
+        # are templates separated by type?
+        self.assertIn('marketing', actual_templates.keys())
+        self.assertIn('transactional', actual_templates.keys())
+        # are templates assigned to correct type?
+        self.assertIn('basic_marketing_template.html', actual_templates['marketing'].keys())
+        self.assertIn('basic_template.html', actual_templates['transactional'].keys())
+        # are placeholders assigned to correct template?
+        template_html__keys = actual_templates['transactional']['basic_template.html'].keys()
+        self.assertEqual(basic_template_placeholders, list(template_html__keys))
+        template_html__keys = actual_templates['marketing']['globale_template.html'].keys()
+        self.assertEqual(globale_template_placeholders, list(template_html__keys))
         self.assertIn('header-with-background.html', sections.keys())
         self.assertIn('basic_template.css', styles)
 
@@ -224,3 +227,7 @@ class TestParser(TestCase):
                     'templates_html/transactional/basic_template.html']
         actual = self.parser.get_email_resources_filepaths('email')
         self.assertEqual(set(expected), set(actual))
+
+    def test_parse_email_with_inference(self):
+        subject, text, html = self.parser.render('email_render_with_inference', 'en')
+        self.assertEqual(html, read_fixture('email_render_with_inference.html'))

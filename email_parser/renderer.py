@@ -3,6 +3,7 @@ Different ways of rendering emails.
 """
 
 import logging
+import re
 import xml.etree.ElementTree as ET
 
 import bs4
@@ -12,6 +13,7 @@ import pystache
 
 from . import markdown_ext, const, utils, config
 from .model import *
+from .reader import parse_placeholder
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +28,11 @@ def _md_to_html(text, base_url=None):
 def _split_subject(placeholders):
     return (placeholders.get(const.SUBJECT_PLACEHOLDER),
             dict((k, v) for k, v in placeholders.items() if k != const.SUBJECT_PLACEHOLDER))
+
+
+def _transform_extended_tags(content):
+    regex = r"{{(.*):(.*):(.*)}}"
+    return re.sub(regex, lambda match: '{{%s}}' % match.group(2), content)
 
 
 class HtmlRenderer(object):
@@ -96,8 +103,9 @@ class HtmlRenderer(object):
         try:
             # pystache escapes html by default, we pass escape option to disable this
             renderer = pystache.Renderer(escape=lambda u: u, missing_tags='strict')
-            # add subject for rendering as we have it in html
-            return renderer.render(self.template.content, placeholders)
+            # since pystache tags parsing cant be easily extended: transform all tags extended with types to names only
+            content = _transform_extended_tags(self.template.content)
+            return renderer.render(content, placeholders)
         except pystache.context.KeyNotFoundError as e:
             message = 'template %s for locale %s has missing placeholders: %s' % (self.template.name, self.locale, e)
             raise MissingTemplatePlaceholderError(message) from e

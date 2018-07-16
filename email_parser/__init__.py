@@ -111,15 +111,24 @@ class Parser:
 
     def create_email_content(self, template_name, styles_names, placeholders, email_type=None):
         placeholder_list = []
-        for placeholder_name, placeholder_props in placeholders.items():
-            if not placeholder_props.get('is_global', False):
-                is_global = placeholder_props.get('is_global', False)
+        non_globals = filter(lambda key: not placeholders[key].get('is_global', False), placeholders.keys())
+        for placeholder_name in non_globals:
+            placeholder_props = placeholders[placeholder_name]
+            is_global = placeholder_props.get('is_global', False)
+            variants = placeholder_props.get('variants', {})
+            pt = placeholder_props.get('type', PlaceholderType.text.value)
+            pt = PlaceholderType[pt]
+            if pt != PlaceholderType.bitmap:
                 content = placeholder_props['content']
-                variants = placeholder_props.get('variants', {})
-                pt = placeholder_props.get('type', PlaceholderType.text.value)
-                pt = PlaceholderType[pt]
                 p = Placeholder(placeholder_name, content, is_global, pt, variants)
-                placeholder_list.append(p)
+            else:
+                bitmap_id = placeholder_props['id']
+                bitmap_src = placeholder_props['src']
+                bitmap_alt = placeholder_props.get('alt')
+                bitmap_attr = placeholder_props.get('attributes', {})
+                p = BitmapPlaceholder(placeholder_name, bitmap_id, bitmap_src, bitmap_alt, is_global, variants,
+                                      **bitmap_attr)
+            placeholder_list.append(p)
         if email_type:
             email_type = EmailType(email_type)
         return reader.create_email_content(self.root_path, template_name, styles_names, placeholder_list, email_type)
