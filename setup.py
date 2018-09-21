@@ -7,10 +7,11 @@ version = '0.3.0'
 def read(f):
     return open(os.path.join(os.path.dirname(__file__), f)).read().strip()
 
+
 with open('requirements.txt', 'r') as f:
     install_reqs = [
         s for s in [
-            line.strip(' \n') for line in f
+            line.strip('\r\n') for line in f
         ] if not s.startswith('#') and s != ''
     ]
 
