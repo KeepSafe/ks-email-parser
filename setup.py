@@ -1,6 +1,5 @@
 import os
 from setuptools import setup, find_packages
-from pip.download import PipSession
 
 version = '0.3.0'
 
@@ -8,9 +7,13 @@ version = '0.3.0'
 def read(f):
     return open(os.path.join(os.path.dirname(__file__), f)).read().strip()
 
+with open('requirements.txt', 'r') as f:
+    install_reqs = [
+        s for s in [
+            line.strip(' \n') for line in f
+        ] if not s.startswith('#') and s != ''
+    ]
 
-install_reqs = parse_requirements('requirements.txt', session=PipSession())
-reqs = [str(ir.req) for ir in install_reqs]
 setup(
     name='ks-email-parser',
     version=version,
@@ -24,6 +27,6 @@ setup(
     url='https://github.com/KeepSafe/ks-email-parser',
     license='Apache',
     packages=find_packages(),
-    install_requires=reqs,
+    install_requires=install_reqs,
     entry_points={'console_scripts': ['ks-email-parser = email_parser.cmd:main']},
     include_package_data=True)
