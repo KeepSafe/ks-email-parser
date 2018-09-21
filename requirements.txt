@@ -1,10 +1,7 @@
-jinja2>=2.7
-Markdown==2.6.6
+Markdown==2.6.11
 beautifulsoup4==4.4.1
 cssutils==1.0.1
-inlinestyler==0.2.0
-lxml==3.4.1
+inlinestyler==0.2.1
+lxml==3.5
 pystache==0.5.4
-parse==1.6.6
-requests==2.13.0
-aiohttp==0.21.2
+parse==1.8.2

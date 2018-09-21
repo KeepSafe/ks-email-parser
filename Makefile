@@ -57,6 +57,7 @@ clean:
 	rm -f .coverage
 	rm -rf coverage
 	rm -rf build
+	rm -rf venv
 
 
 .PHONY: all build env linux run pep test vtest testloop cov clean
