@@ -4,7 +4,7 @@ Paths = namedtuple('Paths', ['source', 'destination', 'templates', 'images', 'se
 
 _default_paths = Paths('src', 'target', 'templates_html', 'templates_html/img', 'templates_html/sections')
 _default_pattern = '{locale}/{name}.xml'
-_default_base_img_path = 'http://www.getkeepsafe.com/emails/img'
+_default_base_img_path = 'http://app.getkeepsafe.com/emails/img'
 _default_rtl = ['ar', 'he']
 _default_lang_mappings = {'pt-BR': 'pt', 'zh-TW-Hant': 'zh-TW'}
 
