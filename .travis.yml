@@ -1,6 +1,10 @@
 language: python
+dist: xenial
+sudo: required
 python:
-  - "3.6.5"
+  - "3.6"
+  - "3.7"
+  - "3.7-dev"
 # command to install dependencies
 install: "pip install -r requirements-dev.txt"
 # command to run tests
