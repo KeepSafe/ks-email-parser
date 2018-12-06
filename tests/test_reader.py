@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 from lxml import etree
 
-from email_parser import reader
+from email_parser import reader, fs
 from email_parser.model import *
 
 
@@ -182,6 +182,9 @@ class TestWriter(TestCase):
 
 
 class TestParsing(TestCase):
+    def setUp(self):
+        self.maxDiff = None
+
     def test_parsing_meta_complex(self):
         placeholder_str = 'text:name:arg1=0;arg2=abcd'
         expected = MetaPlaceholder('name', PlaceholderType.text, {'arg1': '0', 'arg2': 'abcd'})
@@ -193,3 +196,11 @@ class TestParsing(TestCase):
         expected = MetaPlaceholder('name')
         result = reader.parse_placeholder(placeholder_str)
         self.assertEqual(result, expected)
+
+    def test_original_extra(self):
+        email = fs.email('./tests', 'raw_placeholder', 'de')
+        template, placeholders = reader.read('./tests', email)
+        tpl_placeholders = list(map(lambda tp: tp, template.placeholders))
+        expected = placeholders.keys()
+        for tpl_placeholder in tpl_placeholders:
+            self.assertIn(tpl_placeholder, expected)

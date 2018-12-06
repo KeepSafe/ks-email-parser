@@ -1,0 +1,32 @@
+<resources template="common_login.html" email_type="marketing">
+    <bitmap id="ee5f6b0d-fb5f-4f56-87b2-606edc98a98e" name="keepsafe_logo" src="https://app.getkeepsafe.com/emails/img/ee5f6b0d-fb5f-4f56-87b2-606edc98a98e/cropped.png?q=9175581" type="bitmap" />
+    <bitmap id="a19f49d7-5fd1-4a5b-84af-eacbc85fd626" name="hero" src="https://app.getkeepsafe.com/emails/img/a19f49d7-5fd1-4a5b-84af-eacbc85fd626/cropped.png?q=9202560" type="bitmap" />
+    <bitmap id="31f2f835-29e0-474d-b03e-72d7f70f24ab" name="product_1_logo" src="https://app.getkeepsafe.com/emails/img/31f2f835-29e0-474d-b03e-72d7f70f24ab/cropped.png?q=2115799" type="bitmap" />
+    <bitmap id="a920b1ff-60da-496e-a189-19b4c39cb30e" name="product_2_logo" src="https://app.getkeepsafe.com/emails/img/a920b1ff-60da-496e-a189-19b4c39cb30e/cropped.png?q=2000803" type="bitmap" />
+    <bitmap id="17f17ffb-2113-4db1-900f-fe284fef3dbc" name="product_3_logo" src="https://app.getkeepsafe.com/emails/img/17f17ffb-2113-4db1-900f-fe284fef3dbc/cropped.png?q=2155631" type="bitmap" />
+    <bitmap id="bc97ea60-e72f-4b91-b3dc-cefb65d8a850" name="product_4_logo" src="https://app.getkeepsafe.com/emails/img/bc97ea60-e72f-4b91-b3dc-cefb65d8a850/cropped.png?q=2195287" type="bitmap" />
+    <string name="subject" type="text"><![CDATA[Ein PIN-Code für alle Keepsafe-Apps]]></string>
+    <string name="keepsafe_logo_url" type="raw"><![CDATA[https://4uon.ly/p/eOwkWDE]]></string>
+    <string name="header" type="text"><![CDATA[# Mit einem Tippen bei allen    einloggen
+# Keepsafe-App]]></string>
+    <string name="hero_url" type="raw"><![CDATA[hero_url]]></string>
+    <string name="content" type="text"><![CDATA[## Holen Sie sich die Apps von Keepsafe, um Ihre Privatsphäre ganz einfach zu schützen!
+
+Sie können sich mit einer PIN bei allen Keepsafe Apps einloggen.
+
+Nur ein PIN-Code und einmal anmelden.
+
+#####[JETZT HOLEN](https://4uon.ly/p/eOwkWDE)]]></string>
+    <string name="product_1_desc" type="text"><![CDATA[### Unlisted
+### *Halten Sie Ihre SMS und Anrufe privat*]]></string>
+    <string name="product_1_button" type="text"><![CDATA[####[JETZT HOLEN](https://4uon.ly/p/yoGL9_)]]></string>
+    <string name="product_2_desc" type="text"><![CDATA[### Browser
+### *Privat im Internet surfen*]]></string>
+    <string name="product_2_button" type="text"><![CDATA[###[JEZT HOLEN](https://4uon.ly/p/QQJzaD8)]]></string>
+    <string name="product_3_desc" type="text"><![CDATA[### VPN
+### *Schützen Sie sich, während Sie mit öffentlichen WLAN-Netzen verbunden sind*]]></string>
+    <string name="product_3_button" type="text"><![CDATA[####[HOLEN](https://4uon.ly/p/7APJ3a_)]]></string>
+    <string name="product_4_desc" type="text"><![CDATA[#### Fototresor
+#### *Schützen Sie Ihr Privatleben*]]></string>
+    <string name="product_4_button" type="text"><![CDATA[####[HOLEN](https://4uon.ly/p/xk8v9wa)]]></string>
+</resources>
