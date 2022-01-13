@@ -12,18 +12,16 @@ FLAGS=--with-coverage --cover-inclusive --cover-erase --cover-package=email_pars
 
 
 update:
-	$(PYTHON) ./setup.py develop
+	$(PIP) install -U pip build twine
+	$(PIP) install .
 
 env:
 	test -d venv || python3 -m venv venv
-	$(PYTHON) ./setup.py develop
 
-dev:
-	$(PIP) install -r requirements-dev.txt
-	$(PYTHON) ./setup.py develop
+dev: env update
+	$(PIP) install .[tests]
 
-install:
-	$(PYTHON) ./setup.py install
+install: env update
 
 rungui:
 	test -e $(EMAILS_PATH) && echo Emails templates already cloned || git clone $(EMAILS_TEMPLATES_URI) $(EMAILS_PATH);
