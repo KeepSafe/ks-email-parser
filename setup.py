@@ -4,11 +4,11 @@ from setuptools import setup, find_packages
 version = '0.3.2'
 
 install_requires = [
-    'Markdown==2.6.11',
-    'beautifulsoup4==4.4.1',
+    'Markdown < 3',
+    'beautifulsoup4 < 5',
     'inlinestyler==0.2.1',
-    'pystache==0.5.4',
-    'parse==1.8.2'
+    'pystache < 0.6',
+    'parse < 2'
 ]
 
 tests_require = [
