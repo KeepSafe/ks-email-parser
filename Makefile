@@ -12,14 +12,14 @@ FLAGS=--with-coverage --cover-inclusive --cover-erase --cover-package=email_pars
 
 
 update:
-	$(PIP) install -U pip build twine
-	$(PIP) install .
+	$(PIP) install -U pip
+	$(PIP) install -U .
 
 env:
 	test -d venv || python3 -m venv venv
 
 dev: env update
-	$(PIP) install .[tests]
+	$(PIP) install .[tests,devtools]
 
 install: env update
 

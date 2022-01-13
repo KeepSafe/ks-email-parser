@@ -17,6 +17,12 @@ tests_require = [
     'coverage',
 ]
 
+devtools_require = [
+    'twine',
+    'build',
+]
+
+
 def read(f):
     return open(os.path.join(os.path.dirname(__file__), f)).read().strip()
 
@@ -36,7 +42,8 @@ setup(
     install_requires=install_requires,
     tests_require=tests_require,
     extras_require={
-        'tests': tests_require
+        'tests': tests_require,
+        'devtools': devtools_require,
     },
     entry_points={'console_scripts': ['ks-email-parser = email_parser.cmd:main']},
     include_package_data=True)
