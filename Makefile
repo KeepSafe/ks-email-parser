@@ -15,7 +15,7 @@ update:
 	$(PYTHON) ./setup.py develop
 
 env:
-	python3 -m venv venv
+	test -d venv || python3 -m venv venv
 	$(PYTHON) ./setup.py develop
 
 dev:
