@@ -8,9 +8,12 @@ from email_parser import reader
 from email_parser.model import *
 
 
-def read_fixture(filename):
+def read_fixture(filename, decoder=None):
     with open(os.path.join('tests/fixtures', filename)) as fp:
-        return fp.read()
+        content = fp.read()
+        if decoder:
+            return decoder(content)
+        return content
 
 
 class TestReader(TestCase):
@@ -139,6 +142,14 @@ class TestWriter(TestCase):
         self.template_str = '<html><head>{{subject}}</head><body>{{content}}{{global_content}}</body></html>'
         self.mock_fs.read_file.side_effect = iter([self.template_str])
 
+    def elements_equal(self, e1, e2):
+        self.assertEqual(e1.tag, e2.tag)
+        self.assertEqual(e1.text, e2.text)
+        self.assertEqual(e1.tail, e2.tail)
+        self.assertEqual(e1.attrib, e2.attrib)
+        self.assertEqual(len(e1), len(e2))
+        return all(self.elements_equal(c1, c2) for c1, c2 in zip(e1, e2))
+
     def tearDown(self):
         super().tearDown()
         self.patch_fs.stop()
@@ -166,7 +177,7 @@ class TestWriter(TestCase):
         self.assertMultiLineEqual(expected, result.strip())
 
     def test_create_content_with_metaplaceholder(self):
-        expected = read_fixture('email_inference.xml').strip()
+        expected_xml = read_fixture('email_inference.xml', etree.XML)
         tpl = read_fixture('email_inference_raw.html').strip()
         bitmap_attr = {
             'max-width': '160px',
@@ -178,7 +189,8 @@ class TestWriter(TestCase):
         self.mock_fs.read_file.side_effect = iter([tpl])
         result = reader.create_email_content('dummy_root', 'basic_template.html', ['style1.css'], placeholders,
                                              EmailType.transactional)
-        self.assertMultiLineEqual(expected, result.strip())
+        xml_result = etree.fromstring(result)
+        self.elements_equal(expected_xml, xml_result)
 
 
 class TestParsing(TestCase):
