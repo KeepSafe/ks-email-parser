@@ -30,7 +30,6 @@ setup(
     name='ks-email-parser',
     version=version,
     description=('A command line tool to render HTML and text emails of markdown content.'),
-    long_description='\n\n'.join((read('README.md'), read('CHANGELOG'))),
     classifiers=[
         'License :: OSI Approved :: BSD License', 'Intended Audience :: Developers', 'Programming Language :: Python'
     ],
