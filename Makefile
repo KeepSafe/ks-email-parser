@@ -9,21 +9,27 @@ EMAILS_TEMPLATES_URI=git@github.com:KeepSafe/emails.git
 EMAILS_PATH=emails
 GUI_BIN=ks-email-parser
 FLAGS=--with-coverage --cover-inclusive --cover-erase --cover-package=email_parser --cover-min-percentage=70
+PYPICLOUD_HOST=pypicloud.getkeepsafe.local
+TWINE=./venv/bin/twine
 
 
 update:
-	$(PYTHON) ./setup.py develop
+	$(PIP) install -U pip
+	$(PIP) install -U .
 
 env:
-	python3 -m venv venv
-	$(PYTHON) ./setup.py develop
+	test -d venv || python3 -m venv venv
 
-dev:
-	$(PIP) install -r requirements-dev.txt
-	$(PYTHON) ./setup.py develop
+dev: env update
+	$(PIP) install .[tests,devtools]
 
-install:
-	$(PYTHON) ./setup.py install
+install: env update
+
+publish:
+	rm -rf dist
+	$(PYTHON) -m build .
+	$(TWINE) upload --verbose --sign --username developer --repository-url http://$(PYPICLOUD_HOST)/simple/ dist/*.whl
+
 
 rungui:
 	test -e $(EMAILS_PATH) && echo Emails templates already cloned || git clone $(EMAILS_TEMPLATES_URI) $(EMAILS_PATH);
