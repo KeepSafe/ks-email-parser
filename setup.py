@@ -7,14 +7,14 @@ install_requires = [
     'Markdown < 3',
     'beautifulsoup4 < 5',
     'inlinestyler==0.2.1',
-    'pystache < 0.6',
+    'pystache < 0.7',
+    'lxml < 5',
     'parse < 2'
 ]
 
 tests_require = [
-    'nose',
-    'flake8==2.5.4',
-    'coverage',
+    'nose2[coverage_plugin]>=0.6.5',
+    'flake8 < 4',
 ]
 
 devtools_require = [

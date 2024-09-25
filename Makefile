@@ -3,12 +3,12 @@
 PYTHON=venv/bin/python3
 PIP=venv/bin/pip
 EI=venv/bin/easy_install
-NOSE=venv/bin/nosetests
+NOSE=venv/bin/nose2
 FLAKE=venv/bin/flake8
 EMAILS_TEMPLATES_URI=git@github.com:KeepSafe/emails.git
 EMAILS_PATH=emails
 GUI_BIN=ks-email-parser
-FLAGS=--with-coverage --cover-inclusive --cover-erase --cover-package=email_parser --cover-min-percentage=70
+FLAGS=--with-coverage --coverage=email_parser --coverage-report=term
 PYPICLOUD_HOST=pypicloud.getkeepsafe.local
 TWINE=./venv/bin/twine
 
@@ -39,10 +39,10 @@ flake:
 	$(FLAKE) email_parser tests
 
 test: flake
-	$(NOSE) -s $(FLAGS)
+	$(NOSE) $(FLAGS)
 
 vtest:
-	$(NOSE) -s -v $(FLAGS)
+	$(NOSE) -v $(FLAGS)
 
 testloop:
 	while sleep 1; do $(NOSE) -s $(FLAGS); done
