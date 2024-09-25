@@ -33,7 +33,7 @@ def parse_placeholder(placeholder_str):
             attr_name, attr_value = attr_str.split('=')
             args[attr_name] = attr_value
         except ValueError:
-            ValueError('Malformed attributes definition: %s'.format(args_str))
+            ValueError(f'Malformed attributes definition: {args_str}')
     return MetaPlaceholder(name, placeholder_type, args)
 
 
