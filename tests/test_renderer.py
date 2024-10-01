@@ -199,7 +199,8 @@ class TestHtmlRenderer(TestCase):
         placeholders = {'content': Placeholder('content', 'dummy_content')}
 
         actual = r.render(placeholders)
-        self.assertEqual('<body dir="rtl">\n <p>\n  dummy_content\n </p>\n</body>', actual)
+        expected = '<body dir="rtl">\n <p>\n  dummy_content\n </p>\n</body>\n'
+        self.assertEqual(expected, actual)
 
     def test_rtl_two_placeholders(self):
         email_locale = 'ar'
@@ -214,7 +215,7 @@ class TestHtmlRenderer(TestCase):
 
         actual = r.render(placeholders)
         expected = '<body dir="rtl">\n <div>\n  <p>\n   dummy_content1\n  </p>\n </div>\n <div>\n  <p>\n   dummy_content2\n  </p>\n </div>\
-\n</body>'
+\n</body>\n'
 
         self.assertEqual(expected, actual)
 

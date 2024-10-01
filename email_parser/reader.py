@@ -176,12 +176,12 @@ def _read_xml(path):
 def _read_xml_from_content(content):
     if not content:
         return None
+    parser = etree.XMLParser(encoding='utf-8')
     try:
-        parser = etree.XMLParser(encoding='utf-8')
         root = etree.fromstring(content.encode('utf-8'), parser=parser)
         return etree.ElementTree(root)
-    except etree.ParseError as e:
-        logger.exception('Unable to parse XML content %s %s', content, e)
+    except (etree.ParseError, etree.XMLSyntaxError):
+        logger.error('Unable to parse XML content %s', content)
         return None
     except TypeError:
         # got None? no results
