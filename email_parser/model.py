@@ -106,10 +106,10 @@ class BitmapPlaceholder(Placeholder):
         div_style = "vertical-align: middle;text-align: center;"
         constraints = ""
         if self.alt:
-            optional += " alt=\"{}\"".format(self.alt)
+            optional += f" alt=\"{self.alt}\""
         for style_tag in ['max-width', 'max-height']:
             if style_tag in mapping:
-                constraints += "{}: {};".format(style_tag, mapping[style_tag])
+                constraints += f"{style_tag}: {mapping[style_tag]};"
         mapping.update({
             'style': div_style + constraints,
             'id': self.id,

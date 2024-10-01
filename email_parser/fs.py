@@ -18,10 +18,10 @@ def _parse_params(pattern):
     params = [p for p in map(lambda e: e[1], Formatter().parse(pattern)) if p]
     if 'name' not in params:
         raise MissingPatternParamError(
-            '{{name}} is a required parameter in the pattern but it is not present in {}'.format(pattern))
+            f'{{{{name}}}} is a required parameter in the pattern but it is not present in {pattern}')
     if 'locale' not in params:
         raise MissingPatternParamError(
-            '{{locale}} is a required parameter in the pattern but it is not present in {}'.format(pattern))
+            f'{{{{locale}}}} is a required parameter in the pattern but it is not present in {pattern}')
     return params
 
 
