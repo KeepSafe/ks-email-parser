@@ -3,12 +3,13 @@
 PYTHON=venv/bin/python3
 PIP=venv/bin/pip
 EI=venv/bin/easy_install
-NOSE=venv/bin/nose2
+TEST_RUNNER=venv/bin/pytest
 FLAKE=venv/bin/flake8
 EMAILS_TEMPLATES_URI=git@github.com:KeepSafe/emails.git
 EMAILS_PATH=emails
 GUI_BIN=ks-email-parser
-FLAGS=--with-coverage --coverage=email_parser --coverage-report=term
+TEST_RUNNER_FLAGS=-s --durations=3 --durations-min=0.005
+COVERAGE=venv/bin/coverage
 PYPICLOUD_HOST=pypicloud.getkeepsafe.local
 TWINE=./venv/bin/twine
 
@@ -39,17 +40,16 @@ flake:
 	$(FLAKE) email_parser tests
 
 test: flake
-	$(NOSE) $(FLAGS)
+	$(COVERAGE) run -m pytest $(TEST_RUNNER_FLAGS)
 
 vtest:
-	$(NOSE) -v $(FLAGS)
+	$(COVERAGE) run -m pytest -v $(TEST_RUNNER_FLAGS)
 
 testloop:
-	while sleep 1; do $(NOSE) -s $(FLAGS); done
+	while sleep 1; do $(TEST_RUNNER) -s --lf $(TEST_RUNNER_FLAGS); done
 
 cov cover coverage:
-	$(NOSE) -s --with-cover --cover-html --cover-html-dir ./coverage $(FLAGS)
-	echo "open file://`pwd`/coverage/index.html"
+	$(COVERAGE) report -m
 
 clean:
 	rm -rf `find . -name __pycache__`

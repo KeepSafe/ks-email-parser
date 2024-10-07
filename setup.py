@@ -13,7 +13,8 @@ install_requires = [
 ]
 
 tests_require = [
-    'nose2[coverage_plugin]>=0.6.5',
+    'pytest >= 8',
+    'coverage >= 7'
     'flake8 < 4',
 ]
 
