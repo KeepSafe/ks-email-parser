@@ -40,7 +40,6 @@ setup(
     license='Apache',
     packages=find_packages(),
     install_requires=install_requires,
-    tests_require=tests_require,
     extras_require={
         'tests': tests_require,
         'devtools': devtools_require,
