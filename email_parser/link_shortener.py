@@ -1,7 +1,7 @@
 import requests
 
 
-class NullShortener(object):
+class NullShortener:
     name = 'null'
 
     def __init__(self, config):
@@ -11,7 +11,7 @@ class NullShortener(object):
         return link
 
 
-class KsShortener(object):
+class KsShortener:
     name = 'keepsafe'
     url = 'http://4uon.ly/url/'
 

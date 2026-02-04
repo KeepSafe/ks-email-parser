@@ -33,7 +33,7 @@ def parse_placeholder(placeholder_str):
             attr_name, attr_value = attr_str.split('=')
             args[attr_name] = attr_value
         except ValueError:
-            ValueError('Malformed attributes definition: %s'.format(args_str))
+            ValueError(f'Malformed attributes definition: {args_str}')
     return MetaPlaceholder(name, placeholder_type, args)
 
 
@@ -43,7 +43,7 @@ def _placeholders(tree, prefix=''):
     is_global = (prefix == const.GLOBALS_PLACEHOLDER_PREFIX)
     result = OrderedDict()
     for element in tree.xpath('./string | ./string-array | bitmap | ./array'):
-        name = '{0}{1}'.format(prefix, element.get('name'))
+        name = '{}{}'.format(prefix, element.get('name'))
         placeholder_type = PlaceholderType[element.get('type', PlaceholderType.text.value)]
         opt_attrs = dict(element.items())
         del opt_attrs['name']
@@ -176,12 +176,12 @@ def _read_xml(path):
 def _read_xml_from_content(content):
     if not content:
         return None
+    parser = etree.XMLParser(encoding='utf-8')
     try:
-        parser = etree.XMLParser(encoding='utf-8')
         root = etree.fromstring(content.encode('utf-8'), parser=parser)
         return etree.ElementTree(root)
-    except etree.ParseError as e:
-        logger.exception('Unable to parse XML content %s %s', content, e)
+    except (etree.ParseError, etree.XMLSyntaxError):
+        logger.error('Unable to parse XML content %s', content)
         return None
     except TypeError:
         # got None? no results

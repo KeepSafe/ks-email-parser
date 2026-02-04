@@ -1,9 +1,9 @@
 language: python
 python:
-  - "3.6.5"
+  - "3.11.13"
 # command to install dependencies
-install: "pip install -r requirements-dev.txt"
+install: "make dev"
 # command to run tests
 script:
-  - flake8 email_parser tests
-  - nosetests --with-coverage --cover-inclusive --cover-erase --cover-package=email_parser --cover-min-percentage=70
+  - make test
+  - make coverage

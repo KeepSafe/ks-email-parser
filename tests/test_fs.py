@@ -4,7 +4,7 @@ from email_parser import fs
 from email_parser.model import *
 
 
-class MockPath(object):
+class MockPath:
     def __init__(self, path, is_dir=False, parent='.'):
         self.path = path
         self._is_dir = is_dir
@@ -27,6 +27,16 @@ class MockPath(object):
 
     def __str__(self):
         return self.path
+
+
+class TestUtilities(TestCase):
+    def test__parse_params_exceptions(self):
+        with self.assertRaises(MissingPatternParamError):
+            fs._parse_params('test')
+        with self.assertRaises(MissingPatternParamError):
+            fs._parse_params('test {name}')
+        with self.assertRaises(MissingPatternParamError):
+            fs._parse_params('test {locale}')
 
 
 class TestFs(TestCase):

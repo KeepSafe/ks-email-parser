@@ -199,7 +199,8 @@ class TestHtmlRenderer(TestCase):
         placeholders = {'content': Placeholder('content', 'dummy_content')}
 
         actual = r.render(placeholders)
-        self.assertEqual('<body dir="rtl">\n <p>\n  dummy_content\n </p>\n</body>', actual)
+        expected = '<body dir="rtl">\n <p>\n  dummy_content\n </p>\n</body>\n'
+        self.assertEqual(expected, actual)
 
     def test_rtl_two_placeholders(self):
         email_locale = 'ar'
@@ -214,7 +215,7 @@ class TestHtmlRenderer(TestCase):
 
         actual = r.render(placeholders)
         expected = '<body dir="rtl">\n <div>\n  <p>\n   dummy_content1\n  </p>\n </div>\n <div>\n  <p>\n   dummy_content2\n  </p>\n </div>\
-\n</body>'
+\n</body>\n'
 
         self.assertEqual(expected, actual)
 
@@ -254,3 +255,41 @@ class TestHtmlRenderer(TestCase):
         expected = '<body>{{MY_BITMAP}}</body>'
         result = renderer._transform_extended_tags(content)
         self.assertEqual(result, expected)
+
+    def test_wrap_with_highlight(self):
+        template = Template('dummy', [], '<style>body {}</style>', '<body>{{content}}</body>', ['content'], None)
+        r = renderer.HtmlRenderer(template, self.email_locale)
+        placeholders = {'content': Placeholder('content', 'dummy_content')}
+        highlight = {'placeholder': 'content', 'variant': None, 'id': 'hl', 'style': 'color: red'}
+
+        actual = r.render(placeholders, highlight=highlight)
+
+        self.assertIn('id="hl"', actual)
+        self.assertIn('style="color: red"', actual)
+
+    def test_restore_placeholder_spacing(self):
+        template = Template('dummy', [], '<style>body {}</style>', '<body>{{content}}</body>', ['content'], None)
+        r = renderer.HtmlRenderer(template, self.email_locale)
+        restored = r._restore_placeholder_spacing('<img src="{{%20GLOBAL_IMG_BUCKET%20}}">')
+        self.assertIn('{{ GLOBAL_IMG_BUCKET }}', restored)
+
+    def test_indent_lines_helper(self):
+        self.assertEqual('line', renderer.HtmlRenderer._indent_lines('line', '    '))
+        self.assertEqual('line1\n    line2\n', renderer.HtmlRenderer._indent_lines('line1\nline2\n', '    '))
+
+    def test_normalize_self_closing(self):
+        html = '<img alt="Alt text"/>'
+        self.assertEqual('<img alt="Alt text" />', renderer.HtmlRenderer._normalize_self_closing(html))
+
+
+class TestRendererErrors(TestCase):
+    def test_render_wraps_missing_placeholder_error(self):
+        template = Template('dummy', [], '<style>body {}</style>', '<body>{{content}}{{missing}}</body>',
+                            ['content', 'missing'], None)
+        placeholders = {
+            'subject': Placeholder('subject', 'dummy_subject'),
+            'content': Placeholder('content', 'dummy_content')
+        }
+
+        with self.assertRaises(RenderingError):
+            renderer.render('en', template, placeholders)

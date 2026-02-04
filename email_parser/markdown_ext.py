@@ -1,7 +1,8 @@
-from markdown.inlinepatterns import Pattern, ImagePattern, LinkPattern, LINK_RE, IMAGE_LINK_RE
+import re
+
 from markdown.blockprocessors import BlockProcessor
 from markdown.extensions import Extension
-import re
+from markdown.inlinepatterns import ImageInlineProcessor, LinkInlineProcessor, LINK_RE, IMAGE_LINK_RE
 
 from . import const
 
@@ -23,7 +24,7 @@ class InlineBlockProcessor(BlockProcessor):
             parent.text = text
 
 
-class BaseUrlImagePattern(Pattern):
+class BaseUrlImageProcessor(ImageInlineProcessor):
     """
     Adds base url to images which have relative path.
     """
@@ -43,40 +44,48 @@ class BaseUrlImagePattern(Pattern):
             self.images_dir = images_dir.strip('/')
         else:
             self.images_dir = ''
-        self.image_pattern = ImagePattern(*args)
 
     def _is_url(self, text):
         url = text.strip().strip('/').split(' ')[0]
         return self.url_pattern.match(url)
 
-    def handleMatch(self, m):
-        if self._is_url(m.group(10)):
-            image = m.string
-        else:
-            image = const.IMAGE_PATTERN.format(m.group(2), self.images_dir, m.group(10).strip('/'))
-        pattern = re.compile("^(.*?)%s(.*?)$" % self.image_pattern.pattern, re.DOTALL | re.UNICODE)
-        match = re.match(pattern, ' ' + image + ' ')
-        el = self.image_pattern.handleMatch(match)
+    def handleMatch(self, m, data):
+        el, start, end = super().handleMatch(m, data)
+        if el is None:
+            return None, None, None
+
+        src = el.get('src', '')
+        if src and not self._is_url(src):
+            src_path = src.strip('/')
+            if self.images_dir:
+                src = f'{self.images_dir}/{src_path}' if src_path else self.images_dir
+            else:
+                src = src_path
+            el.set('src', src)
+
         # each markdown image should have default style
         el.set('style', self.unescape('max-width: 100%;'))
-        return el
+        return el, start, end
 
 
-class NoTrackingLinkPattern(LinkPattern):
+class NoTrackingLinkProcessor(LinkInlineProcessor):
     def __init__(self, *args):
         super().__init__(*args)
 
-    def handleMatch(self, m):
-        el = super().handleMatch(m)
-        if el.get('href') and el.get('href').startswith('!'):
-            el.set('href', el.get('href')[1:])
+    def handleMatch(self, m, data):
+        el, start, end = super().handleMatch(m, data)
+        if el is None:
+            return None, None, None
+        href = el.get('href')
+        if href and href.startswith('!'):
+            el.set('href', href[1:])
             el.set('clicktracking', 'off')
-        return el
+        return el, start, end
 
 
 class InlineTextExtension(Extension):
-    def extendMarkdown(self, md, md_globals):
-        md.parser.blockprocessors.add('inline_text', InlineBlockProcessor(md.parser), '<paragraph')
+    def extendMarkdown(self, md):
+        md.parser.blockprocessors.register(InlineBlockProcessor(md.parser), 'inline_text', 12)
 
 
 class BaseUrlExtension(Extension):
@@ -84,16 +93,16 @@ class BaseUrlExtension(Extension):
         super().__init__()
         self.images_dir = images_dir
 
-    def extendMarkdown(self, md, md_globals):
-        md.inlinePatterns.add('base_url_image', BaseUrlImagePattern(self.images_dir, IMAGE_LINK_RE, md), '<image_link')
+    def extendMarkdown(self, md):
+        md.inlinePatterns.register(BaseUrlImageProcessor(self.images_dir, IMAGE_LINK_RE, md), 'base_url_image', 151)
 
 
 class NoTrackingLinkExtension(Extension):
     def __init__(self):
         super().__init__()
 
-    def extendMarkdown(self, md, md_globals):
-        md.inlinePatterns.add('no_tracking_link', NoTrackingLinkPattern(LINK_RE, md), '<link')
+    def extendMarkdown(self, md):
+        md.inlinePatterns.register(NoTrackingLinkProcessor(LINK_RE, md), 'no_tracking_link', 161)
 
 
 def inline_text():

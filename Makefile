@@ -1,14 +1,16 @@
 # Some simple testing tasks (sorry, UNIX only).
 
 PYTHON=venv/bin/python3
+PYTHON_BIN?=python3.11
 PIP=venv/bin/pip
 EI=venv/bin/easy_install
-NOSE=venv/bin/nosetests
+TEST_RUNNER=venv/bin/nosetests
 FLAKE=venv/bin/flake8
 EMAILS_TEMPLATES_URI=git@github.com:KeepSafe/emails.git
 EMAILS_PATH=emails
 GUI_BIN=ks-email-parser
-FLAGS=--with-coverage --cover-inclusive --cover-erase --cover-package=email_parser --cover-min-percentage=70
+TEST_RUNNER_FLAGS=-s
+COVERAGE=venv/bin/coverage
 PYPICLOUD_HOST=pypicloud.getkeepsafe.local
 TWINE=./venv/bin/twine
 
@@ -18,7 +20,7 @@ update:
 	$(PIP) install -U .
 
 env:
-	test -d venv || python3 -m venv venv
+	test -d venv || $(PYTHON_BIN) -m venv venv
 
 dev: env update
 	$(PIP) install .[tests,devtools]
@@ -39,17 +41,16 @@ flake:
 	$(FLAKE) email_parser tests
 
 test: flake
-	$(NOSE) -s $(FLAGS)
+	$(COVERAGE) run $(TEST_RUNNER) $(TEST_RUNNER_FLAGS)
 
 vtest:
-	$(NOSE) -s -v $(FLAGS)
+	$(COVERAGE) run $(TEST_RUNNER) -v $(TEST_RUNNER_FLAGS)
 
 testloop:
-	while sleep 1; do $(NOSE) -s $(FLAGS); done
+	while sleep 1; do $(TEST_RUNNER) $(TEST_RUNNER_FLAGS); done
 
 cov cover coverage:
-	$(NOSE) -s --with-cover --cover-html --cover-html-dir ./coverage $(FLAGS)
-	echo "open file://`pwd`/coverage/index.html"
+	$(COVERAGE) report -m
 
 clean:
 	rm -rf `find . -name __pycache__`

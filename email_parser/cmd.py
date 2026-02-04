@@ -27,7 +27,7 @@ class ProgressConsoleHandler(logging.StreamHandler):
     def __init__(self, err_queue, warn_queue, *args, **kwargs):
         self.err_msgs_queue = err_queue
         self.warn_msgs_queue = warn_queue
-        super(ProgressConsoleHandler, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def _store_msg(self, msg, loglevel):
         if loglevel == logging.ERROR:
@@ -60,7 +60,7 @@ class ProgressConsoleHandler(logging.StreamHandler):
         stream.write(header)
         stream.write(self.terminator)
         for idx, msg in enumerate(msgs):
-            stream.write('%s. %s' % (idx + 1, msg))
+            stream.write(f'{idx + 1}. {msg}')
             stream.write(self.terminator)
 
     def _flush_errors(self, stream):
