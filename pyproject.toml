@@ -1,0 +1,52 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ks-email-parser"
+version = "1.0.0"
+description = "A command line tool to render HTML and text emails of markdown content."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Apache" }
+authors = [
+  { name = "Keepsafe", email = "support@getkeepsafe.com" },
+]
+classifiers = [
+  "License :: OSI Approved :: BSD License",
+  "Intended Audience :: Developers",
+  "Programming Language :: Python",
+]
+dependencies = [
+  "Markdown==3.10.1",
+  "beautifulsoup4==4.14.3",
+  "cssutils==2.11.1",
+  "inlinestyler==0.2.5",
+  "lxml==5.4.0",
+  "parse==1.20.2",
+  "pystache==0.6.8",
+]
+
+[project.urls]
+Homepage = "https://github.com/KeepSafe/ks-email-parser"
+
+[project.scripts]
+ks-email-parser = "email_parser.cmd:main"
+
+[project.optional-dependencies]
+tests = [
+  "coverage==7.13.3",
+  "flake8==3.9.2",
+  "pynose==1.5.5",
+]
+devtools = [
+  "build==1.4.0",
+  "twine==6.2.0",
+]
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["."]
+exclude = ["tests*"]
