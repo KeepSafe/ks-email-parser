@@ -55,11 +55,11 @@ class Placeholder:
         if self._opt_attr:
             attributes.update(self._opt_attr)
         for k, v in attributes.items():
-            if k is 'type':
+            if k == 'type':
                 yield k, self.type.value
-            elif k is '_content':
+            elif k == '_content':
                 yield 'content', v
-            elif k is '_opt_attr':
+            elif k == '_opt_attr':
                 continue
             else:
                 yield k, v

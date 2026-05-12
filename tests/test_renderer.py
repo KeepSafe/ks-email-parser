@@ -213,8 +213,10 @@ class TestHtmlRenderer(TestCase):
         }
 
         actual = r.render(placeholders)
-        expected = '<body dir="rtl">\n <div>\n  <p>\n   dummy_content1\n  </p>\n </div>\n <div>\n  <p>\n   dummy_content2\n  </p>\n </div>\
-\n</body>'
+        expected = (
+            '<body dir="rtl">\n <div>\n  <p>\n   dummy_content1\n  </p>\n </div>\n <div>\n'
+            '  <p>\n   dummy_content2\n  </p>\n </div>\n</body>'
+        )
 
         self.assertEqual(expected, actual)
 

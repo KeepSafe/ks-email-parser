@@ -7,12 +7,20 @@ The goal is to store emails in a unified format that is easy to translate and to
 
 ## Requirements
 
-1. Python 3.+
+1. Python 3.11
 2. libxml - on OSX install with `xcode-select --install`
 
 ## Installation
 
 `make install`
+
+For development:
+
+```
+make dev
+make lint
+make test
+```
 
 ## Usage
 

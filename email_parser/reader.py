@@ -29,11 +29,13 @@ def parse_placeholder(placeholder_str):
     except ValueError:
         raise ValueError('Placeholder definition %s uses invalid PlaceholderType' % placeholder_str)
     for attr_str in args_str.split(';'):
+        if not attr_str:
+            continue
         try:
             attr_name, attr_value = attr_str.split('=')
             args[attr_name] = attr_value
         except ValueError:
-            ValueError('Malformed attributes definition: %s'.format(args_str))
+            raise ValueError('Malformed attributes definition: %s' % args_str)
     return MetaPlaceholder(name, placeholder_type, args)
 
 

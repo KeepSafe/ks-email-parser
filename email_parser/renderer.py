@@ -70,7 +70,7 @@ class HtmlRenderer(object):
                     break
                 except TypeError:
                     continue
-            return soup.prettify()
+            return soup.prettify().rstrip()
         else:
             return html
 

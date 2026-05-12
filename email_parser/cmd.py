@@ -2,16 +2,17 @@
 Handles command line and calls the email parser with corrent options.
 """
 
+import asyncio
 import argparse
+import concurrent.futures
+from functools import reduce
+from importlib.metadata import version
+from itertools import islice
 import logging
-import sys
+from multiprocessing import Manager
 import os
 import shutil
-import asyncio
-import concurrent.futures
-from itertools import islice
-from functools import reduce
-from multiprocessing import Manager
+import sys
 
 from . import const, Parser, config, fs
 
@@ -27,7 +28,7 @@ class ProgressConsoleHandler(logging.StreamHandler):
     def __init__(self, err_queue, warn_queue, *args, **kwargs):
         self.err_msgs_queue = err_queue
         self.warn_msgs_queue = warn_queue
-        super(ProgressConsoleHandler, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def _store_msg(self, msg, loglevel):
         if loglevel == logging.ERROR:
@@ -127,33 +128,31 @@ def _parse_emails_batch(emails, parser):
     return result
 
 
-def _parse_emails(loop, root_path):
+async def _parse_emails(root_path):
     shutil.rmtree(os.path.join(root_path, config.paths.destination), ignore_errors=True)
     emails = fs.emails(root_path)
-    executor = concurrent.futures.ProcessPoolExecutor(max_workers=const.DEFAULT_WORKER_POOL)
     tasks = []
     parser = Parser(root_path)
+    loop = asyncio.get_running_loop()
 
-    emails_batch = list(islice(emails, const.DEFAULT_WORKER_POOL))
-    while emails_batch:
-        task = loop.run_in_executor(executor, _parse_emails_batch, emails_batch, parser)
-        tasks.append(task)
+    with concurrent.futures.ProcessPoolExecutor(max_workers=const.DEFAULT_WORKER_POOL) as executor:
         emails_batch = list(islice(emails, const.DEFAULT_WORKER_POOL))
-    results = yield from asyncio.gather(*tasks)
-    result = reduce(lambda acc, result: True if acc and result else False, results)
+        while emails_batch:
+            task = loop.run_in_executor(executor, _parse_emails_batch, emails_batch, parser)
+            tasks.append(task)
+            emails_batch = list(islice(emails, const.DEFAULT_WORKER_POOL))
+        results = await asyncio.gather(*tasks)
+
+    result = reduce(lambda acc, result: True if acc and result else False, results, True)
     return result
 
 
 def parse_emails(root_path):
-    loop = init_loop()
-    result = loop.run_until_complete(_parse_emails(loop, root_path))
-    return result
+    return asyncio.run(_parse_emails(root_path))
 
 
 def print_version():
-    import pkg_resources
-    version = pkg_resources.require('ks-email-parser')[0].version
-    print(version)
+    print(version('ks-email-parser'))
     return True
 
 
@@ -178,25 +177,20 @@ def init_log(verbose):
     logger.addHandler(handler)
 
 
-def init_loop():
-    loop = asyncio.get_event_loop()
-    loop.set_debug(False)
-    return loop
-
-
 def main():
     root_path = os.getcwd()
     args = read_args()
-    init_log(args.verbose)
-    if args.images:
-        config.base_img_path = args.images
     if args.version:
         result = print_version()
-    elif args.command:
-        result = execute_command(args)
     else:
-        result = parse_emails(root_path)
-    logger.info('\nAll done', extra={'flush_errors': True})
+        init_log(args.verbose)
+        if args.images:
+            config.base_img_path = args.images
+        if args.command:
+            result = execute_command(args)
+        else:
+            result = parse_emails(root_path)
+        logger.info('\nAll done', extra={'flush_errors': True})
     sys.exit(0) if result else sys.exit(1)
 
 

@@ -1,9 +1,6 @@
-# Some simple testing tasks (sorry, UNIX only).
-
-PYTHON=venv/bin/python3
+PYTHON=venv/bin/python
 PIP=venv/bin/pip
-EI=venv/bin/easy_install
-NOSE=venv/bin/nosetests
+NOSE=venv/bin/pynose
 FLAKE=venv/bin/flake8
 EMAILS_TEMPLATES_URI=git@github.com:KeepSafe/emails.git
 EMAILS_PATH=emails
@@ -13,17 +10,15 @@ PYPICLOUD_HOST=pypicloud.getkeepsafe.local
 TWINE=./venv/bin/twine
 
 
-update:
-	$(PIP) install -U pip
-	$(PIP) install -U .
-
 env:
-	test -d venv || python3 -m venv venv
+	test -d venv || python3.11 -m venv venv
+	$(PIP) install --upgrade pip
+	$(PIP) install -e .
 
-dev: env update
-	$(PIP) install .[tests,devtools]
+dev: env
+	$(PIP) install -e ".[tests,devtools]"
 
-install: env update
+install: env
 
 publish:
 	rm -rf dist
@@ -38,7 +33,9 @@ rungui:
 flake:
 	$(FLAKE) email_parser tests
 
-test: flake
+lint: flake
+
+test: lint
 	$(NOSE) -s $(FLAGS)
 
 vtest:
@@ -63,7 +60,9 @@ clean:
 	rm -f .coverage
 	rm -rf coverage
 	rm -rf build
+	rm -rf dist
+	rm -rf *.egg-info
 	rm -rf venv
 
 
-.PHONY: all build env linux run pep test vtest testloop cov clean
+.PHONY: env dev install publish rungui flake lint test vtest testloop cov cover coverage clean
