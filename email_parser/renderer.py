@@ -27,7 +27,7 @@ def _md_to_html(text, base_url=None):
 
 def _split_subject(placeholders):
     return (placeholders.get(const.SUBJECT_PLACEHOLDER),
-            dict((k, v) for k, v in placeholders.items() if k != const.SUBJECT_PLACEHOLDER))
+            {k: v for k, v in placeholders.items() if k != const.SUBJECT_PLACEHOLDER})
 
 
 def _transform_extended_tags(content):
@@ -35,7 +35,7 @@ def _transform_extended_tags(content):
     return re.sub(regex, lambda match: '{{%s}}' % match.group(2), content)
 
 
-class HtmlRenderer(object):
+class HtmlRenderer:
     """
     Renders email' body as html.
     """
@@ -118,7 +118,7 @@ class HtmlRenderer(object):
         return html
 
 
-class TextRenderer(object):
+class TextRenderer:
     """
     Renders email's body as text.
     """
@@ -138,7 +138,7 @@ class TextRenderer(object):
             href = anchor.get('href') or text
             # href = self.shortener.shorten(href)
             if href != text:
-                anchor.replace_with('{} ({})'.format(text, href))
+                anchor.replace_with(f'{text} ({href})')
             elif href:
                 anchor.replace_with(href)
 
@@ -167,7 +167,7 @@ class TextRenderer(object):
         return const.TEXT_EMAIL_PLACEHOLDER_SEPARATOR.join(v for v in filter(bool, parts))
 
 
-class SubjectRenderer(object):
+class SubjectRenderer:
     """
     Renders email's subject as text.
     """
@@ -190,7 +190,7 @@ def render(email_locale, template, placeholders, variant=None, highlight=None):
     try:
         html = html_renderer.render(placeholders, variant, highlight)
     except MissingTemplatePlaceholderError as e:
-        message = 'failed to generate html content for locale: {} with message: {}'.format(email_locale, e)
+        message = f'failed to generate html content for locale: {email_locale} with message: {e}'
         raise RenderingError(message) from e
 
     return subject, text, html

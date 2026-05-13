@@ -32,8 +32,7 @@ class TestCliSmoke(TestCase):
             [sys.executable, '-m', 'email_parser.cmd'],
             cwd=self.root_path,
             check=False,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            capture_output=True,
             text=True,
         )
 
@@ -50,3 +49,18 @@ class TestCliSmoke(TestCase):
             read_fixture('email.html'),
             fs.read_file(self.root_path, config.paths.destination, 'en', 'email.html'),
         )
+
+    def test_cli_render_fails_when_no_emails_are_found(self):
+        empty_root = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, empty_root)
+
+        result = subprocess.run(
+            [sys.executable, '-m', 'email_parser.cmd'],
+            cwd=empty_root,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+
+        self.assertEqual(1, result.returncode)
+        self.assertFalse(os.path.exists(os.path.join(empty_root, config.paths.destination)))

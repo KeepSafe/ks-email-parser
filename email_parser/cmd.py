@@ -143,8 +143,7 @@ async def _parse_emails(root_path):
             emails_batch = list(islice(emails, const.DEFAULT_WORKER_POOL))
         results = await asyncio.gather(*tasks)
 
-    result = reduce(lambda acc, result: True if acc and result else False, results, True)
-    return result
+    return bool(results) and all(results)
 
 
 def parse_emails(root_path):

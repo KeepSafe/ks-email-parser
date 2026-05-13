@@ -5,9 +5,14 @@ FLAKE=venv/bin/flake8
 EMAILS_TEMPLATES_URI=git@github.com:KeepSafe/emails.git
 EMAILS_PATH=emails
 GUI_BIN=ks-email-parser
-FLAGS=--with-coverage --cover-inclusive --cover-erase --cover-package=email_parser --cover-min-percentage=70
+PYNOSE_SHARED_FLAGS=-s --with-coverage --cover-inclusive --cover-erase --cover-package=email_parser --cover-min-percentage=70 tests
+PYNOSE_FLAGS=$(PYNOSE_SHARED_FLAGS)
 PYPICLOUD_HOST=pypicloud.getkeepsafe.local
 TWINE=./venv/bin/twine
+
+ifdef CI
+PYNOSE_FLAGS += --cover-xml --cover-xml-file=build/coverage/coverage.xml --with-xunit --xunit-file=build/test/results.xml
+endif
 
 
 env:
@@ -33,20 +38,34 @@ rungui:
 flake:
 	$(FLAKE) email_parser tests
 
-lint: flake
+build-dir:
+	mkdir -p build/test build/coverage
 
-test: lint
-	$(NOSE) -s $(FLAGS)
+check-msgpack:
+	! rg -n "^(import|from) msgpack" email_parser tests
+
+lint: build-dir flake check-msgpack
+
+test-only: build-dir
+	$(NOSE) $(PYNOSE_FLAGS)
+
+test: lint test-only
 
 vtest:
-	$(NOSE) -s -v $(FLAGS)
+	$(NOSE) -v $(PYNOSE_FLAGS)
+
+vtests: vtest
 
 testloop:
-	while sleep 1; do $(NOSE) -s $(FLAGS); done
+	while sleep 1; do $(NOSE) $(PYNOSE_FLAGS); done
 
 cov cover coverage:
-	$(NOSE) -s --with-cover --cover-html --cover-html-dir ./coverage $(FLAGS)
+	$(NOSE) --with-cover --cover-html --cover-html-dir ./coverage $(PYNOSE_FLAGS)
 	echo "open file://`pwd`/coverage/index.html"
+
+ci-env: clean env
+
+ci-dev-install: dev
 
 clean:
 	rm -rf `find . -name __pycache__`
@@ -65,4 +84,4 @@ clean:
 	rm -rf venv
 
 
-.PHONY: env dev install publish rungui flake lint test vtest testloop cov cover coverage clean
+.PHONY: env dev install publish rungui flake build-dir check-msgpack lint test-only test vtest vtests testloop cov cover coverage ci-env ci-dev-install clean
