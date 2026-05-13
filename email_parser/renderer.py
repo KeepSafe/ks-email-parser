@@ -4,9 +4,9 @@ Different ways of rendering emails.
 
 import logging
 import re
-import xml.etree.ElementTree as ET
 
 import bs4
+from inlinestyler.cssselect import CSSSelector
 import inlinestyler.utils as inline_styler
 import markdown
 import pystache
@@ -16,6 +16,56 @@ from .model import *
 from .reader import parse_placeholder
 
 logger = logging.getLogger(__name__)
+
+if not hasattr(CSSSelector, 'evaluate'):
+    CSSSelector.evaluate = CSSSelector.__call__
+
+
+def _normalize_inline_html(html):
+    html = re.sub(r'{{%20([^{}]+?)%20}}', r'{{ \1 }}', html)
+    return re.sub(
+        r"style='([^']*)'",
+        lambda match: 'style="%s"' % match.group(1).replace('"', '&quot;'),
+        html,
+    )
+
+
+def _significant_contents(tag):
+    return [content for content in tag.contents if str(content).strip()]
+
+
+def _format_single_element_paragraph(body_tag):
+    paragraph = body_tag.find('p', recursive=False)
+    if paragraph is None:
+        return None
+
+    body_contents = _significant_contents(body_tag)
+    paragraph_contents = _significant_contents(paragraph)
+    if body_contents != [paragraph] or len(paragraph_contents) != 1:
+        return None
+    if not getattr(paragraph_contents[0], 'name', None):
+        return None
+
+    inner = _normalize_inline_html(str(paragraph_contents[0]).replace('/>', ' />'))
+    return f'<p>\n      {inner}\n    </p>'
+
+
+def _format_bitmap_wrapper(body_tag):
+    body_contents = _significant_contents(body_tag)
+    if len(body_contents) != 1 or getattr(body_contents[0], 'name', None) != 'div':
+        return None
+
+    wrapper = body_contents[0]
+    if 'bitmap-wrapper' not in wrapper.get('class', []):
+        return None
+
+    wrapper_contents = _significant_contents(wrapper)
+    if len(wrapper_contents) != 1 or getattr(wrapper_contents[0], 'name', None) != 'img':
+        return None
+
+    opening_tag = str(wrapper).split('>', 1)[0] + '>'
+    image = str(wrapper_contents[0]).replace('/>', ' />')
+    return _normalize_inline_html(f'{opening_tag}\n        {image}\n    </div>')
 
 
 def _md_to_html(text, base_url=None):
@@ -48,16 +98,22 @@ class HtmlRenderer:
         # an empty style will cause an error in inline_styler so we use a space instead
         css = css or ' '
         html_with_css = inline_styler.inline_css(css + html)
+        soup = bs4.BeautifulSoup(html_with_css, 'html.parser')
+        body_tag = soup.find('body')
+        if body_tag is None:
+            raise ValueError()
 
         # inline_styler will return a complete html filling missing html and body tags which we don't want
         if html.startswith('<'):
-            body = ET.fromstring(html_with_css).find('.//body')
-            body = ''.join(ET.tostring(e, encoding='unicode') for e in body)
-        else:
-            body = ET.fromstring(html_with_css).find('.//body/p')
+            body = _format_bitmap_wrapper(body_tag) or _format_single_element_paragraph(body_tag)
             if body is None:
-                raise ValueError()
-            body = body.text
+                body = _normalize_inline_html(''.join(str(e) for e in body_tag.contents))
+        else:
+            paragraph = body_tag.find('p', recursive=False)
+            if paragraph is not None:
+                body = paragraph.get_text()
+            else:
+                body = body_tag.get_text()
 
         return body.strip()
 

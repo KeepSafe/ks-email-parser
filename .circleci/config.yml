@@ -1,0 +1,87 @@
+version: 2
+job_options:
+  - &default_job
+      docker:
+        - image: cimg/python:3.11.13
+step_options:
+  - &pip_cache
+      key: v3-pip-{{ arch }}-{{ checksum "pyproject.toml" }}
+      keys:
+        - v3-pip-{{ arch }}-{{ checksum "pyproject.toml" }}
+        - v3-pip-{{ arch }}
+        - v3-pip-
+      paths:
+        - ~/.local
+        - ~/.cache
+  - &venv_cache
+      key: v3-venv-{{ arch }}-{{ checksum "pyproject.toml" }}
+      keys:
+        - v3-venv-{{ arch }}-{{ checksum "pyproject.toml" }}
+        - v3-venv-{{ arch }}
+        - v3-venv-
+      paths:
+        - /home/circleci/project/venv
+steps:
+  - &restore_pip_cache
+      restore_cache:
+        << : *pip_cache
+  - &save_pip_cache
+      save_cache:
+        << : *pip_cache
+  - &restore_venv_cache
+      restore_cache:
+        << : *venv_cache
+  - &save_venv_cache
+      save_cache:
+        << : *venv_cache
+jobs:
+  prepare_cache:
+    << : *default_job
+    steps:
+      - checkout
+      - *restore_pip_cache
+      - *restore_venv_cache
+      - run:
+          name: Install dependencies
+          command: make ci-dev-install
+      - *save_pip_cache
+      - *save_venv_cache
+  test:
+    << : *default_job
+    steps:
+      - checkout
+      - *restore_pip_cache
+      - *restore_venv_cache
+      - run:
+          name: Run the tests
+          command: make test-only
+      - store_test_results:
+          path: build/test
+      - store_artifacts:
+          path: build/coverage/coverage.xml
+          destination: coverage
+      - run:
+          name: Upload coverage to Codecov
+          command: bash <(curl -s https://codecov.io/bash) -t ${CODECOV_TOKEN} -f build/coverage/coverage.xml || echo "Codecov did not collect coverage reports"
+  lint:
+    << : *default_job
+    steps:
+      - checkout
+      - *restore_pip_cache
+      - *restore_venv_cache
+      - run:
+          name: Run the linter
+          command: make lint
+      - store_test_results:
+          path: build/test
+workflows:
+  version: 2
+  test:
+    jobs:
+      - prepare_cache
+      - lint:
+          requires:
+            - prepare_cache
+      - test:
+          requires:
+            - prepare_cache

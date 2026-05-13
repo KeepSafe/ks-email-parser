@@ -5,7 +5,6 @@ Handles command line and calls the email parser with corrent options.
 import asyncio
 import argparse
 import concurrent.futures
-from functools import reduce
 from importlib.metadata import version
 from itertools import islice
 import logging
@@ -124,8 +123,7 @@ def _parse_emails_batch(emails, parser):
         except Exception as ex:
             logger.exception('Cannot _parse_and_save email %s', email, exc_info=ex)
 
-    result = reduce(lambda acc, res: acc and res, results)
-    return result
+    return bool(results) and all(results)
 
 
 async def _parse_emails(root_path):

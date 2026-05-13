@@ -66,7 +66,7 @@ Fixture/CLI compatibility is covered by the unit suite:
 | --- | --- | --- |
 | Task 1 packaging/Python 3.11/dependency audit/pyupgrade | Applicable | Replace setup metadata with `pyproject.toml`, pin Python 3.11, bump version, pin compatible runtime deps, run the pyupgrade ladder. |
 | Task 2a formatting/flake8 alignment | Applicable | Keep 120-character Flake8 policy in `pyproject.toml` and run `make lint`. |
-| Task 2b hooks/CI/Makefile/README | Partial | Update Makefile, README, and Travis for a library/CLI. Lightweight standard test aliases are present. Service-style hooks/CircleCI are not required for this repo. |
+| Task 2b hooks/CI/Makefile/README | Partial | Update Makefile/README/Travis and add CircleCI for a library/CLI. Lightweight standard test aliases are present. Service-style hooks are not required for this repo. |
 | Task 2c mypy stabilization | Not applicable | The repo has no existing mypy contract; adding a new type-checking surface is out of scope for this no-stack migration. |
 | Task 3 msgpack/redis/asynctest/nosetests | Partial | No msgpack, redis, or asynctest usage. Replace `nosetests` with `pynose`. |
 | Task 4 asyncio/aiohttp modernization | Partial | No aiohttp. Modernize the CLI's asyncio execution path for Python 3.11. |
@@ -77,22 +77,43 @@ Fixture/CLI compatibility is covered by the unit suite:
 ## Dependency Notes
 
 - Baseline Python 3.11 install failed because `pystache==0.5.4` uses the removed `use_2to3` build path.
-- Runtime dependencies are exact pins in `pyproject.toml`.
+- Runtime dependencies are exact pins in `pyproject.toml` and mirrored in `requirements.txt`.
 - `pystache` is upgraded to a Python 3.11-installable release.
-- `lxml` is upgraded within the `<5` family to preserve downstream expectations while using Python 3.11 wheels.
-- `parse` remains pinned near the downstream email-service/content-validator compatibility range.
+- `Markdown` is upgraded to `3.10.2`; repo extensions now use the Markdown 3 inline/block processor registration APIs.
+- `inlinestyler` is upgraded to `0.2.5` and `lxml` to `6.1.0`; the renderer adds a narrow
+  `CSSSelector.evaluate` compatibility alias for inlinestyler's legacy selector calls and normalizes output so golden
+  fixtures remain stable.
+- `parse` is upgraded to `1.22.0`.
+- Dev/test pins are latest observed on 2026-05-13 except where already current: `build==1.5.0`,
+  `coverage==7.14.0`, `flake8==7.3.0`, `flake8-pyproject==1.2.4`, `pynose==1.5.5`,
+  `pyupgrade==3.21.2`, and `twine==6.2.0`.
+- `msgpack` is not a direct dependency, source/test import, or installed transitive dependency. `libks` currently pins
+  `msgpack==1.1.2` and centralizes compatibility through `msgpack_*_compat*` helpers, but this repo has no msgpack
+  call sites that need those conventions. `make lint` includes `check-msgpack` to catch accidental source/test imports.
 
-## Not Upgraded To Latest (3.11 Compatible)
+## Latest Dependency Audit
 
-Checked with `venv/bin/pip index versions` on 2026-05-13.
+Checked with `venv/bin/pip index versions` and local install/test proof on 2026-05-13.
 
 | Dependency | Selected pin | Latest observed | Reason retained |
 | --- | --- | --- | --- |
-| `Markdown` | `2.6.11` | `3.10.2` | Existing parser extensions use the legacy Markdown 2.x extension API; fixture output is preserved with the current pin. |
-| `cssutils` | `2.11.1` | `2.15.0` | Selected compatible 2.x pin works with `inlinestyler` and golden fixtures; no migration need for a later minor. |
-| `inlinestyler` | `0.2.1` | `0.2.5` | Existing pin installs under Python 3.11 and preserves inline CSS fixture output. |
-| `lxml` | `4.9.4` | `6.1.0` | Last 4.x line preserves downstream `<5` expectations while providing Python 3.11 wheels. |
-| `parse` | `1.19.0` | `1.22.0` | Kept close to downstream email-service/content-validator compatibility while remaining Python 3.11-compatible. |
+| `beautifulsoup4` | `4.14.3` | `4.14.3` | Latest observed; fixture proof passes. |
+| `Markdown` | `3.10.2` | `3.10.2` | Latest observed; compatibility fixes preserve fixture output. |
+| `cssutils` | `2.11.1` | `2.15.0` | Latest safe pin. `2.13.0`, `2.14.0`, and `2.15.0` import-fail locally with `ModuleNotFoundError: No module named 'encutils'` despite installing `encutils==1.0.0`. |
+| `inlinestyler` | `0.2.5` | `0.2.5` | Latest observed; compatibility alias preserves renderer behavior with latest `lxml`. |
+| `lxml` | `6.1.0` | `6.1.0` | Latest observed; golden fixture proof passes. |
+| `parse` | `1.22.0` | `1.22.0` | Latest observed; fixture proof passes. |
+| `pystache` | `0.6.8` | `0.6.8` | Latest observed; fixes Python 3.11 `use_2to3` install blocker. |
+
+## CI Notes
+
+- `.circleci/config.yml` follows the `python311-service-upgrade-stack` sample shape with `cimg/python:3.11.13`,
+  `job_options`/`step_options`, `prepare_cache`, `lint`, and `test` jobs.
+- CircleCI runs `make ci-dev-install`, `make lint`, and `make test-only`; test results and coverage XML artifacts are
+  stored from `build/test` and `build/coverage/coverage.xml`.
+- The config keeps the sample terminal cache fallback keys (`v3-pip-` and `v3-venv-`) and the non-fatal Codecov upload
+  step.
+- The existing Travis file remains for historical compatibility until the repo owner removes it.
 
 ## Egress Policy
 
@@ -114,7 +135,7 @@ Captured on branch `python311-upgrade` in the migration worktree.
 | `venv/bin/pip install -e '.[tests,devtools]'` on the pre-migration setup metadata | Fail | Baseline failed because `pystache==0.5.4` uses removed `use_2to3` build metadata. |
 | `make clean` | Pass | Removed local build/test artifacts before clean install. |
 | `make dev` | Pass | Installed runtime and dev/test extras from `pyproject.toml`. |
-| `make lint` | Pass | `flake8 7.3.0` with `flake8-pyproject 1.2.3`. |
+| `make lint` | Pass | `flake8 7.3.0` with `flake8-pyproject 1.2.4`. |
 | `make test` | Pass | `86` tests, includes golden fixture comparisons, CLI smoke, and empty-render failure regression. |
 | `venv/bin/python -m compileall email_parser tests` | Pass | Source and tests compile under Python 3.11. |
 | `venv/bin/python -c "import email_parser; print(email_parser.Parser)"` | Pass | Import smoke returned `<class 'email_parser.Parser'>`. |
@@ -122,6 +143,9 @@ Captured on branch `python311-upgrade` in the migration worktree.
 | `venv/bin/pip check` | Pass | No broken requirements found. |
 | `venv/bin/python -m build` | Pass | Built `ks_email_parser-1.0.0.tar.gz` and `ks_email_parser-1.0.0-py3-none-any.whl`. |
 | `venv/bin/pyupgrade --keep-percent-format --py36-plus ... --py311-plus` | Pass | Ladder completed across `email_parser/*.py` and `tests/*.py`. |
+| `venv/bin/pip list --format=freeze` | Pass | No installed `msgpack` distribution; latest selected dependency set installed. |
+| `venv/bin/pip install cssutils==2.13.0`, `2.14.0`, `2.15.0` import checks | Fail | Later cssutils releases install but fail `import cssutils` because no importable `encutils` module is present. |
+| `ruby -e "require 'yaml'; YAML.load_file('.circleci/config.yml'); puts 'ok'"` | Pass | CircleCI config parses as YAML locally. |
 
 `make test` still prints legacy fixture warnings for intentionally malformed XML fallback cases; those warnings are covered by
 existing tests and do not fail the suite.
