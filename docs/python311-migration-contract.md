@@ -107,8 +107,8 @@ Checked with `venv/bin/pip index versions` and local install/test proof on 2026-
 
 ## CI Notes
 
-- `.circleci/config.yml` follows the `python311-service-upgrade-stack` sample shape with `cimg/python:3.11.13`,
-  `job_options`/`step_options`, `prepare_cache`, `lint`, and `test` jobs.
+- `.circleci/config.yml` follows the `python311-service-upgrade-stack` sample intent with valid CircleCI 2.1
+  `executors`/`commands`, `cimg/python:3.11.13`, `prepare_cache`, `lint`, and `test` jobs.
 - CircleCI runs `make ci-dev-install`, `make lint`, and `make test-only`; test results and coverage XML artifacts are
   stored from `build/test` and `build/coverage/coverage.xml`.
 - The config keeps the sample terminal cache fallback keys (`v3-pip-` and `v3-venv-`) and the non-fatal Codecov upload
@@ -146,6 +146,7 @@ Captured on branch `python311-upgrade` in the migration worktree.
 | `venv/bin/pip list --format=freeze` | Pass | No installed `msgpack` distribution; latest selected dependency set installed. |
 | `venv/bin/pip install cssutils==2.13.0`, `2.14.0`, `2.15.0` import checks | Fail | Later cssutils releases install but fail `import cssutils` because no importable `encutils` module is present. |
 | `ruby -e "require 'yaml'; YAML.load_file('.circleci/config.yml'); puts 'ok'"` | Pass | CircleCI config parses as YAML locally. |
+| `circleci config validate .circleci/config.yml` | Pass | CircleCI CLI reported the config file is valid after moving sample-style reuse into valid `executors` and `commands` sections. |
 
 `make test` still prints legacy fixture warnings for intentionally malformed XML fallback cases; those warnings are covered by
 existing tests and do not fail the suite.
