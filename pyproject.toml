@@ -31,7 +31,6 @@ dependencies = [
 [project.optional-dependencies]
 devtools = [
     "build==1.5.0",
-    "pyupgrade==3.21.2",
     "twine==6.2.0",
 ]
 tests = [

@@ -46,13 +46,10 @@ make test
 venv/bin/python -m compileall email_parser tests
 venv/bin/python -c "import email_parser; print(email_parser.Parser)"
 venv/bin/ks-email-parser --version
-venv/bin/pyupgrade --keep-percent-format --py36-plus email_parser/*.py tests/*.py
-venv/bin/pyupgrade --keep-percent-format --py37-plus email_parser/*.py tests/*.py
-venv/bin/pyupgrade --keep-percent-format --py38-plus email_parser/*.py tests/*.py
-venv/bin/pyupgrade --keep-percent-format --py39-plus email_parser/*.py tests/*.py
-venv/bin/pyupgrade --keep-percent-format --py310-plus email_parser/*.py tests/*.py
-venv/bin/pyupgrade --keep-percent-format --py311-plus email_parser/*.py tests/*.py
 ```
+
+The one-time pyupgrade ladder from `--py36-plus` through `--py311-plus` was completed during the migration. Pyupgrade
+is not retained as an installable project dependency after that proof completed.
 
 Fixture/CLI compatibility is covered by the unit suite:
 
@@ -85,8 +82,9 @@ Fixture/CLI compatibility is covered by the unit suite:
   fixtures remain stable.
 - `parse` is upgraded to `1.22.1`.
 - Dev/test pins are latest observed on 2026-07-21 except where already current: `build==1.5.0`,
-  `coverage==7.15.2`, `flake8==7.3.0`, `flake8-pyproject==1.2.4`, `pynose==1.5.5`,
-  `pyupgrade==3.21.2`, and `twine==6.2.0`.
+  `coverage==7.15.2`, `flake8==7.3.0`, `flake8-pyproject==1.2.4`, `pynose==1.5.5`, and `twine==6.2.0`.
+- `pyupgrade==3.21.2` was used to complete the required migration ladder, then removed from project extras because it
+  is not part of ongoing build, lint, test, or publish workflows.
 - Beautiful Soup 4.15.0 retains the APIs deprecated in 4.13.0 for this release and fixes an `html.parser` crash on
   Python 3.11.13. This repo uses the current `BeautifulSoup` constructor and `find_all` APIs, and golden output is stable.
 - lxml 6.1.1 contains security and link-attribute fixes; the XML fallback and HTML rendering fixtures remain stable.
