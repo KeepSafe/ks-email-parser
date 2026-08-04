@@ -22,7 +22,7 @@ dependencies = [
     "beautifulsoup4==4.15.0",
     "cssutils==2.11.1",
     "inlinestyler==0.2.5",
-    "lxml==6.1.1",
+    "lxml==6.0.2",
     "Markdown==3.10.2",
     "parse==1.22.1",
     "pystache==0.6.8",

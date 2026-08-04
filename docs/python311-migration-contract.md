@@ -77,7 +77,7 @@ Fixture/CLI compatibility is covered by the unit suite:
 - Runtime dependencies are exact pins in `pyproject.toml` and mirrored in `requirements.txt`.
 - `pystache` is upgraded to a Python 3.11-installable release.
 - `Markdown` is upgraded to `3.10.2`; repo extensions now use the Markdown 3 inline/block processor registration APIs.
-- `inlinestyler` is upgraded to `0.2.5` and `lxml` to `6.1.1`; the renderer adds a narrow
+- `inlinestyler` is upgraded to `0.2.5` and `lxml` to `6.0.2`; the renderer adds a narrow
   `CSSSelector.evaluate` compatibility alias for inlinestyler's legacy selector calls and normalizes output so golden
   fixtures remain stable.
 - `parse` is upgraded to `1.22.1`.
@@ -87,7 +87,8 @@ Fixture/CLI compatibility is covered by the unit suite:
   is not part of ongoing build, lint, test, or publish workflows.
 - Beautiful Soup 4.15.0 retains the APIs deprecated in 4.13.0 for this release and fixes an `html.parser` crash on
   Python 3.11.13. This repo uses the current `BeautifulSoup` constructor and `find_all` APIs, and golden output is stable.
-- lxml 6.1.1 contains security and link-attribute fixes; the XML fallback and HTML rendering fixtures remain stable.
+- lxml 6.0.2 is Python 3.11-compatible and matches `libks==1.0.5`; the XML fallback and HTML rendering fixtures remain
+  stable.
 - parse 1.22.1 expands zero-precision float parsing. Existing parser behavior and fixtures remain stable.
 - coverage 7.15.0 through 7.15.2 add reporting fixes and `--keep-combined`; the existing pynose coverage invocation,
   minimum threshold, and XML output remain compatible.
@@ -105,7 +106,7 @@ Checked with `venv/bin/pip index versions` and local install/test proof on 2026-
 | `Markdown` | `3.10.2` | `3.10.2` | Latest observed; compatibility fixes preserve fixture output. |
 | `cssutils` | `2.11.1` | `2.15.0` | Latest safe pin. `2.13.0`, `2.14.0`, and `2.15.0` import-fail locally with `ModuleNotFoundError: No module named 'encutils'` despite installing `encutils==1.0.0`. |
 | `inlinestyler` | `0.2.5` | `0.2.5` | Latest observed; compatibility alias preserves renderer behavior with latest `lxml`. |
-| `lxml` | `6.1.1` | `6.1.1` | Latest observed; golden fixture proof passes. |
+| `lxml` | `6.0.2` | `6.1.1` | Required to resolve with downstream `libks==1.0.5`; golden fixture proof passes. |
 | `parse` | `1.22.1` | `1.22.1` | Latest observed; fixture proof passes. |
 | `pystache` | `0.6.8` | `0.6.8` | Latest observed; fixes Python 3.11 `use_2to3` install blocker. |
 | `coverage` | `7.15.2` | `7.15.2` | Latest observed; unit coverage reporting remains compatible. |
@@ -150,7 +151,7 @@ Captured on branch `python311-upgrade` in the migration worktree.
 | `venv/bin/pip check` | Pass | No broken requirements found. |
 | `venv/bin/python -m build` | Pass | Built `ks_email_parser-1.0.0.tar.gz` and `ks_email_parser-1.0.0-py3-none-any.whl`. |
 | `venv/bin/twine check dist/*` | Pass | Both the sdist and wheel metadata passed validation. |
-| Updated dependency import/version smoke | Pass | Imported Beautiful Soup 4.15.0, lxml 6.1.1, parse 1.22.1, coverage 7.15.2, and `email_parser.Parser`. |
+| Updated dependency import/version smoke | Pass | Imported Beautiful Soup 4.15.0, lxml 6.0.2, parse 1.22.1, coverage 7.15.2, and `email_parser.Parser`. |
 | `venv/bin/pyupgrade --keep-percent-format --py36-plus ... --py311-plus` | Pass | Ladder completed across `email_parser/*.py` and `tests/*.py`. |
 | `venv/bin/pip list --format=freeze` | Pass | No installed `msgpack` distribution; latest selected dependency set installed. |
 | `venv/bin/pip install cssutils==2.13.0`, `2.14.0`, `2.15.0` import checks | Fail | Later cssutils releases install but fail `import cssutils` because no importable `encutils` module is present. |
@@ -159,3 +160,13 @@ Captured on branch `python311-upgrade` in the migration worktree.
 
 `make test` still prints legacy fixture warnings for intentionally malformed XML fallback cases; those warnings are covered by
 existing tests and do not fail the suite.
+
+## Email-service downstream correction
+
+Date: 2026-08-04.
+
+The email-service resolver proof found that `libks==1.0.5` requires
+`lxml==6.0.2`. The previous ks-email-parser pin, `lxml==6.1.1`, made the two
+packages impossible to resolve in one environment. The selected `lxml==6.0.2`
+pin remains Python 3.11-compatible and is validated by the reader, XML fallback,
+rendering, CLI, and golden fixture tests.
