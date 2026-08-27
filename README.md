@@ -171,13 +171,13 @@ The file is a mapping of name to required placeholders and the number of times t
 }
 ```
 
-You can generate the file in the provided source directory from existing emails with
+Run the command from the email repository root containing `src/` and `templates_html/`:
 
-```
-$ ks-email-parser config placeholders
+```bash
+ks-email-parser config placeholders
 ```
 
-It will go through your email and extract placeholders.
+It extracts placeholders from the emails and writes `src/placeholders_config.json`.
 
 ### Validation
 

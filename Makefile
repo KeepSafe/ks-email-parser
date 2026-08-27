@@ -42,7 +42,10 @@ build-dir:
 	mkdir -p build/test build/coverage
 
 check-msgpack:
-	! rg -n "^(import|from) msgpack" email_parser tests
+	@echo "Checking for direct msgpack imports..."
+	@command -v grep >/dev/null 2>&1 || (echo "ERROR: msgpack import scan failed because grep is unavailable." && exit 1)
+	@! grep -rn --include="*.py" -E "^(import msgpack|from msgpack)" email_parser tests \
+		|| (echo "ERROR: Direct msgpack import found. Use libks.cfg.*_compat functions instead." && exit 1)
 
 lint: build-dir flake check-msgpack
 

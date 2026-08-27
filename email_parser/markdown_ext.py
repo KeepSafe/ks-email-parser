@@ -2,9 +2,11 @@ from markdown.blockprocessors import BlockProcessor
 from markdown.extensions import Extension
 from markdown.inlinepatterns import ImageInlineProcessor, LinkInlineProcessor, LINK_RE, IMAGE_LINK_RE
 import re
-from urllib.parse import unquote
 
 from . import const
+
+
+MUSTACHE_ENCODED_SPACES_RE = re.compile(r'{{%20([^{}]+?)%20}}', re.IGNORECASE)
 
 
 class InlineBlockProcessor(BlockProcessor):
@@ -54,7 +56,7 @@ class BaseUrlImageProcessor(ImageInlineProcessor):
         if el is None:
             return el, start, end
 
-        src = unquote(el.get('src', ''))
+        src = MUSTACHE_ENCODED_SPACES_RE.sub(r'{{ \1 }}', el.get('src', ''))
         if self._is_url(src):
             image = src
         elif src.strip().startswith('{{'):

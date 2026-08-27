@@ -42,10 +42,18 @@ Run from the worktree root:
 make clean
 make dev
 make lint
-make test
-venv/bin/python -m compileall email_parser tests
+CI=1 make test
+venv/bin/pip check
+venv/bin/python -m compileall -q email_parser tests
 venv/bin/python -c "import email_parser; print(email_parser.Parser)"
+venv/bin/ks-email-parser --help
 venv/bin/ks-email-parser --version
+rm -rf dist && venv/bin/python -m build .
+venv/bin/twine check dist/*
+circleci config validate .circleci/config.yml
+circleci config validate --next .circleci/config.yml
+circleci config process .circleci/config.yml >/tmp/ks-email-parser-circleci-processed.yml
+ruby -e "require 'yaml'; YAML.load_file('.travis.yml'); puts 'ok'"
 ```
 
 The one-time pyupgrade ladder from `--py36-plus` through `--py311-plus` was completed during the migration. Pyupgrade
@@ -55,7 +63,12 @@ Fixture/CLI compatibility is covered by the unit suite:
 
 - Existing golden fixture tests compare rendered `email.subject`, `email.text`, and `email.html` outputs.
 - `tests/test_cli_smoke.py` runs the CLI in a temporary email tree and compares generated outputs against committed
-  fixtures.
+  fixtures. It also proves `config placeholders` writes `src/placeholders_config.json` relative to the email root and
+  that unsupported config commands fail without writing a config file.
+- Focused regression tests preserve percent-encoded URL components in absolute and relative Markdown image sources,
+  while continuing to normalize encoded Mustache placeholder spaces.
+- Renderer regressions prove that CSS-inlined and authored paragraph attributes survive single-element paragraph
+  formatting, with the attribute-free and no-tracking output shapes unchanged.
 
 ## `$python311-service-upgrade-stack` Task Mapping
 
@@ -63,9 +76,9 @@ Fixture/CLI compatibility is covered by the unit suite:
 | --- | --- | --- |
 | Task 1 packaging/Python 3.11/dependency audit/pyupgrade | Applicable | Replace setup metadata with `pyproject.toml`, pin Python 3.11, bump version, pin compatible runtime deps, run the pyupgrade ladder. |
 | Task 2a formatting/flake8 alignment | Applicable | Keep 120-character Flake8 policy in `pyproject.toml` and run `make lint`. |
-| Task 2b hooks/CI/Makefile/README | Partial | Update Makefile/README/Travis and add CircleCI for a library/CLI. Lightweight standard test aliases are present. Service-style hooks are not required for this repo. |
+| Task 2b hooks/CI/Makefile/README | Partial | Update Makefile/README/Travis and add CircleCI for a library/CLI. Travis uses its supported Jammy/Python 3.11.9 runtime while local and CircleCI use 3.11.13. Lightweight standard test aliases are present. Service-style hooks are not required for this repo. |
 | Task 2c mypy stabilization | Not applicable | The repo has no existing mypy contract; adding a new type-checking surface is out of scope for this no-stack migration. |
-| Task 3 msgpack/redis/asynctest/nosetests | Partial | No msgpack, redis, or asynctest usage. Replace `nosetests` with `pynose`. |
+| Task 3 msgpack/redis/asynctest/nosetests | Partial | No msgpack, redis, or asynctest usage. Replace `nosetests` with `pynose` and enforce the no-direct-msgpack-import policy with a fail-closed source scan. |
 | Task 4 asyncio/aiohttp modernization | Partial | No aiohttp. Modernize the CLI's asyncio execution path for Python 3.11. |
 | Task 4c async test harness modernization | Not applicable | No reusable async test harness exists. |
 | Task 5 Gunicorn/Docker local infra | Not applicable | This repo is not service-shaped and has no local backing services. |
@@ -75,6 +88,10 @@ Fixture/CLI compatibility is covered by the unit suite:
 
 - Baseline Python 3.11 install failed because `pystache==0.5.4` uses the removed `use_2to3` build path.
 - Runtime dependencies are exact pins in `pyproject.toml` and mirrored in `requirements.txt`.
+- Isolated builds require `setuptools>=82.0.1` and `wheel>=0.47.0`; the exact minimum backend pair is part of package
+  proof so the declared lower bounds are known to accept the project's SPDX metadata.
+- `MANIFEST.in` ships the Makefile, runtime requirements, test modules, and all fixture file types needed to run the
+  complete suite from an extracted sdist. Setuptools package discovery still keeps tests and fixtures out of the wheel.
 - `pystache` is upgraded to a Python 3.11-installable release.
 - `Markdown` is upgraded to `3.10.2`; repo extensions now use the Markdown 3 inline/block processor registration APIs.
 - `inlinestyler` is upgraded to `0.2.5` and `lxml` to `6.0.2`; the renderer adds a narrow
@@ -85,6 +102,9 @@ Fixture/CLI compatibility is covered by the unit suite:
   `coverage==7.15.2`, `flake8==7.3.0`, `flake8-pyproject==1.2.4`, `pynose==1.5.5`, and `twine==6.2.0`.
 - `pyupgrade==3.21.2` was used to complete the required migration ladder, then removed from project extras because it
   is not part of ongoing build, lint, test, or publish workflows.
+- The unused `email_parser.link_shortener` prototype was removed instead of adding an undeclared direct `requests`
+  dependency. It had no package, test, CLI, or downstream call sites and was never connected to `TextRenderer`.
+  `requests` remains an expected transitive dependency of `inlinestyler`; it is not imported directly by this project.
 - Beautiful Soup 4.15.0 retains the APIs deprecated in 4.13.0 for this release and fixes an `html.parser` crash on
   Python 3.11.13. This repo uses the current `BeautifulSoup` constructor and `find_all` APIs, and golden output is stable.
 - lxml 6.0.2 is Python 3.11-compatible and matches `libks==1.0.5`; the XML fallback and HTML rendering fixtures remain
@@ -94,7 +114,11 @@ Fixture/CLI compatibility is covered by the unit suite:
   minimum threshold, and XML output remain compatible.
 - `msgpack` is not a direct dependency, source/test import, or installed transitive dependency. `libks` currently pins
   `msgpack==1.1.2` and centralizes compatibility through `msgpack_*_compat*` helpers, but this repo has no msgpack
-  call sites that need those conventions. `make lint` includes `check-msgpack` to catch accidental source/test imports.
+  call sites that need those conventions. `make lint` includes the shared KeepSafe recursive-`grep` `check-msgpack`
+  convention plus an explicit scanner preflight, so missing scanners and accidental source/test imports both fail.
+- `sdiff` and Mistune are not dependencies or imports of this project. A runtime-only environment containing the built
+  wheel, local `sdiff==2.0.0` at `3bb941e9f1b209b17abe3b674d453ae829359665`, and Mistune `3.3.4` passes
+  `pip check`, imports, and byte-identical fixture rendering without adding either package to this project's metadata.
 
 ## Latest Dependency Audit
 
@@ -119,7 +143,8 @@ Checked with `venv/bin/pip index versions` and local install/test proof on 2026-
   stored from `build/test` and `build/coverage/coverage.xml`.
 - The config keeps the sample terminal cache fallback keys (`v3-pip-` and `v3-venv-`) and the non-fatal Codecov upload
   step.
-- The existing Travis file remains for historical compatibility until the repo owner removes it.
+- The existing Travis workflow remains for historical compatibility and explicitly selects Ubuntu Jammy with Python
+  3.11.9, the patch release supported in that environment. `.python-version` and CircleCI remain on Python 3.11.13.
 
 ## Egress Policy
 
@@ -144,19 +169,32 @@ Captured on branch `python311-upgrade` in the migration worktree.
 | `make clean` | Pass | Removed local build/test artifacts before clean install. |
 | `make dev` | Pass | Installed runtime and dev/test extras from `pyproject.toml`. |
 | `make lint` | Pass | `flake8 7.3.0` with `flake8-pyproject 1.2.4`. |
-| `make test` | Pass | `86` tests, includes golden fixture comparisons, CLI smoke, and empty-render failure regression. |
+| `make check-msgpack` | Pass | No direct msgpack imports were found in `email_parser` or `tests`. |
+| Disposable direct-msgpack-import probe | Pass | `make check-msgpack` printed the matching file and exited nonzero. |
+| Disposable missing-`grep` probe | Pass | The target reported that the scanner was unavailable and exited nonzero instead of silently passing. |
+| `CI=1 make test` | Pass | `99` tests, `80%` coverage; includes golden fixtures, CLI/config smokes, empty-render failure, URL encoding, and paragraph-attribute regressions. |
 | `venv/bin/python -m compileall email_parser tests` | Pass | Source and tests compile under Python 3.11. |
 | `venv/bin/python -c "import email_parser; print(email_parser.Parser)"` | Pass | Import smoke returned `<class 'email_parser.Parser'>`. |
 | `venv/bin/ks-email-parser --version` | Pass | CLI metadata smoke returned `1.0.0`. |
+| `venv/bin/ks-email-parser config placeholders` in a minimal temporary tree | Pass | Wrote the expected `src/placeholders_config.json`; unsupported config input exited `1` and wrote nothing. |
+| Full fixture render compared with pre-change baseline | Pass | All `42` generated files are byte-for-byte identical. |
 | `venv/bin/pip check` | Pass | No broken requirements found. |
 | `venv/bin/python -m build` | Pass | Built `ks_email_parser-1.0.0.tar.gz` and `ks_email_parser-1.0.0-py3-none-any.whl`. |
 | `venv/bin/twine check dist/*` | Pass | Both the sdist and wheel metadata passed validation. |
+| Extracted-sdist clean install and `CI=1 make test` | Pass | The sdist includes `tests/fixtures`, `tests/src`, and `tests/templates_html`; all `99` tests passed at `80%` coverage and `pip check` passed. |
+| Exact-minimum `setuptools==82.0.1`, `wheel==0.47.0` no-isolation build | Pass | Built both artifacts and passed Twine metadata checks at the declared backend floor. |
+| Fresh wheel install plus focused renderer/Markdown tests | Pass | `38` tests passed from installed package code; `pip check`, import, CLI version, and config-generation smokes passed. |
+| Runtime-only wheel plus local `sdiff==2.0.0`/Mistune `3.3.4` co-install | Pass | `pip check` and imports passed; all `42` rendered files matched the baseline byte-for-byte. |
+| Wheel/sdist content and metadata inspection | Pass | The sdist has `90` entries including all fixture types; the `18`-file wheel contains only runtime package files/metadata and excludes tests, fixtures, `link_shortener`, and a direct `requests` requirement. |
 | Updated dependency import/version smoke | Pass | Imported Beautiful Soup 4.15.0, lxml 6.0.2, parse 1.22.1, coverage 7.15.2, and `email_parser.Parser`. |
 | `venv/bin/pyupgrade --keep-percent-format --py36-plus ... --py311-plus` | Pass | Ladder completed across `email_parser/*.py` and `tests/*.py`. |
 | `venv/bin/pip list --format=freeze` | Pass | No installed `msgpack` distribution; latest selected dependency set installed. |
 | `venv/bin/pip install cssutils==2.13.0`, `2.14.0`, `2.15.0` import checks | Fail | Later cssutils releases install but fail `import cssutils` because no importable `encutils` module is present. |
 | `ruby -e "require 'yaml'; YAML.load_file('.circleci/config.yml'); puts 'ok'"` | Pass | CircleCI config parses as YAML locally. |
+| `ruby -e "require 'yaml'; YAML.load_file('.travis.yml'); puts 'ok'"` | Pass | Travis config parses and selects Jammy/Python 3.11.9. |
 | `circleci config validate .circleci/config.yml` | Pass | CircleCI CLI reported the config file is valid after moving sample-style reuse into valid `executors` and `commands` sections. |
+| `circleci config validate --next .circleci/config.yml` | Pass | CircleCI CLI reported the config file is valid under the next schema. |
+| `circleci config process .circleci/config.yml` | Pass | Expanded configuration was written to `/tmp/ks-email-parser-circleci-processed.yml`. |
 
 `make test` still prints legacy fixture warnings for intentionally malformed XML fallback cases; those warnings are covered by
 existing tests and do not fail the suite.

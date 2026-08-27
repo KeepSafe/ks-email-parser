@@ -159,9 +159,9 @@ def generate_config(root_path):
     return True
 
 
-def execute_command(args):
+def execute_command(args, root_path):
     if args.command == 'config' and args.config_name == 'placeholders':
-        return generate_config(args)
+        return generate_config(root_path)
     return False
 
 
@@ -184,7 +184,7 @@ def main():
         if args.images:
             config.base_img_path = args.images
         if args.command:
-            result = execute_command(args)
+            result = execute_command(args, root_path)
         else:
             result = parse_emails(root_path)
         logger.info('\nAll done', extra={'flush_errors': True})

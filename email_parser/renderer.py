@@ -46,8 +46,9 @@ def _format_single_element_paragraph(body_tag):
     if not getattr(paragraph_contents[0], 'name', None):
         return None
 
+    opening_tag = str(paragraph).split('>', 1)[0] + '>'
     inner = _normalize_inline_html(str(paragraph_contents[0]).replace('/>', ' />'))
-    return f'<p>\n      {inner}\n    </p>'
+    return _normalize_inline_html(f'{opening_tag}\n      {inner}\n    </p>')
 
 
 def _format_bitmap_wrapper(body_tag):
@@ -180,7 +181,6 @@ class TextRenderer:
     """
 
     def __init__(self, template, email_locale):
-        # self.shortener = link_shortener.shortener(settings.shortener)
         self.template = template
         self.locale = utils.normalize_locale(email_locale)
 
