@@ -1,9 +1,26 @@
-from markdown.inlinepatterns import Pattern, ImagePattern, LinkPattern, LINK_RE, IMAGE_LINK_RE
 from markdown.blockprocessors import BlockProcessor
 from markdown.extensions import Extension
+from markdown.inlinepatterns import (
+    IMAGE_LINK_RE,
+    LINK_RE,
+    ImageInlineProcessor,
+    LinkInlineProcessor,
+    SimpleTagInlineProcessor,
+)
 import re
 
 from . import const
+
+
+MUSTACHE_ENCODED_SPACES_RE = re.compile(r'{{%20([^{}]+?)%20}}', re.IGNORECASE)
+BIDI_URL_PREFIX_RE = re.compile(r'^(?:(?:%E2%80%8[EF])|[\u200e\u200f])+', re.IGNORECASE)
+BIDI_URL_SUFFIX_RE = re.compile(r'(?:(?:%E2%80%8[EF])|[\u200e\u200f])+$', re.IGNORECASE)
+LEGACY_STRONG_RE = r'(\*{2})(.+?)\1'
+
+
+def _strip_bidi_url_wrappers(url):
+    url = BIDI_URL_PREFIX_RE.sub('', url)
+    return BIDI_URL_SUFFIX_RE.sub('', url)
 
 
 class InlineBlockProcessor(BlockProcessor):
@@ -23,7 +40,7 @@ class InlineBlockProcessor(BlockProcessor):
             parent.text = text
 
 
-class BaseUrlImagePattern(Pattern):
+class BaseUrlImageProcessor(ImageInlineProcessor):
     """
     Adds base url to images which have relative path.
     """
@@ -37,46 +54,52 @@ class BaseUrlImagePattern(Pattern):
         r'(?:/?|[/?]\S+)$',
         re.IGNORECASE)
 
-    def __init__(self, images_dir, *args):
-        super().__init__(*args)
+    def __init__(self, pattern, md, images_dir):
+        super().__init__(pattern, md)
         if images_dir:
             self.images_dir = images_dir.strip('/')
         else:
             self.images_dir = ''
-        self.image_pattern = ImagePattern(*args)
 
     def _is_url(self, text):
         url = text.strip().strip('/').split(' ')[0]
         return self.url_pattern.match(url)
 
-    def handleMatch(self, m):
-        if self._is_url(m.group(10)):
-            image = m.string
+    def handleMatch(self, m, data):
+        el, start, end = super().handleMatch(m, data)
+        if el is None:
+            return el, start, end
+
+        src = MUSTACHE_ENCODED_SPACES_RE.sub(r'{{ \1 }}', el.get('src', ''))
+        if self._is_url(src):
+            image = src
+        elif src.strip().startswith('{{'):
+            image = src
         else:
-            image = const.IMAGE_PATTERN.format(m.group(2), self.images_dir, m.group(10).strip('/'))
-        pattern = re.compile("^(.*?)%s(.*?)$" % self.image_pattern.pattern, re.DOTALL | re.UNICODE)
-        match = re.match(pattern, ' ' + image + ' ')
-        el = self.image_pattern.handleMatch(match)
+            image = f'{self.images_dir}/{src.strip("/")}' if self.images_dir else src.strip('/')
+        el.set('src', self.unescape(image))
         # each markdown image should have default style
         el.set('style', self.unescape('max-width: 100%;'))
-        return el
+        return el, start, end
 
 
-class NoTrackingLinkPattern(LinkPattern):
-    def __init__(self, *args):
-        super().__init__(*args)
+class NoTrackingLinkProcessor(LinkInlineProcessor):
+    def handleMatch(self, m, data):
+        el, start, end = super().handleMatch(m, data)
+        if el is None:
+            return el, start, end
 
-    def handleMatch(self, m):
-        el = super().handleMatch(m)
-        if el.get('href') and el.get('href').startswith('!'):
-            el.set('href', el.get('href')[1:])
+        href = _strip_bidi_url_wrappers(el.get('href', ''))
+        if href.startswith('!'):
+            href = href[1:]
             el.set('clicktracking', 'off')
-        return el
+        el.set('href', href)
+        return el, start, end
 
 
 class InlineTextExtension(Extension):
-    def extendMarkdown(self, md, md_globals):
-        md.parser.blockprocessors.add('inline_text', InlineBlockProcessor(md.parser), '<paragraph')
+    def extendMarkdown(self, md):
+        md.parser.blockprocessors.register(InlineBlockProcessor(md.parser), 'inline_text', 175)
 
 
 class BaseUrlExtension(Extension):
@@ -84,16 +107,26 @@ class BaseUrlExtension(Extension):
         super().__init__()
         self.images_dir = images_dir
 
-    def extendMarkdown(self, md, md_globals):
-        md.inlinePatterns.add('base_url_image', BaseUrlImagePattern(self.images_dir, IMAGE_LINK_RE, md), '<image_link')
+    def extendMarkdown(self, md):
+        md.inlinePatterns.register(BaseUrlImageProcessor(IMAGE_LINK_RE, md, self.images_dir), 'base_url_image', 175)
 
 
 class NoTrackingLinkExtension(Extension):
     def __init__(self):
         super().__init__()
 
-    def extendMarkdown(self, md, md_globals):
-        md.inlinePatterns.add('no_tracking_link', NoTrackingLinkPattern(LINK_RE, md), '<link')
+    def extendMarkdown(self, md):
+        md.inlinePatterns.register(NoTrackingLinkProcessor(LINK_RE, md), 'no_tracking_link', 175)
+
+
+class LegacyStrongExtension(Extension):
+    def extendMarkdown(self, md):
+        # Markdown 2 accepted whitespace and newlines immediately inside strong delimiters.
+        md.inlinePatterns.register(
+            SimpleTagInlineProcessor(LEGACY_STRONG_RE, 'strong'),
+            'legacy_strong',
+            71,
+        )
 
 
 def inline_text():
@@ -106,3 +139,7 @@ def base_url(base_url):
 
 def no_tracking():
     return NoTrackingLinkExtension()
+
+
+def legacy_strong():
+    return LegacyStrongExtension()

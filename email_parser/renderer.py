@@ -4,9 +4,9 @@ Different ways of rendering emails.
 
 import logging
 import re
-import xml.etree.ElementTree as ET
 
 import bs4
+from inlinestyler.cssselect import CSSSelector
 import inlinestyler.utils as inline_styler
 import markdown
 import pystache
@@ -17,9 +17,60 @@ from .reader import parse_placeholder
 
 logger = logging.getLogger(__name__)
 
+if not hasattr(CSSSelector, 'evaluate'):
+    CSSSelector.evaluate = CSSSelector.__call__
+
+
+def _normalize_inline_html(html):
+    html = re.sub(r'{{%20([^{}]+?)%20}}', r'{{ \1 }}', html)
+    return re.sub(
+        r"style='([^']*)'",
+        lambda match: 'style="%s"' % match.group(1).replace('"', '&quot;'),
+        html,
+    )
+
+
+def _significant_contents(tag):
+    return [content for content in tag.contents if str(content).strip()]
+
+
+def _format_single_element_paragraph(body_tag):
+    paragraph = body_tag.find('p', recursive=False)
+    if paragraph is None:
+        return None
+
+    body_contents = _significant_contents(body_tag)
+    paragraph_contents = _significant_contents(paragraph)
+    if body_contents != [paragraph] or len(paragraph_contents) != 1:
+        return None
+    if not getattr(paragraph_contents[0], 'name', None):
+        return None
+
+    opening_tag = str(paragraph).split('>', 1)[0] + '>'
+    inner = _normalize_inline_html(str(paragraph_contents[0]).replace('/>', ' />'))
+    return _normalize_inline_html(f'{opening_tag}\n      {inner}\n    </p>')
+
+
+def _format_bitmap_wrapper(body_tag):
+    body_contents = _significant_contents(body_tag)
+    if len(body_contents) != 1 or getattr(body_contents[0], 'name', None) != 'div':
+        return None
+
+    wrapper = body_contents[0]
+    if 'bitmap-wrapper' not in wrapper.get('class', []):
+        return None
+
+    wrapper_contents = _significant_contents(wrapper)
+    if len(wrapper_contents) != 1 or getattr(wrapper_contents[0], 'name', None) != 'img':
+        return None
+
+    opening_tag = str(wrapper).split('>', 1)[0] + '>'
+    image = str(wrapper_contents[0]).replace('/>', ' />')
+    return _normalize_inline_html(f'{opening_tag}\n        {image}\n    </div>')
+
 
 def _md_to_html(text, base_url=None):
-    extensions = [markdown_ext.inline_text(), markdown_ext.no_tracking()]
+    extensions = [markdown_ext.inline_text(), markdown_ext.no_tracking(), markdown_ext.legacy_strong()]
     if base_url:
         extensions.append(markdown_ext.base_url(base_url))
     return markdown.markdown(text, extensions=extensions)
@@ -27,7 +78,7 @@ def _md_to_html(text, base_url=None):
 
 def _split_subject(placeholders):
     return (placeholders.get(const.SUBJECT_PLACEHOLDER),
-            dict((k, v) for k, v in placeholders.items() if k != const.SUBJECT_PLACEHOLDER))
+            {k: v for k, v in placeholders.items() if k != const.SUBJECT_PLACEHOLDER})
 
 
 def _transform_extended_tags(content):
@@ -35,7 +86,7 @@ def _transform_extended_tags(content):
     return re.sub(regex, lambda match: '{{%s}}' % match.group(2), content)
 
 
-class HtmlRenderer(object):
+class HtmlRenderer:
     """
     Renders email' body as html.
     """
@@ -48,16 +99,22 @@ class HtmlRenderer(object):
         # an empty style will cause an error in inline_styler so we use a space instead
         css = css or ' '
         html_with_css = inline_styler.inline_css(css + html)
+        soup = bs4.BeautifulSoup(html_with_css, 'html.parser')
+        body_tag = soup.find('body')
+        if body_tag is None:
+            raise ValueError()
 
         # inline_styler will return a complete html filling missing html and body tags which we don't want
         if html.startswith('<'):
-            body = ET.fromstring(html_with_css).find('.//body')
-            body = ''.join(ET.tostring(e, encoding='unicode') for e in body)
-        else:
-            body = ET.fromstring(html_with_css).find('.//body/p')
+            body = _format_bitmap_wrapper(body_tag) or _format_single_element_paragraph(body_tag)
             if body is None:
-                raise ValueError()
-            body = body.text
+                body = _normalize_inline_html(''.join(str(e) for e in body_tag.contents))
+        else:
+            paragraph = body_tag.find('p', recursive=False)
+            if paragraph is not None:
+                body = paragraph.get_text()
+            else:
+                body = body_tag.get_text()
 
         return body.strip()
 
@@ -70,7 +127,7 @@ class HtmlRenderer(object):
                     break
                 except TypeError:
                     continue
-            return soup.prettify()
+            return soup.prettify().rstrip()
         else:
             return html
 
@@ -118,13 +175,12 @@ class HtmlRenderer(object):
         return html
 
 
-class TextRenderer(object):
+class TextRenderer:
     """
     Renders email's body as text.
     """
 
     def __init__(self, template, email_locale):
-        # self.shortener = link_shortener.shortener(settings.shortener)
         self.template = template
         self.locale = utils.normalize_locale(email_locale)
 
@@ -138,7 +194,7 @@ class TextRenderer(object):
             href = anchor.get('href') or text
             # href = self.shortener.shorten(href)
             if href != text:
-                anchor.replace_with('{} ({})'.format(text, href))
+                anchor.replace_with(f'{text} ({href})')
             elif href:
                 anchor.replace_with(href)
 
@@ -167,7 +223,7 @@ class TextRenderer(object):
         return const.TEXT_EMAIL_PLACEHOLDER_SEPARATOR.join(v for v in filter(bool, parts))
 
 
-class SubjectRenderer(object):
+class SubjectRenderer:
     """
     Renders email's subject as text.
     """
@@ -190,7 +246,7 @@ def render(email_locale, template, placeholders, variant=None, highlight=None):
     try:
         html = html_renderer.render(placeholders, variant, highlight)
     except MissingTemplatePlaceholderError as e:
-        message = 'failed to generate html content for locale: {} with message: {}'.format(email_locale, e)
+        message = f'failed to generate html content for locale: {email_locale} with message: {e}'
         raise RenderingError(message) from e
 
     return subject, text, html

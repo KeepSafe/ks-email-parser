@@ -1,0 +1,91 @@
+version: 2.1
+
+executors:
+  python311:
+    docker:
+      - image: cimg/python:3.11.13
+
+commands:
+  restore_pip_cache:
+    steps:
+      - restore_cache:
+          keys:
+            - v5-pip-{{ arch }}-{{ checksum "pyproject.toml" }}-{{ checksum "requirements/requirements.txt" }}
+            - v5-pip-{{ arch }}-{{ checksum "pyproject.toml" }}
+            - v5-pip-{{ arch }}
+            - v5-pip-
+
+  save_pip_cache:
+    steps:
+      - save_cache:
+          key: v5-pip-{{ arch }}-{{ checksum "pyproject.toml" }}-{{ checksum "requirements/requirements.txt" }}
+          paths:
+            - ~/.local
+            - ~/.cache
+
+  restore_venv_cache:
+    steps:
+      - restore_cache:
+          keys:
+            - v5-venv-{{ arch }}-{{ checksum "pyproject.toml" }}-{{ checksum "requirements/requirements.txt" }}
+
+  save_venv_cache:
+    steps:
+      - save_cache:
+          key: v5-venv-{{ arch }}-{{ checksum "pyproject.toml" }}-{{ checksum "requirements/requirements.txt" }}
+          paths:
+            - /home/circleci/project/venv
+
+jobs:
+  prepare_cache:
+    executor: python311
+    steps:
+      - checkout
+      - restore_pip_cache
+      - restore_venv_cache
+      - run:
+          name: Install dependencies
+          command: make ci-dev-install
+      - save_pip_cache
+      - save_venv_cache
+
+  test:
+    executor: python311
+    steps:
+      - checkout
+      - restore_pip_cache
+      - restore_venv_cache
+      - run:
+          name: Run the tests
+          command: make test-only
+      - store_test_results:
+          path: build/test
+      - store_artifacts:
+          path: build/coverage/coverage.xml
+          destination: coverage
+      - run:
+          name: Upload coverage to Codecov
+          command: bash <(curl -s https://codecov.io/bash) -t ${CODECOV_TOKEN} -f build/coverage/coverage.xml || echo "Codecov did not collect coverage reports"
+
+  lint:
+    executor: python311
+    steps:
+      - checkout
+      - restore_pip_cache
+      - restore_venv_cache
+      - run:
+          name: Run the linter
+          command: make lint
+      - store_test_results:
+          path: build/test
+
+workflows:
+  test:
+    jobs:
+      - prepare_cache
+      - lint:
+          requires:
+            - prepare_cache
+      - test:
+          requires:
+            - prepare_cache

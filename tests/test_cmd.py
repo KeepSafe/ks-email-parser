@@ -1,7 +1,9 @@
+from argparse import Namespace
 import os
 import tempfile
 import shutil
 from unittest import TestCase
+from unittest.mock import patch
 
 from email_parser import fs, cmd, config
 
@@ -54,3 +56,20 @@ class TestParser(TestCase):
         expected = fs.read_file(TestParser.root_path, config.paths.destination, 'en', 'fallback.html').strip()
         actual = fs.read_file(TestParser.root_path, config.paths.destination, 'fr', 'fallback.html').strip()
         self.assertEqual(expected, actual)
+
+
+class TestCommandDispatch(TestCase):
+    @patch('email_parser.cmd.generate_config')
+    def test_placeholders_config_uses_root_path(self, generate_config):
+        generate_config.return_value = True
+        args = Namespace(command='config', config_name='placeholders')
+
+        self.assertTrue(cmd.execute_command(args, '/tmp/email-root'))
+        generate_config.assert_called_once_with('/tmp/email-root')
+
+    @patch('email_parser.cmd.generate_config')
+    def test_unsupported_config_name_fails(self, generate_config):
+        args = Namespace(command='config', config_name='unsupported')
+
+        self.assertFalse(cmd.execute_command(args, '/tmp/email-root'))
+        generate_config.assert_not_called()
