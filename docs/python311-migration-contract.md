@@ -34,6 +34,14 @@ dependencies, or production service endpoints.
 - `pyproject.toml`: `requires-python = ">=3.11,<3.12"`
 - Package version: `1.0.0` (next major from the pre-migration `0.3.2` baseline).
 
+## Release Branch Policy
+
+- `master` remains the Python 3.6 production line while both runtimes coexist.
+- `python311-upgrade` is the live Python 3.11 release line, and all 1.x tags are created from CI-green commits on
+  this branch.
+- The Python 3.11 branch merges into `master` only after the production rollout is complete; merging to `master` is
+  not a prerequisite for tagging or publishing a 1.x release.
+
 ## Proof Commands
 
 Run from the worktree root:
@@ -82,16 +90,18 @@ Fixture/CLI compatibility is covered by the unit suite:
 | Task 4 asyncio/aiohttp modernization | Partial | No aiohttp. Modernize the CLI's asyncio execution path for Python 3.11. |
 | Task 4c async test harness modernization | Not applicable | No reusable async test harness exists. |
 | Task 5 Gunicorn/Docker local infra | Not applicable | This repo is not service-shaped and has no local backing services. |
-| Task 6 deterministic service requirements | Partial | Keep `requirements.txt` aligned to exact runtime pins for consumers; no ansible/service requirements build pipeline is added here. |
+| Task 6 deterministic service requirements | Partial | Use the Ansible focal-fossa builder to produce a pypicloud-only, hash-enforced deployment lock for x86_64 and aarch64. Service-specific CI/deployment lock variants remain not applicable. |
 
 ## Dependency Notes
 
 - Baseline Python 3.11 install failed because `pystache==0.5.4` uses the removed `use_2to3` build path.
-- Runtime dependencies are exact pins in `pyproject.toml` and mirrored in `requirements.txt`.
+- Runtime dependencies are exact pins in `pyproject.toml`. The generated `requirements/requirements.txt` is a
+  pypicloud-only, hash-enforced deployment artifact; it is not an install source for local or cloud CI.
 - Isolated builds require `setuptools>=82.0.1` and `wheel>=0.47.0`; the exact minimum backend pair is part of package
   proof so the declared lower bounds are known to accept the project's SPDX metadata.
-- `MANIFEST.in` ships the Makefile, runtime requirements, test modules, and all fixture file types needed to run the
-  complete suite from an extracted sdist. Setuptools package discovery still keeps tests and fixtures out of the wheel.
+- `MANIFEST.in` ships the Makefile, generated deployment lock, test modules, and all fixture file types needed to run
+  the complete suite from an extracted sdist. Setuptools package discovery still keeps tests and fixtures out of the
+  wheel.
 - `pystache` is upgraded to a Python 3.11-installable release.
 - `Markdown` is upgraded to `3.10.2`; repo extensions now use the Markdown 3 inline/block processor registration APIs.
 - `inlinestyler` is upgraded to `0.2.5` and `lxml` to `6.0.2`; the renderer adds a narrow
@@ -141,10 +151,14 @@ Checked with `venv/bin/pip index versions` and local install/test proof on 2026-
   `executors`/`commands`, `cimg/python:3.11.13`, `prepare_cache`, `lint`, and `test` jobs.
 - CircleCI runs `make ci-dev-install`, `make lint`, and `make test-only`; test results and coverage XML artifacts are
   stored from `build/test` and `build/coverage/coverage.xml`.
-- The config keeps the sample terminal cache fallback keys (`v3-pip-` and `v3-venv-`) and the non-fatal Codecov upload
-  step.
+- `make ci-dev-install` is cache-aware and installs `.[tests,devtools]` from public package metadata without cleaning a
+  restored virtualenv or probing pypicloud. This repo has no private runtime dependency, so no Git preinstall or
+  KeepSafe SSH key is required.
+- CircleCI `v5` cache checksums include both `pyproject.toml` and the generated deployment lock. The venv restore uses
+  only the exact key, preventing stale environments from a broader fallback.
 - The existing Travis workflow remains for historical compatibility and explicitly selects Ubuntu Jammy with Python
-  3.11.9, the patch release supported in that environment. `.python-version` and CircleCI remain on Python 3.11.13.
+  3.11.9, the patch release supported in that environment. Travis uses the same public-safe `make ci-dev-install`
+  target. `.python-version` and CircleCI remain on Python 3.11.13.
 
 ## Egress Policy
 
@@ -168,11 +182,13 @@ Captured on branch `python311-upgrade` in the migration worktree.
 | `venv/bin/pip install -e '.[tests,devtools]'` on the pre-migration setup metadata | Fail | Baseline failed because `pystache==0.5.4` uses removed `use_2to3` build metadata. |
 | `make clean` | Pass | Removed local build/test artifacts before clean install. |
 | `make dev` | Pass | Installed runtime and dev/test extras from `pyproject.toml`. |
+| Fresh public-only `CI=1 make ci-dev-install` in `/tmp/ks-email-parser-final-proof.d4UDQt` | Pass | Created a new Python 3.11 venv, installed `.[tests,devtools]` from public PyPI, and made no pypicloud probe. |
+| Cache-preservation marker plus `CI=1 make ci-env` | Pass | The marker remained in the existing venv, proving the CI bootstrap no longer deletes a restored cache. |
 | `make lint` | Pass | `flake8 7.3.0` with `flake8-pyproject 1.2.4`. |
 | `make check-msgpack` | Pass | No direct msgpack imports were found in `email_parser` or `tests`. |
 | Disposable direct-msgpack-import probe | Pass | `make check-msgpack` printed the matching file and exited nonzero. |
 | Disposable missing-`grep` probe | Pass | The target reported that the scanner was unavailable and exited nonzero instead of silently passing. |
-| `CI=1 make test` | Pass | `99` tests, `80%` coverage; includes golden fixtures, CLI/config smokes, empty-render failure, URL encoding, and paragraph-attribute regressions. |
+| Fresh public-only `CI=1 make test` | Pass | `99` tests, `80%` coverage; includes golden fixtures, CLI/config smokes, empty-render failure, URL encoding, and paragraph-attribute regressions. |
 | `venv/bin/python -m compileall email_parser tests` | Pass | Source and tests compile under Python 3.11. |
 | `venv/bin/python -c "import email_parser; print(email_parser.Parser)"` | Pass | Import smoke returned `<class 'email_parser.Parser'>`. |
 | `venv/bin/ks-email-parser --version` | Pass | CLI metadata smoke returned `1.0.0`. |
@@ -181,7 +197,7 @@ Captured on branch `python311-upgrade` in the migration worktree.
 | `venv/bin/pip check` | Pass | No broken requirements found. |
 | `venv/bin/python -m build` | Pass | Built `ks_email_parser-1.0.0.tar.gz` and `ks_email_parser-1.0.0-py3-none-any.whl`. |
 | `venv/bin/twine check dist/*` | Pass | Both the sdist and wheel metadata passed validation. |
-| Extracted-sdist clean install and `CI=1 make test` | Pass | The sdist includes `tests/fixtures`, `tests/src`, and `tests/templates_html`; all `99` tests passed at `80%` coverage and `pip check` passed. |
+| Extracted-sdist clean install and `CI=1 make test` | Pass | The sdist includes `requirements/requirements.txt`, `tests/fixtures`, `tests/src`, and `tests/templates_html`; the removed root requirements file is absent, all `99` tests passed at `80%` coverage, and `pip check` passed. |
 | Exact-minimum `setuptools==82.0.1`, `wheel==0.47.0` no-isolation build | Pass | Built both artifacts and passed Twine metadata checks at the declared backend floor. |
 | Fresh wheel install plus focused renderer/Markdown tests | Pass | `38` tests passed from installed package code; `pip check`, import, CLI version, and config-generation smokes passed. |
 | Runtime-only wheel plus local `sdiff==2.0.0`/Mistune `3.3.4` co-install | Pass | `pip check` and imports passed; all `42` rendered files matched the baseline byte-for-byte. |
@@ -191,10 +207,20 @@ Captured on branch `python311-upgrade` in the migration worktree.
 | `venv/bin/pip list --format=freeze` | Pass | No installed `msgpack` distribution; latest selected dependency set installed. |
 | `venv/bin/pip install cssutils==2.13.0`, `2.14.0`, `2.15.0` import checks | Fail | Later cssutils releases install but fail `import cssutils` because no importable `encutils` module is present. |
 | `ruby -e "require 'yaml'; YAML.load_file('.circleci/config.yml'); puts 'ok'"` | Pass | CircleCI config parses as YAML locally. |
-| `ruby -e "require 'yaml'; YAML.load_file('.travis.yml'); puts 'ok'"` | Pass | Travis config parses and selects Jammy/Python 3.11.9. |
+| Travis YAML parse and command assertions | Pass | Config selects Jammy/Python 3.11.9, installs with `make ci-dev-install`, then runs `make lint` and `make test`. |
 | `circleci config validate .circleci/config.yml` | Pass | CircleCI CLI reported the config file is valid after moving sample-style reuse into valid `executors` and `commands` sections. |
 | `circleci config validate --next .circleci/config.yml` | Pass | CircleCI CLI reported the config file is valid under the next schema. |
 | `circleci config process .circleci/config.yml` | Pass | Expanded configuration was written to `/tmp/ks-email-parser-circleci-processed.yml`. |
+| `make focal-fossa-local` in `ansible/builder` | Pass | Rebuilt amd64 and arm64 Python 3.11.13 builder images with the `ks-email-parser` wheel-only exception. |
+| `make focal-fossa-packages-local DIST_PATH=/tmp/packages SRC_PATH=<target-worktree>` | Pass | Built both architecture dependency sets. x86_64 and aarch64 each produced 15 wheels plus an architecture-specific hashed requirements file; `lxml==6.0.2` was repaired to the corresponding manylinux wheel. |
+| `bash builder/audit_pypicloud.sh` | Pass | Audited 16 unique wheel filenames; both current pypicloud nodes reported zero missing wheels. |
+| `cmp requirements/requirements.txt /tmp/packages/20.04/requirements.txt` | Pass | The repository lock is byte-for-byte identical to the final pypicloud-only builder output. |
+| Deployment-lock policy assertions | Pass | Exactly one `--require-hashes`, one internal `--index-url`, no `--extra-index-url`, no public index, and no VCS reference. |
+| focal-fossa amd64 deployment-lock install, `pip check`, import/version smoke | Pass | Installed exclusively from pypicloud and resolved the seven direct runtime pins exactly, including `lxml==6.0.2`. |
+| focal-fossa arm64 deployment-lock install, `pip check`, import/version smoke | Pass | Installed exclusively from pypicloud and resolved the same direct runtime pins with the aarch64 lxml wheel. |
+| Initial deployment-lock source smoke | Fail (corrected) | The dependency-only lock installed and passed `pip check`, but `import email_parser` failed because the project source was not on `sys.path`; rerunning with the mounted source on `PYTHONPATH` passed on both architectures. |
+| `bash -n builder/packager.sh builder/audit_pypicloud.sh` | Pass | Both Ansible builder scripts remain syntactically valid after the scoped package/IP edits. |
+| `shellcheck builder/packager.sh builder/audit_pypicloud.sh` | Fail (pre-existing) | Reports existing quoting, array, `cd`, status, and `exit -1` findings outside the scoped package/IP edits. The migration does not broaden into a legacy builder cleanup. |
 
 `make test` still prints legacy fixture warnings for intentionally malformed XML fallback cases; those warnings are covered by
 existing tests and do not fail the suite.

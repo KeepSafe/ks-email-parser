@@ -2,7 +2,7 @@ dist: jammy
 language: python
 python:
   - 3.11.9
-install: "make dev"
+install: "make ci-dev-install"
 script:
   - make lint
   - make test

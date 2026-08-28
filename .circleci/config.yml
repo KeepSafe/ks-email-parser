@@ -10,14 +10,15 @@ commands:
     steps:
       - restore_cache:
           keys:
-            - v3-pip-{{ arch }}-{{ checksum "pyproject.toml" }}
-            - v3-pip-{{ arch }}
-            - v3-pip-
+            - v5-pip-{{ arch }}-{{ checksum "pyproject.toml" }}-{{ checksum "requirements/requirements.txt" }}
+            - v5-pip-{{ arch }}-{{ checksum "pyproject.toml" }}
+            - v5-pip-{{ arch }}
+            - v5-pip-
 
   save_pip_cache:
     steps:
       - save_cache:
-          key: v3-pip-{{ arch }}-{{ checksum "pyproject.toml" }}
+          key: v5-pip-{{ arch }}-{{ checksum "pyproject.toml" }}-{{ checksum "requirements/requirements.txt" }}
           paths:
             - ~/.local
             - ~/.cache
@@ -26,14 +27,12 @@ commands:
     steps:
       - restore_cache:
           keys:
-            - v3-venv-{{ arch }}-{{ checksum "pyproject.toml" }}
-            - v3-venv-{{ arch }}
-            - v3-venv-
+            - v5-venv-{{ arch }}-{{ checksum "pyproject.toml" }}-{{ checksum "requirements/requirements.txt" }}
 
   save_venv_cache:
     steps:
       - save_cache:
-          key: v3-venv-{{ arch }}-{{ checksum "pyproject.toml" }}
+          key: v5-venv-{{ arch }}-{{ checksum "pyproject.toml" }}-{{ checksum "requirements/requirements.txt" }}
           paths:
             - /home/circleci/project/venv
 

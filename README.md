@@ -22,6 +22,73 @@ make lint
 make test
 ```
 
+### Regenerating requirements and deployment wheels
+
+`pyproject.toml` is the package dependency source of truth. Local development
+and cloud CI install the package and its extras directly from that file. The
+generated `requirements/requirements.txt` is a pypicloud-only, hash-enforced
+deployment artifact; it is not a local or cloud-CI install source.
+
+`ks-email-parser` does not depend on `sdiff`. The published `sdiff==2.0.0`
+artifact is consumed and validated by `content-validator`, so it must not be
+added to this package's runtime requirements.
+
+Use the ansible builder when a release needs the complete x86_64 and aarch64
+deployment wheel set. Set `KS_EMAIL_PARSER_PATH` to the checkout or worktree
+that should receive the generated lock:
+
+```shell
+# 1. Build the local Python 3.11 builder images.
+ANSIBLE_BUILDER_PATH=/absolute/path/to/ansible/builder
+KS_EMAIL_PARSER_PATH=/absolute/path/to/ks-email-parser
+cd "$ANSIBLE_BUILDER_PATH"
+make focal-fossa-local
+
+# 2. Resolve requirements and build wheels for both architectures. Pass 1 uses
+#    pypicloud with public PyPI as a fallback for artifacts not yet mirrored.
+make focal-fossa-packages-local DIST_PATH=/tmp/packages SRC_PATH="$KS_EMAIL_PARSER_PATH"
+
+# 3. Upload the generated wheels to internal pypicloud. Credentials are stored
+#    in 1Password under the pypicloud developer account.
+TWINE_PASSWORD=<password> make upload-wheels
+
+# 4. Rebuild the package list on both pypicloud nodes.
+# http://10.10.1.143:8080/#/admin -> "Rebuild package list"
+# http://10.10.2.107:8080/#/admin -> "Rebuild package list"
+
+# 5. Audit the uploaded wheel set on both nodes.
+bash audit_pypicloud.sh
+
+# 6. Resolve again using pypicloud as the only index. The combined requirements
+#    artifact contains hashes for both deployment architectures.
+make focal-fossa-relock-local DIST_PATH=/tmp/packages SRC_PATH="$KS_EMAIL_PARSER_PATH"
+
+# 7. Copy the pypicloud-only deployment lock back into the target checkout.
+mkdir -p "$KS_EMAIL_PARSER_PATH/requirements"
+cp /tmp/packages/20.04/requirements.txt \
+  "$KS_EMAIL_PARSER_PATH/requirements/requirements.txt"
+```
+
+The builder writes wheels and architecture-specific requirements under
+`/tmp/packages/20.04`, plus the pypicloud-only combined lock at
+`/tmp/packages/20.04/requirements.txt`. The combined lock replaces the legacy
+root direct-pin requirements file in the repository.
+
+#### Release
+
+1. Bump the ks-email-parser version in `pyproject.toml`.
+2. Commit and push the release changes to `master`.
+3. Create the version tag with `git tag <version>`.
+4. Push the tag with `git push origin <version>`.
+5. Run `make publish` using the pypicloud developer credentials from 1Password.
+6. Rebuild the package list on both internal nodes:
+   - `http://10.10.1.143:8080/#/admin`
+   - `http://10.10.2.107:8080/#/admin`
+
+`make publish` builds the source distribution and wheel, then uploads the wheel
+to internal pypicloud. A changed package must use a new version because the
+index will reject an artifact whose filename already exists.
+
 ## Usage
 
 `ks-email-parser` in root folder to generate all emails.

@@ -17,7 +17,7 @@ endif
 
 env:
 	test -d venv || python3.11 -m venv venv
-	$(PIP) install --upgrade pip
+	$(PIP) install --upgrade pip setuptools wheel
 	$(PIP) install -e .
 
 dev: env
@@ -66,9 +66,12 @@ cov cover coverage:
 	$(NOSE) --with-cover --cover-html --cover-html-dir ./coverage $(PYNOSE_FLAGS)
 	echo "open file://`pwd`/coverage/index.html"
 
-ci-env: clean env
+ci-env:
+	test -d venv || python3.11 -m venv venv
+	$(PIP) install --upgrade pip setuptools wheel
 
-ci-dev-install: dev
+ci-dev-install: ci-env
+	$(PIP) install -e ".[tests,devtools]"
 
 clean:
 	rm -rf `find . -name __pycache__`
