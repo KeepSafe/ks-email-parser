@@ -23,16 +23,16 @@ dependencies, or production service endpoints.
 
 ## Downstream Consumers
 
-- `email-service` declares `ks-email-parser` as an internal dependency and vendors an older source copy under
-  `email-service/src/ks-email-parser`.
+- `email-service` declares the published `ks-email-parser==1.0.1` package in `pyproject.toml`; the Python 3.11
+  branch no longer vendors a source copy.
 - `emails` documents and invokes the `ks-email-parser` CLI to render email assets.
-- `ansible/update_email_service.yml` packages `ks-email-parser` for email-service deployment.
+- Ansible packages `ks-email-parser` through the email-service deployment roles.
 
 ## Python 3.11 Target
 
 - `.python-version`: `3.11.13`
 - `pyproject.toml`: `requires-python = ">=3.11,<3.12"`
-- Package version: `1.0.0` (next major from the pre-migration `0.3.2` baseline).
+- Package version: `1.0.1` (the current patch release on the Python 3.11 line).
 
 ## Release Branch Policy
 
@@ -117,7 +117,7 @@ Fixture/CLI compatibility is covered by the unit suite:
   `requests` remains an expected transitive dependency of `inlinestyler`; it is not imported directly by this project.
 - Beautiful Soup 4.15.0 retains the APIs deprecated in 4.13.0 for this release and fixes an `html.parser` crash on
   Python 3.11.13. This repo uses the current `BeautifulSoup` constructor and `find_all` APIs, and golden output is stable.
-- lxml 6.0.2 is Python 3.11-compatible and matches `libks==1.0.5`; the XML fallback and HTML rendering fixtures remain
+- lxml 6.0.2 is Python 3.11-compatible and matches downstream `libks==1.0.12`; the XML fallback and HTML rendering fixtures remain
   stable.
 - parse 1.22.1 expands zero-precision float parsing. Existing parser behavior and fixtures remain stable.
 - coverage 7.15.0 through 7.15.2 add reporting fixes and `--keep-combined`; the existing pynose coverage invocation,
@@ -140,7 +140,7 @@ Checked with `venv/bin/pip index versions` and local install/test proof on 2026-
 | `Markdown` | `3.10.2` | `3.10.2` | Latest observed; compatibility fixes preserve fixture output. |
 | `cssutils` | `2.11.1` | `2.15.0` | Latest safe pin. `2.13.0`, `2.14.0`, and `2.15.0` import-fail locally with `ModuleNotFoundError: No module named 'encutils'` despite installing `encutils==1.0.0`. |
 | `inlinestyler` | `0.2.5` | `0.2.5` | Latest observed; compatibility alias preserves renderer behavior with latest `lxml`. |
-| `lxml` | `6.0.2` | `6.1.1` | Required to resolve with downstream `libks==1.0.5`; golden fixture proof passes. |
+| `lxml` | `6.0.2` | `6.1.1` | Required to resolve with downstream `libks==1.0.12`; golden fixture proof passes. |
 | `parse` | `1.22.1` | `1.22.1` | Latest observed; fixture proof passes. |
 | `pystache` | `0.6.8` | `0.6.8` | Latest observed; fixes Python 3.11 `use_2to3` install blocker. |
 | `coverage` | `7.15.2` | `7.15.2` | Latest observed; unit coverage reporting remains compatible. |
@@ -168,11 +168,13 @@ paid provider, or public external service calls are part of behavior proof.
 ## Known Gaps
 
 - TODO: run the skill's final two-consecutive-clean-review cycle after remote CI reports on the next push.
-- TODO: downstream `email-service`, `emails`, and Ansible packaging must run their own Python 3.11 proof after
-  consuming the migrated package.
-- The published package artifact is not uploaded in this migration session.
+- Email-service PR #439's pending downstream update uses `ks-email-parser==1.0.1`, a combined
+  x86_64/aarch64 hash lock, and passing local integration coverage; fresh cloud CI remains a post-push gate.
+- The separate `emails` consumer and final Ansible deployment remain downstream rollout responsibilities; the
+  email-service Python 3.11 deployment work is tracked in KeepSafe/ansible#545.
+- The `1.0.1` wheel is published on internal pypicloud and resolves from the email-service Python 3.11 environment.
 
-## Verification Evidence
+## 1.0.0 Verification Evidence
 
 Captured on branch `python311-upgrade` in the migration worktree.
 
@@ -225,11 +227,24 @@ Captured on branch `python311-upgrade` in the migration worktree.
 `make test` still prints legacy fixture warnings for intentionally malformed XML fallback cases; those warnings are covered by
 existing tests and do not fail the suite.
 
+## 1.0.1 Release Addendum
+
+Date: 2026-08-28.
+
+The `1.0.1` tag resolves to commit `52ac4a9e7eee94cb857cb9822b15690ac74ea7f7`. This patch release preserves
+legacy Markdown strong-delimiter behavior and strips raw or percent-encoded bidirectional marks only when they wrap
+rendered link targets. Focused Markdown-extension and renderer regressions cover those changes.
+
+The published `ks_email_parser-1.0.1-py3-none-any.whl` has SHA-256
+`e58950c1e92f7314946dd8e54f6087e125367a05522e7cec736dccd3e66ec981`. Email-service PR #439 declares that release,
+records the same hash in its combined deployment lock, and passes local `pip check`, unit, integration, and Python
+3.6/Python 3.11 compatibility proof with it installed. Fresh remote CI remains a gate after that reviewed diff is pushed.
+
 ## Email-service downstream correction
 
-Date: 2026-08-04.
+Date: 2026-08-04, updated 2026-08-28.
 
-The email-service resolver proof found that `libks==1.0.5` requires
+The final email-service resolver proof confirms that `libks==1.0.12` requires
 `lxml==6.0.2`. The previous ks-email-parser pin, `lxml==6.1.1`, made the two
 packages impossible to resolve in one environment. The selected `lxml==6.0.2`
 pin remains Python 3.11-compatible and is validated by the reader, XML fallback,
