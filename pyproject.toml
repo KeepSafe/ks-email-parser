@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ks-email-parser"
-version = "1.0.0"
+version = "1.0.1"
 description = "A command line tool to render HTML and text emails of markdown content."
 readme = "README.md"
 requires-python = ">=3.11,<3.12"

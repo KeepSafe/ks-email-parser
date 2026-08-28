@@ -271,6 +271,16 @@ class TestHtmlRenderer(TestCase):
 
         self.assertEqual(expected, actual)
 
+    def test_strips_bidi_marks_wrapping_rendered_link_target(self):
+        html = '<body>{{content}}</body>'
+        placeholders = {'content': Placeholder('content', '[link](\u200e{{url}}\u200f)')}
+
+        actual = self._get_renderer(html, ['content'], email_locale='he').render(placeholders)
+
+        self.assertIn('href="{{url}}"', actual)
+        self.assertNotIn('%E2%80%8E', actual)
+        self.assertNotIn('%E2%80%8F', actual)
+
     def test_empty_placeholders_rendering(self):
         template = Template('dummy', [], '<style>p {color:red;}</style>', '<body>{{content}}</body>', ['content'], None)
         r = renderer.HtmlRenderer(template, self.email_locale)

@@ -1,12 +1,26 @@
 from markdown.blockprocessors import BlockProcessor
 from markdown.extensions import Extension
-from markdown.inlinepatterns import ImageInlineProcessor, LinkInlineProcessor, LINK_RE, IMAGE_LINK_RE
+from markdown.inlinepatterns import (
+    IMAGE_LINK_RE,
+    LINK_RE,
+    ImageInlineProcessor,
+    LinkInlineProcessor,
+    SimpleTagInlineProcessor,
+)
 import re
 
 from . import const
 
 
 MUSTACHE_ENCODED_SPACES_RE = re.compile(r'{{%20([^{}]+?)%20}}', re.IGNORECASE)
+BIDI_URL_PREFIX_RE = re.compile(r'^(?:(?:%E2%80%8[EF])|[\u200e\u200f])+', re.IGNORECASE)
+BIDI_URL_SUFFIX_RE = re.compile(r'(?:(?:%E2%80%8[EF])|[\u200e\u200f])+$', re.IGNORECASE)
+LEGACY_STRONG_RE = r'(\*{2})(.+?)\1'
+
+
+def _strip_bidi_url_wrappers(url):
+    url = BIDI_URL_PREFIX_RE.sub('', url)
+    return BIDI_URL_SUFFIX_RE.sub('', url)
 
 
 class InlineBlockProcessor(BlockProcessor):
@@ -74,9 +88,12 @@ class NoTrackingLinkProcessor(LinkInlineProcessor):
         el, start, end = super().handleMatch(m, data)
         if el is None:
             return el, start, end
-        if el.get('href') and el.get('href').startswith('!'):
-            el.set('href', el.get('href')[1:])
+
+        href = _strip_bidi_url_wrappers(el.get('href', ''))
+        if href.startswith('!'):
+            href = href[1:]
             el.set('clicktracking', 'off')
+        el.set('href', href)
         return el, start, end
 
 
@@ -102,6 +119,16 @@ class NoTrackingLinkExtension(Extension):
         md.inlinePatterns.register(NoTrackingLinkProcessor(LINK_RE, md), 'no_tracking_link', 175)
 
 
+class LegacyStrongExtension(Extension):
+    def extendMarkdown(self, md):
+        # Markdown 2 accepted whitespace and newlines immediately inside strong delimiters.
+        md.inlinePatterns.register(
+            SimpleTagInlineProcessor(LEGACY_STRONG_RE, 'strong'),
+            'legacy_strong',
+            71,
+        )
+
+
 def inline_text():
     return InlineTextExtension()
 
@@ -112,3 +139,7 @@ def base_url(base_url):
 
 def no_tracking():
     return NoTrackingLinkExtension()
+
+
+def legacy_strong():
+    return LegacyStrongExtension()
