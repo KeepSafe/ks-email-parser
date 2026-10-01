@@ -213,8 +213,10 @@ class TestHtmlRenderer(TestCase):
         }
 
         actual = r.render(placeholders)
-        expected = '<body dir="rtl">\n <div>\n  <p>\n   dummy_content1\n  </p>\n </div>\n <div>\n  <p>\n   dummy_content2\n  </p>\n </div>\
-\n</body>'
+        expected = (
+            '<body dir="rtl">\n <div>\n  <p>\n   dummy_content1\n  </p>\n </div>\n <div>\n'
+            '  <p>\n   dummy_content2\n  </p>\n </div>\n</body>'
+        )
 
         self.assertEqual(expected, actual)
 
@@ -225,6 +227,34 @@ class TestHtmlRenderer(TestCase):
 
         actual = r.render(placeholders)
         self.assertEqual('<body><p style="color: red">dummy_content</p></body>', actual)
+
+    def test_single_element_paragraph_preserves_inlined_style(self):
+        r = self._get_renderer('', [])
+
+        actual = r._inline_css('<p><a href="https://example.com">link</a></p>', '<style>p {color:red;}</style>')
+
+        expected = '<p style="color: red">\n      <a href="https://example.com">link</a>\n    </p>'
+        self.assertEqual(expected, actual)
+
+    def test_single_element_paragraph_preserves_attributes(self):
+        r = self._get_renderer('', [])
+        html = '<p class="lead" id="intro" dir="rtl" data-kind="hero"><em>text</em></p>'
+
+        actual = r._inline_css(html, '<style>p {color:red;}</style>')
+
+        expected = (
+            '<p class="lead" data-kind="hero" dir="rtl" id="intro" style="color: red">\n'
+            '      <em>text</em>\n'
+            '    </p>'
+        )
+        self.assertEqual(expected, actual)
+
+    def test_single_element_attribute_free_paragraph_format_is_stable(self):
+        r = self._get_renderer('', [])
+
+        actual = r._inline_css('<p><em>text</em></p>', '')
+
+        self.assertEqual('<p>\n      <em>text</em>\n    </p>', actual)
 
     @patch('email_parser.fs.read_file')
     def test_no_tracking(self, mock_read):
@@ -241,6 +271,16 @@ class TestHtmlRenderer(TestCase):
 
         self.assertEqual(expected, actual)
 
+    def test_strips_bidi_marks_wrapping_rendered_link_target(self):
+        html = '<body>{{content}}</body>'
+        placeholders = {'content': Placeholder('content', '[link](\u200e{{url}}\u200f)')}
+
+        actual = self._get_renderer(html, ['content'], email_locale='he').render(placeholders)
+
+        self.assertIn('href="{{url}}"', actual)
+        self.assertNotIn('%E2%80%8E', actual)
+        self.assertNotIn('%E2%80%8F', actual)
+
     def test_empty_placeholders_rendering(self):
         template = Template('dummy', [], '<style>p {color:red;}</style>', '<body>{{content}}</body>', ['content'], None)
         r = renderer.HtmlRenderer(template, self.email_locale)
@@ -254,3 +294,29 @@ class TestHtmlRenderer(TestCase):
         expected = '<body>{{MY_BITMAP}}</body>'
         result = renderer._transform_extended_tags(content)
         self.assertEqual(result, expected)
+
+
+class TestRestoreEncodedPlaceholders(TestCase):
+    """inline_styler percent-encodes braces in URLs, which breaks pystache."""
+
+    def test_restores_mustache_in_url(self):
+        self.assertEqual(
+            '<a href="https://a.test/acode/{{code}}/{{bundle}}">x</a>',
+            renderer._restore_encoded_placeholders(
+                '<a href="https://a.test/acode/%7B%7Bcode%7D%7D/%7B%7Bbundle%7D%7D">x</a>'))
+
+    def test_restores_single_brace_placeholder(self):
+        self.assertEqual(
+            '<a href="https://a.test/?locale={link_locale}">x</a>',
+            renderer._restore_encoded_placeholders(
+                '<a href="https://a.test/?locale=%7Blink_locale%7D">x</a>'))
+
+    def test_restores_encoded_spaces_inside_tag(self):
+        self.assertEqual(
+            '<img src="x/{{ product_name }}.png"/>',
+            renderer._restore_encoded_placeholders(
+                '<img src="x/%7B%7B%20product_name%20%7D%7D.png"/>'))
+
+    def test_leaves_unrelated_percent_sequences(self):
+        html = '<p>%7Bnot a tag%7D</p>'
+        self.assertEqual(html, renderer._restore_encoded_placeholders(html))
