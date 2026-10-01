@@ -4,6 +4,7 @@ Different ways of rendering emails.
 
 import logging
 import re
+from urllib.parse import unquote
 
 import bs4
 from inlinestyler.cssselect import CSSSelector
@@ -19,6 +20,17 @@ logger = logging.getLogger(__name__)
 
 if not hasattr(CSSSelector, 'evaluate'):
     CSSSelector.evaluate = CSSSelector.__call__
+
+
+# inline_styler percent-encodes braces in URL attributes; pystache runs after
+# rendering, so an encoded placeholder never substitutes.
+ENCODED_MUSTACHE_RE = re.compile(r'%7B%7B((?:(?!%7D%7D).)*?)%7D%7D', re.IGNORECASE)
+ENCODED_BRACE_RE = re.compile(r'%7B([A-Za-z0-9_.\-]+?)%7D', re.IGNORECASE)
+
+
+def _restore_encoded_placeholders(html):
+    html = ENCODED_MUSTACHE_RE.sub(lambda m: '{{%s}}' % unquote(m.group(1)), html)
+    return ENCODED_BRACE_RE.sub(lambda m: '{%s}' % m.group(1), html)
 
 
 def _normalize_inline_html(html):
@@ -98,7 +110,7 @@ class HtmlRenderer:
     def _inline_css(self, html, css):
         # an empty style will cause an error in inline_styler so we use a space instead
         css = css or ' '
-        html_with_css = inline_styler.inline_css(css + html)
+        html_with_css = _restore_encoded_placeholders(inline_styler.inline_css(css + html))
         soup = bs4.BeautifulSoup(html_with_css, 'html.parser')
         body_tag = soup.find('body')
         if body_tag is None:

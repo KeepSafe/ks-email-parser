@@ -294,3 +294,29 @@ class TestHtmlRenderer(TestCase):
         expected = '<body>{{MY_BITMAP}}</body>'
         result = renderer._transform_extended_tags(content)
         self.assertEqual(result, expected)
+
+
+class TestRestoreEncodedPlaceholders(TestCase):
+    """inline_styler percent-encodes braces in URLs, which breaks pystache."""
+
+    def test_restores_mustache_in_url(self):
+        self.assertEqual(
+            '<a href="https://a.test/acode/{{code}}/{{bundle}}">x</a>',
+            renderer._restore_encoded_placeholders(
+                '<a href="https://a.test/acode/%7B%7Bcode%7D%7D/%7B%7Bbundle%7D%7D">x</a>'))
+
+    def test_restores_single_brace_placeholder(self):
+        self.assertEqual(
+            '<a href="https://a.test/?locale={link_locale}">x</a>',
+            renderer._restore_encoded_placeholders(
+                '<a href="https://a.test/?locale=%7Blink_locale%7D">x</a>'))
+
+    def test_restores_encoded_spaces_inside_tag(self):
+        self.assertEqual(
+            '<img src="x/{{ product_name }}.png"/>',
+            renderer._restore_encoded_placeholders(
+                '<img src="x/%7B%7B%20product_name%20%7D%7D.png"/>'))
+
+    def test_leaves_unrelated_percent_sequences(self):
+        html = '<p>%7Bnot a tag%7D</p>'
+        self.assertEqual(html, renderer._restore_encoded_placeholders(html))
