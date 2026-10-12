@@ -29,11 +29,13 @@ def parse_placeholder(placeholder_str):
     except ValueError:
         raise ValueError('Placeholder definition %s uses invalid PlaceholderType' % placeholder_str)
     for attr_str in args_str.split(';'):
+        if not attr_str:
+            continue
         try:
             attr_name, attr_value = attr_str.split('=')
             args[attr_name] = attr_value
         except ValueError:
-            ValueError('Malformed attributes definition: %s'.format(args_str))
+            raise ValueError('Malformed attributes definition: %s' % args_str)
     return MetaPlaceholder(name, placeholder_type, args)
 
 
@@ -43,7 +45,7 @@ def _placeholders(tree, prefix=''):
     is_global = (prefix == const.GLOBALS_PLACEHOLDER_PREFIX)
     result = OrderedDict()
     for element in tree.xpath('./string | ./string-array | bitmap | ./array'):
-        name = '{0}{1}'.format(prefix, element.get('name'))
+        name = '{}{}'.format(prefix, element.get('name'))
         placeholder_type = PlaceholderType[element.get('type', PlaceholderType.text.value)]
         opt_attrs = dict(element.items())
         del opt_attrs['name']

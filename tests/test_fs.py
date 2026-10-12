@@ -4,7 +4,7 @@ from email_parser import fs
 from email_parser.model import *
 
 
-class MockPath(object):
+class MockPath:
     def __init__(self, path, is_dir=False, parent='.'):
         self.path = path
         self._is_dir = is_dir

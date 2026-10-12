@@ -55,11 +55,11 @@ class Placeholder:
         if self._opt_attr:
             attributes.update(self._opt_attr)
         for k, v in attributes.items():
-            if k is 'type':
+            if k == 'type':
                 yield k, self.type.value
-            elif k is '_content':
+            elif k == '_content':
                 yield 'content', v
-            elif k is '_opt_attr':
+            elif k == '_opt_attr':
                 continue
             else:
                 yield k, v
@@ -106,10 +106,10 @@ class BitmapPlaceholder(Placeholder):
         div_style = "vertical-align: middle;text-align: center;"
         constraints = ""
         if self.alt:
-            optional += " alt=\"{}\"".format(self.alt)
+            optional += f" alt=\"{self.alt}\""
         for style_tag in ['max-width', 'max-height']:
             if style_tag in mapping:
-                constraints += "{}: {};".format(style_tag, mapping[style_tag])
+                constraints += f"{style_tag}: {mapping[style_tag]};"
         mapping.update({
             'style': div_style + constraints,
             'id': self.id,

@@ -1,0 +1,3 @@
+include Makefile
+include requirements/requirements.txt
+recursive-include tests *.css *.html *.json *.py *.subject *.text *.txt *.xml
